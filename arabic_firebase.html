@@ -330,6 +330,80 @@ body.tm #resultsPanel{display:block;margin-bottom:14px}
   display:inline-block;animation:pulse 1.5s infinite}
 .no-students{color:var(--txt2);font-size:.82rem;text-align:center;
   padding:16px;font-style:italic}
+
+/* ── DASHBOARD VIEW ── */
+body.dm{overflow-y:auto!important}
+body.dm #app{height:auto;min-height:100%}
+#dashView{display:none;padding:0 0 40px}
+body.dm #dashView{display:block}
+body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:none!important}
+
+.dash-section{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:14px;margin-bottom:14px}
+.dash-title{font-family:'Amiri',serif;font-size:1.1rem;color:var(--gold);
+  margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dash-title span{font-size:.75rem;color:var(--txt2);font-family:'Cairo',sans-serif}
+
+/* KPI cards */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:rgba(255,255,255,.05);border-radius:10px;padding:12px;text-align:center;
+  border:1px solid rgba(255,255,255,.07)}
+.kpi-val{font-size:1.8rem;font-weight:900;font-family:'Cairo',sans-serif;line-height:1}
+.kpi-lbl{font-size:.72rem;color:var(--txt2);margin-top:4px}
+.kpi.green .kpi-val{color:#4ade80}
+.kpi.gold  .kpi-val{color:var(--gold)}
+.kpi.red   .kpi-val{color:#f87171}
+.kpi.blue  .kpi-val{color:#60a5fa}
+.kpi.teal  .kpi-val{color:var(--teal)}
+
+/* Chart bar */
+.chart-wrap{width:100%;overflow-x:auto}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:140px;
+  padding:0 4px;direction:ltr}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:28px}
+.bar{width:100%;border-radius:4px 4px 0 0;transition:height .4s ease;
+  min-height:4px;cursor:pointer;position:relative}
+.bar:hover{filter:brightness(1.2)}
+.bar-pct{font-size:.62rem;color:var(--txt2);white-space:nowrap}
+.bar-name{font-size:.6rem;color:var(--txt2);white-space:nowrap;
+  max-width:50px;overflow:hidden;text-overflow:ellipsis;
+  writing-mode:horizontal-tb;transform:rotate(-30deg);transform-origin:top center;
+  margin-top:6px}
+
+/* Weakness table */
+.w-table{width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl}
+.w-table th{background:rgba(239,68,68,.15);color:#fca5a5;
+  padding:6px 10px;text-align:right;border:1px solid rgba(255,255,255,.06);
+  font-family:'Cairo',sans-serif;font-weight:700}
+.w-table td{padding:5px 10px;border:1px solid rgba(255,255,255,.05);color:var(--txt2)}
+.w-table tr:hover td{background:rgba(239,68,68,.06)}
+.w-bar{height:8px;border-radius:4px;background:linear-gradient(135deg,#ef4444,#b91c1c);
+  display:inline-block;min-width:4px;vertical-align:middle;margin-right:6px}
+
+/* Strength table */
+.s-table{width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl}
+.s-table th{background:rgba(34,197,94,.15);color:#86efac;
+  padding:6px 10px;text-align:right;border:1px solid rgba(255,255,255,.06);
+  font-family:'Cairo',sans-serif;font-weight:700}
+.s-table td{padding:5px 10px;border:1px solid rgba(255,255,255,.05);color:var(--txt2)}
+.s-bar{height:8px;border-radius:4px;background:linear-gradient(135deg,#22c55e,#15803d);
+  display:inline-block;min-width:4px;vertical-align:middle;margin-right:6px}
+
+/* Distribution */
+.dist-row{display:flex;gap:8px;flex-wrap:wrap}
+.dist-seg{flex:1;min-width:80px;background:rgba(255,255,255,.04);
+  border-radius:8px;padding:8px;text-align:center;border:1px solid rgba(255,255,255,.06)}
+.dist-seg .d-val{font-size:1.4rem;font-weight:900;font-family:'Cairo',sans-serif}
+.dist-seg .d-lbl{font-size:.7rem;color:var(--txt2);margin-top:2px}
+
+/* mbtn for dashboard */
+.mbtn.act-d{background:linear-gradient(135deg,#f59e0b,#b45309);
+  color:#fff;box-shadow:0 2px 8px rgba(245,158,11,.42)}
+
+/* no data */
+.no-data{text-align:center;color:var(--txt2);font-size:.85rem;
+  padding:30px;font-style:italic}
+
 /* ── GHOST ── */
 #ghost{position:fixed;pointer-events:none!important;z-index:9999;
   background:linear-gradient(135deg,rgba(245,200,66,.96),rgba(200,150,0,.9));
@@ -433,6 +507,7 @@ body.tm #resultsPanel{display:block;margin-bottom:14px}
     <div class="mode-sw" style="order:1">
       <button class="mbtn" id="btnT" onclick="requestTeacher()">🎓 المعلم</button>
       <button class="mbtn act-s" id="btnS" onclick="setMode('s')">👦 الطالب</button>
+      <button class="mbtn" id="btnD" onclick="requestDashboard()">📊 النتائج</button>
     </div>
     <div id="onlineBadge" style="order:0"><span class="dot"></span>متصل</div>
     <div class="hdr-mid" style="order:2">
@@ -534,6 +609,86 @@ body.tm #resultsPanel{display:block;margin-bottom:14px}
     </div>
   </div>
 
+
+<!-- ═══ DASHBOARD VIEW ═══ -->
+<div id="dashView">
+
+  <!-- KPIs -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi blue"><div class="kpi-val" id="kpiTotal">0</div><div class="kpi-lbl">إجمالي الطلاب</div></div>
+    <div class="kpi green"><div class="kpi-val" id="kpiAvg">0%</div><div class="kpi-lbl">متوسط الدرجات</div></div>
+    <div class="kpi green"><div class="kpi-val" id="kpiPass">0</div><div class="kpi-lbl">ناجح (≥60%)</div></div>
+    <div class="kpi red"><div class="kpi-val" id="kpiFail">0</div><div class="kpi-lbl">راسب (&lt;60%)</div></div>
+    <div class="kpi gold"><div class="kpi-val" id="kpiTop">0%</div><div class="kpi-lbl">أعلى درجة</div></div>
+    <div class="kpi teal"><div class="kpi-val" id="kpiOnline">0</div><div class="kpi-lbl">متصل الآن</div></div>
+  </div>
+
+  <!-- منحنى النتائج -->
+  <div class="dash-section">
+    <div class="dash-title">📈 منحنى درجات الطلاب <span id="chartSubtitle"></span></div>
+    <div class="chart-wrap"><div class="bar-chart" id="barChart"></div></div>
+  </div>
+
+  <!-- توزيع الدرجات -->
+  <div class="dash-section">
+    <div class="dash-title">🎯 توزيع الدرجات</div>
+    <div class="dist-row">
+      <div class="dist-seg" style="border-color:rgba(74,222,128,.3)">
+        <div class="d-val" id="distA" style="color:#4ade80">0</div>
+        <div class="d-lbl">ممتاز (80-100%)</div>
+      </div>
+      <div class="dist-seg" style="border-color:rgba(245,200,66,.3)">
+        <div class="d-val" id="distB" style="color:var(--gold)">0</div>
+        <div class="d-lbl">جيد (60-79%)</div>
+      </div>
+      <div class="dist-seg" style="border-color:rgba(248,113,113,.3)">
+        <div class="d-val" id="distC" style="color:#f87171">0</div>
+        <div class="d-lbl">ضعيف (&lt;60%)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- مواطن الضعف -->
+  <div class="dash-section">
+    <div class="dash-title">⚠️ مواطن الضعف <span>المطلوبات الأكثر خطأً</span></div>
+    <div id="weaknessArea"><div class="no-data">لا توجد بيانات كافية</div></div>
+  </div>
+
+  <!-- مواطن القوة -->
+  <div class="dash-section">
+    <div class="dash-title">✅ مواطن القوة <span>المطلوبات الأعلى إجابةً</span></div>
+    <div id="strengthArea"><div class="no-data">لا توجد بيانات كافية</div></div>
+  </div>
+
+  <!-- جدول الطلاب -->
+  <div class="dash-section">
+    <div class="dash-title">
+      👥 تفاصيل الطلاب
+      <div style="display:flex;gap:6px">
+        <button class="btn br" onclick="clearAllResults()" style="padding:3px 9px;font-size:.73rem">مسح النتائج</button>
+        <button class="btn bb" onclick="exportResults()" style="padding:3px 9px;font-size:.73rem">تصدير CSV</button>
+      </div>
+    </div>
+    <div id="noStudentsDash" class="no-data">لا يوجد طلاب بعد...</div>
+    <table id="dashTable" style="display:none;width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl">
+      <thead>
+        <tr>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">#</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الاسم</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الفصل</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">النموذج</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الدرجة</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">%</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الحالة</th>
+        </tr>
+      </thead>
+      <tbody id="dashTbody"></tbody>
+    </table>
+  </div>
+
+</div>
+<!-- end dashView -->
+
 </div><!-- end app -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -570,6 +725,32 @@ let PRESETS=[
 // ════════════════════════════════════════════════════════
 // FIREBASE CONFIG
 // ════════════════════════════════════════════════════════
+
+/*
+  FIREBASE SECURITY RULES — paste in Firebase Console > Realtime Database > Rules:
+  {
+    "rules": {
+      "sessions": {
+        "$sessionId": {
+          "models": {
+            ".read": true,
+            ".write": "auth == null"
+          },
+          "students": {
+            ".read": "auth == null",
+            "$studentId": {
+              ".write": "auth == null"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  NOTE: For maximum security with the password approach,
+  use Session ID as a secret path (already implemented via SESSION_ID).
+  Only someone with the URL can access the session data.
+*/
 const FB_CONFIG = {
   apiKey: "AIzaSyAGrIhpeD5K7berK-6i8AhtVJ-knQqZBSk",
   authDomain: "arabic-skills.firebaseapp.com",
@@ -636,6 +817,25 @@ function pushStudentAnswers(){
     });
   });
 
+  // Build per-question details for analytics
+  const details = {};
+  document.querySelectorAll('#studentTasksC .trow').forEach(row=>{
+    const lbls = row.querySelectorAll('.qlbl');
+    const dzs  = row.querySelectorAll('.dz');
+    dzs.forEach((zone,zi)=>{
+      const key = getKey(zone);
+      if(!key.length) return;
+      const lbl = lbls[zi]?.textContent?.trim()||('س'+(zi+1));
+      let qCorrect=0;
+      key.forEach(k=>{
+        const found = [...zone.querySelectorAll('.ac.stu input')].some(i=>i.value.trim()===k);
+        if(found) qCorrect++;
+      });
+      const safeKey = lbl.replace(/[.#$/\[\]]/g,'_');
+      details[safeKey] = {correct:qCorrect, total:key.length};
+    });
+  });
+
   const payload = {
     name: stuName,
     class: stuClass,
@@ -644,7 +844,8 @@ function pushStudentAnswers(){
     correct, total,
     pct: total>0 ? Math.round(correct/total*100) : 0,
     ts: Date.now(),
-    online: true
+    online: true,
+    details
   };
 
   db.ref('sessions/'+SESSION_ID+'/students/'+stuId).update(payload);
@@ -795,6 +996,185 @@ function updateStuBar(correct, total){
 }
 
 
+
+// ════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════
+let _dashData = {};
+
+function requestDashboard(){
+  // Reuse password overlay
+  document.getElementById('pwInp').value='';
+  document.getElementById('pwErr').style.display='none';
+  document.getElementById('pwOverlay').dataset.target='d';
+  document.getElementById('pwOverlay').style.visibility='visible';
+  document.getElementById('pwOverlay').style.opacity='1';
+  document.getElementById('pwOverlay').style.pointerEvents='all';
+  setTimeout(()=>document.getElementById('pwInp').focus(),120);
+}
+
+function setModeDash(){
+  mode='d';
+  document.body.className='dm';
+  document.getElementById('btnT').className='mbtn';
+  document.getElementById('btnS').className='mbtn';
+  document.getElementById('btnD').className='mbtn act-d';
+  // Listen for live data
+  if(fbConnected && db){
+    db.ref('sessions/'+SESSION_ID+'/students').on('value', snap=>{
+      _dashData = snap.val()||{};
+      renderDashboard(_dashData);
+    });
+  }
+  showToast('لوحة التحليل 📊');
+}
+
+function renderDashboard(data){
+  const entries = Object.values(data).filter(e=>e.name);
+  const n = entries.length;
+
+  // ── KPIs
+  document.getElementById('kpiTotal').textContent = n;
+  if(!n){
+    document.getElementById('kpiAvg').textContent='0%';
+    document.getElementById('kpiPass').textContent='0';
+    document.getElementById('kpiFail').textContent='0';
+    document.getElementById('kpiTop').textContent='0%';
+    document.getElementById('kpiOnline').textContent='0';
+    document.getElementById('noStudentsDash').style.display='block';
+    document.getElementById('dashTable').style.display='none';
+    document.getElementById('barChart').innerHTML='';
+    document.getElementById('weaknessArea').innerHTML='<div class="no-data">لا توجد بيانات كافية</div>';
+    document.getElementById('strengthArea').innerHTML='<div class="no-data">لا توجد بيانات كافية</div>';
+    return;
+  }
+
+  const avg = Math.round(entries.reduce((s,e)=>s+(e.pct||0),0)/n);
+  const pass = entries.filter(e=>(e.pct||0)>=60).length;
+  const fail = n - pass;
+  const top  = Math.max(...entries.map(e=>e.pct||0));
+  const online = entries.filter(e=>(Date.now()-e.ts)<120000).length;
+  const distA = entries.filter(e=>(e.pct||0)>=80).length;
+  const distB = entries.filter(e=>(e.pct||0)>=60&&(e.pct||0)<80).length;
+  const distC = entries.filter(e=>(e.pct||0)<60).length;
+
+  document.getElementById('kpiAvg').textContent = avg+'%';
+  document.getElementById('kpiPass').textContent = pass;
+  document.getElementById('kpiFail').textContent = fail;
+  document.getElementById('kpiTop').textContent  = top+'%';
+  document.getElementById('kpiOnline').textContent = online;
+  document.getElementById('distA').textContent = distA;
+  document.getElementById('distB').textContent = distB;
+  document.getElementById('distC').textContent = distC;
+
+  // ── Bar chart
+  const sorted = [...entries].sort((a,b)=>(b.pct||0)-(a.pct||0));
+  const chart = document.getElementById('barChart');
+  chart.innerHTML='';
+  sorted.forEach(e=>{
+    const pct = e.pct||0;
+    const col = pct>=80?'#4ade80':pct>=60?'#f5c842':'#f87171';
+    const col2= document.createElement('div'); col2.className='bar-col';
+    const bar = document.createElement('div');  bar.className='bar';
+    bar.style.cssText=`height:${Math.max(4,pct*1.3)}px;background:${col};`;
+    bar.title = e.name+': '+pct+'%';
+    const pctLbl = document.createElement('div'); pctLbl.className='bar-pct'; pctLbl.textContent=pct+'%';
+    const namLbl = document.createElement('div'); namLbl.className='bar-name'; namLbl.textContent=e.name||'-';
+    col2.appendChild(pctLbl); col2.appendChild(bar); col2.appendChild(namLbl);
+    chart.appendChild(col2);
+  });
+  document.getElementById('chartSubtitle').textContent = '('+n+' طالب)';
+
+  // ── Weakness / Strength analysis from detailAnswers
+  analyzeWeaknessStrength(entries);
+
+  // ── Detail table
+  document.getElementById('noStudentsDash').style.display='none';
+  document.getElementById('dashTable').style.display='table';
+  const tbody = document.getElementById('dashTbody');
+  tbody.innerHTML='';
+  sorted.forEach((e,i)=>{
+    const pct=e.pct||0;
+    const col=pct>=80?'color:#4ade80':pct>=60?'color:var(--gold)':'color:#f87171';
+    const isOnline=(Date.now()-e.ts)<120000;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">${i+1}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:right;color:var(--txt);font-weight:600">${e.name||'-'}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;color:var(--txt2)">${e.class||'-'}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-size:.72rem;color:var(--txt2)">${e.modelTitle||'-'}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-weight:700;${col}">${e.correct||0}/${e.total||0}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-weight:700;${col}">${pct}%</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">${isOnline?'<span style="color:#4ade80">● متصل</span>':'<span style="color:var(--txt2)">○ غير متصل</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function analyzeWeaknessStrength(entries){
+  // entries should have detailAnswers: [{q, correct, total}]
+  // Aggregate per question label
+  const qMap = {};
+  entries.forEach(e=>{
+    if(!e.details) return;
+    Object.entries(e.details).forEach(([q,d])=>{
+      if(!qMap[q]) qMap[q]={q, correct:0, total:0};
+      qMap[q].correct += d.correct||0;
+      qMap[q].total   += d.total||0;
+    });
+  });
+  const qList = Object.values(qMap).filter(q=>q.total>0)
+    .map(q=>({...q, pct:Math.round(q.correct/q.total*100)}))
+    .sort((a,b)=>a.pct-b.pct);
+
+  const weakArea = document.getElementById('weaknessArea');
+  const strongArea = document.getElementById('strengthArea');
+
+  if(!qList.length){
+    weakArea.innerHTML='<div class="no-data">لا توجد بيانات تحليلية كافية</div>';
+    strongArea.innerHTML='<div class="no-data">لا توجد بيانات تحليلية كافية</div>';
+    return;
+  }
+
+  // Weakest 5
+  const weak = qList.slice(0,5);
+  weakArea.innerHTML='<table class="w-table"><thead><tr><th>المطلوب</th><th>نسبة الإجابة الصحيحة</th><th>عدد الصح</th><th>الإجمالي</th></tr></thead><tbody>'
+    + weak.map(q=>`<tr>
+      <td style="text-align:right;color:var(--txt);font-weight:600">${q.q}</td>
+      <td><span class="w-bar" style="width:${Math.max(4,q.pct)}px"></span>${q.pct}%</td>
+      <td style="text-align:center">${q.correct}</td>
+      <td style="text-align:center">${q.total}</td>
+    </tr>`).join('')
+    +'</tbody></table>';
+
+  // Strongest 5
+  const strong = [...qList].reverse().slice(0,5);
+  strongArea.innerHTML='<table class="s-table"><thead><tr><th>المطلوب</th><th>نسبة الإجابة الصحيحة</th><th>عدد الصح</th><th>الإجمالي</th></tr></thead><tbody>'
+    + strong.map(q=>`<tr>
+      <td style="text-align:right;color:var(--txt);font-weight:600">${q.q}</td>
+      <td><span class="s-bar" style="width:${Math.max(4,q.pct)}px"></span>${q.pct}%</td>
+      <td style="text-align:center">${q.correct}</td>
+      <td style="text-align:center">${q.total}</td>
+    </tr>`).join('')
+    +'</tbody></table>';
+}
+
+function exportResults(){
+  const entries = Object.values(_dashData).filter(e=>e.name);
+  if(!entries.length){ showToast('لا توجد بيانات للتصدير'); return; }
+  let csv = '\uFEFF#,الاسم,الفصل,النموذج,الدرجة,الإجمالي,%\n';
+  entries.sort((a,b)=>(b.pct||0)-(a.pct||0)).forEach((e,i)=>{
+    csv += [i+1, e.name||'', e.class||'', e.modelTitle||'',
+            e.correct||0, e.total||0, (e.pct||0)+'%'].join(',')+'\n';
+  });
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'نتائج_الطلاب.csv';
+  a.click();
+  showToast('تم تصدير النتائج ✔');
+}
+
 // ════════════════════════════════════════════════════════
 // PASSWORD
 // ════════════════════════════════════════════════════════
@@ -817,7 +1197,9 @@ function checkPw(){
     ov.style.visibility='hidden';
     ov.style.opacity='0';
     ov.style.pointerEvents='none';
-    setMode('t');
+    const target = ov.dataset.target||'t';
+    ov.dataset.target='t'; // reset
+    if(target==='d') setModeDash(); else setMode('t');
   } else {
     document.getElementById('pwErr').style.display='block';
     document.getElementById('pwInp').value='';
@@ -915,6 +1297,7 @@ function setMode(m){
   document.body.className=m==='s'?'sm':'tm';
   document.getElementById('btnT').className='mbtn'+(m==='t'?' act-t':'');
   document.getElementById('btnS').className='mbtn'+(m==='s'?' act-s':'');
+  document.getElementById('btnD').className='mbtn';
   document.getElementById('teacherView').style.display=m==='t'?'block':'none';
   document.getElementById('studentView').style.display=m==='s'?'block':'none';
 
@@ -1032,11 +1415,11 @@ function renderTeacherModels(){
     addRBtn.onclick=()=>{ addRowToContainer(tc,'',''); scheduleSave(); };
     const presBtn=document.createElement('button'); presBtn.className='btn bp'; presBtn.textContent='📋 قائمة المطلوبات';
     presBtn.onclick=()=>openPresets(tc);
-    const clrABtn=document.createElement('button'); clrABtn.className='btn br'; clrABtn.textContent='مسح إجابات الطلاب';
+    const clrABtn=document.createElement('button'); clrABtn.className='btn br'; clrABtn.textContent='🗑 مسح إجابات المعلم';
     clrABtn.onclick=()=>{
-      if(!confirm('مسح إجابات الطلاب في هذا النموذج؟'))return;
-      tc.querySelectorAll('.ac.stu').forEach(c=>{const z=c.parentElement;c.remove();refreshPH(z);});
-      scheduleSave();
+      if(!confirm('مسح إجابات المعلم (مفاتيح التصحيح) في هذا النموذج؟'))return;
+      tc.querySelectorAll('.ac.key').forEach(c=>{const z=c.parentElement;c.remove();if(mode==='t')updateKey(z);refreshPH(z);});
+      scheduleSave(); showToast('تم مسح إجابات المعلم ✔');
     };
     bc.appendChild(addRBtn); bc.appendChild(presBtn); bc.appendChild(clrABtn);
 
