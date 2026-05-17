@@ -308,28 +308,23 @@ body.sm #stuBar{display:flex}
 #stuBar .stu-score{margin-right:auto;font-size:.82rem;font-weight:700;
   color:var(--gold)}
 
-/* ── RESULTS PANEL (teacher) ── */
-#resultsPanel{display:none}
-body.tm #resultsPanel{display:block;margin-bottom:14px}
-#resultsPanel .r-title{font-family:'Amiri',serif;font-size:1rem;
-  color:var(--gold);margin-bottom:8px;display:flex;align-items:center;
-  justify-content:space-between;gap:8px}
-#resultsTable{width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl}
-#resultsTable th{background:rgba(139,92,246,.2);color:#c4b5fd;
-  padding:6px 8px;text-align:center;border:1px solid rgba(255,255,255,.07);
-  font-family:'Cairo',sans-serif;font-weight:700}
-#resultsTable td{padding:5px 8px;text-align:center;
-  border:1px solid rgba(255,255,255,.05);color:var(--txt2);font-size:.78rem}
-#resultsTable tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-#resultsTable tr:hover td{background:rgba(139,92,246,.08)}
-.r-score{font-weight:700}
-.r-score.full{color:#4ade80}
-.r-score.half{color:var(--gold)}
-.r-score.low{color:#f87171}
-.r-live{width:8px;height:8px;background:#22c55e;border-radius:50%;
-  display:inline-block;animation:pulse 1.5s infinite}
-.no-students{color:var(--txt2);font-size:.82rem;text-align:center;
-  padding:16px;font-style:italic}
+/* ── STUDENT FULLSCREEN MODE ── */
+body.stu-fs .hdr,
+body.stu-fs #stuBar,
+body.stu-fs #modelBar{display:none!important}
+body.stu-fs{overflow:hidden!important}
+body.stu-fs #app{padding:0;max-width:100%;height:100%;display:flex;flex-direction:column}
+body.stu-fs #topPanel,
+body.stu-fs #botPanel{border-radius:0;border-left:none;border-right:none}
+body.stu-fs #topPanel{flex:0 0 auto;overflow-y:auto;max-height:42vh}
+body.stu-fs #botPanel{flex:1 1 0;overflow-y:auto;min-height:0}
+body.stu-fs #fsBtn{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.4);color:#fca5a5}
+#fsBtn{position:fixed;bottom:14px;left:14px;z-index:400;
+  padding:7px 13px;font-size:.78rem;border-radius:8px;
+  background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.4);
+  color:#c4b5fd;font-family:'Cairo',sans-serif;cursor:pointer;
+  display:none;transition:all .2s;backdrop-filter:blur(8px)}
+body.sm #fsBtn{display:block}
 
 /* ── DASHBOARD VIEW ── */
 body.dm{overflow-y:auto!important}
@@ -559,6 +554,9 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
   <div id="onlineBadge"><span class="dot"></span>متصل</div>
 </div>
 
+<!-- زر ملء الشاشة (طالب فقط) -->
+<button id="fsBtn" onclick="toggleFullscreen()" title="ملء الشاشة">⛶ ملء الشاشة</button>
+
   <!-- TOP PANEL (student: shows active model words) -->
   <div id="topPanel">
     <div class="panel-hdr">
@@ -582,7 +580,6 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
 
       <!-- TEACHER VIEW: all models -->
       <div id="teacherView" class="to">
-        <div id="resultsPanel"></div>
         <div id="modelsContainer"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)">
           <button class="btn bg" onclick="addModel()">+ إضافة نموذج جديد</button>
@@ -623,6 +620,64 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
     <div class="kpi teal"><div class="kpi-val" id="kpiOnline">0</div><div class="kpi-lbl">متصل الآن</div></div>
   </div>
 
+  <!-- جدول الطلاب (مباشرة بعد الإحصاءات) -->
+  <div class="dash-section">
+    <div class="dash-title">
+      👥 تفاصيل الطلاب
+      <div style="display:flex;gap:6px">
+        <button class="btn br" onclick="clearAllResults()" style="padding:3px 9px;font-size:.73rem">مسح النتائج</button>
+        <button class="btn bb" onclick="exportResults()" style="padding:3px 9px;font-size:.73rem">تصدير CSV</button>
+      </div>
+    </div>
+
+    <!-- فلاتر الترشيح -->
+    <div id="filterBar" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding:10px 12px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);border-radius:8px;align-items:center">
+      <span style="font-size:.78rem;color:#c4b5fd;font-weight:700;flex-shrink:0">🔍 ترشيح:</span>
+      <input id="filterName" type="text" placeholder="بحث بالاسم..." autocomplete="off"
+        oninput="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl;width:150px"/>
+      <select id="filterClass" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل الفصول</option>
+      </select>
+      <select id="filterModel" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل النماذج</option>
+      </select>
+      <select id="filterStatus" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل الحالات</option>
+        <option value="online">متصل الآن</option>
+        <option value="offline">غير متصل</option>
+      </select>
+      <select id="filterScore" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل الدرجات</option>
+        <option value="high">ممتاز (≥80%)</option>
+        <option value="mid">جيد (60-79%)</option>
+        <option value="low">ضعيف (&lt;60%)</option>
+      </select>
+      <button onclick="resetFilters()" class="btn" style="padding:4px 10px;font-size:.73rem;background:rgba(255,255,255,.08);color:var(--txt2);border:1px solid rgba(255,255,255,.12)">↺ إعادة تعيين</button>
+      <span id="filterCount" style="font-size:.74rem;color:var(--txt2);margin-right:auto"></span>
+    </div>
+
+    <div id="noStudentsDash" class="no-data">لا يوجد طلاب بعد...</div>
+    <table id="dashTable" style="display:none;width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl">
+      <thead>
+        <tr>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">#</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الاسم</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الفصل</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">النموذج</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الدرجة</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">%</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الحالة</th>
+        </tr>
+      </thead>
+      <tbody id="dashTbody"></tbody>
+    </table>
+  </div>
+
   <!-- منحنى النتائج -->
   <div class="dash-section">
     <div class="dash-title">📈 منحنى درجات الطلاب <span id="chartSubtitle"></span></div>
@@ -658,32 +713,6 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
   <div class="dash-section">
     <div class="dash-title">✅ مواطن القوة <span>المطلوبات الأعلى إجابةً</span></div>
     <div id="strengthArea"><div class="no-data">لا توجد بيانات كافية</div></div>
-  </div>
-
-  <!-- جدول الطلاب -->
-  <div class="dash-section">
-    <div class="dash-title">
-      👥 تفاصيل الطلاب
-      <div style="display:flex;gap:6px">
-        <button class="btn br" onclick="clearAllResults()" style="padding:3px 9px;font-size:.73rem">مسح النتائج</button>
-        <button class="btn bb" onclick="exportResults()" style="padding:3px 9px;font-size:.73rem">تصدير CSV</button>
-      </div>
-    </div>
-    <div id="noStudentsDash" class="no-data">لا يوجد طلاب بعد...</div>
-    <table id="dashTable" style="display:none;width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl">
-      <thead>
-        <tr>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">#</th>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الاسم</th>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الفصل</th>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">النموذج</th>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الدرجة</th>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">%</th>
-          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الحالة</th>
-        </tr>
-      </thead>
-      <tbody id="dashTbody"></tbody>
-    </table>
   </div>
 
 </div>
@@ -785,8 +814,6 @@ function initFirebase(){
     }
     fbConnected = true;
     console.log('✅ Firebase connected, session:', SESSION_ID);
-    // If student mode already active, start listening
-    if(mode === 't') listenResults();
   } catch(e){
     console.warn('Firebase init error:', e.message);
     fbConnected = false;
@@ -966,8 +993,22 @@ function getStudentLink(){
 function startStudent(){
   const name = document.getElementById('stuNameInp').value.trim();
   const cls  = document.getElementById('stuClassInp').value.trim();
-  if(!name){ document.getElementById('stuNameInp').focus(); return; }
-  if(!cls) { document.getElementById('stuClassInp').focus(); return; }
+  const errEl = document.getElementById('stuFormErr');
+  if(!name){ 
+    errEl.style.display='block';
+    document.getElementById('stuNameInp').focus();
+    document.getElementById('stuNameInp').style.borderColor='rgba(239,68,68,.7)';
+    return; 
+  }
+  if(!cls) { 
+    errEl.style.display='block';
+    document.getElementById('stuClassInp').focus();
+    document.getElementById('stuClassInp').style.borderColor='rgba(239,68,68,.7)';
+    return; 
+  }
+  errEl.style.display='none';
+  document.getElementById('stuNameInp').style.borderColor='';
+  document.getElementById('stuClassInp').style.borderColor='';
   
   stuName = name; stuClass = cls;
   stuId = 'stu_' + name.replace(/\s+/g,'_') + '_' + cls.replace(/\s+/g,'_') + '_' + Date.now().toString(36);
@@ -1029,11 +1070,73 @@ function setModeDash(){
   showToast('لوحة التحليل 📊');
 }
 
-function renderDashboard(data){
-  const entries = Object.values(data).filter(e=>e.name);
-  const n = entries.length;
+// ── All entries cache (full, unfiltered)
+let _allEntries = [];
 
-  // ── KPIs
+function renderDashboard(data){
+  _allEntries = Object.values(data).filter(e=>e.name);
+
+  // Populate class filter dropdown
+  const classSel = document.getElementById('filterClass');
+  const prevClass = classSel.value;
+  const classNames = [...new Set(_allEntries.map(e=>e.class).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  classSel.innerHTML = '<option value="">كل الفصول</option>'
+    + classNames.map(c=>`<option value="${c}"${c===prevClass?' selected':''}>${c}</option>`).join('');
+
+  // Populate model filter dropdown
+  const modelSel = document.getElementById('filterModel');
+  const prevModel = modelSel.value;
+  const modelTitles = [...new Set(_allEntries.map(e=>e.modelTitle).filter(Boolean))].sort();
+  modelSel.innerHTML = '<option value="">كل النماذج</option>'
+    + modelTitles.map(t=>`<option value="${t}"${t===prevModel?' selected':''}>${t}</option>`).join('');
+
+  applyFilters();
+}
+
+function applyFilters(){
+  const nameQ   = (document.getElementById('filterName')?.value||'').trim().toLowerCase();
+  const classQ  = document.getElementById('filterClass')?.value||'';
+  const modelQ  = document.getElementById('filterModel')?.value||'';
+  const statusQ = document.getElementById('filterStatus')?.value||'';
+  const scoreQ  = document.getElementById('filterScore')?.value||'';
+
+  const filtered = _allEntries.filter(e=>{
+    if(nameQ  && !(e.name||'').toLowerCase().includes(nameQ)) return false;
+    if(classQ && (e.class||'')!==classQ) return false;
+    if(modelQ && (e.modelTitle||'')!==modelQ) return false;
+    const isOnline = (Date.now()-e.ts)<120000;
+    if(statusQ==='online'  && !isOnline) return false;
+    if(statusQ==='offline' &&  isOnline) return false;
+    const pct = e.pct||0;
+    if(scoreQ==='high' && pct<80) return false;
+    if(scoreQ==='mid'  && (pct<60||pct>=80)) return false;
+    if(scoreQ==='low'  && pct>=60) return false;
+    return true;
+  });
+
+  renderKPIs(filtered);
+  renderTable(filtered);
+
+  const cnt = document.getElementById('filterCount');
+  if(cnt){
+    const total = _allEntries.length;
+    cnt.textContent = filtered.length < total
+      ? `يُعرض ${filtered.length} من ${total}`
+      : `${total} طالب`;
+  }
+}
+
+function resetFilters(){
+  document.getElementById('filterName').value='';
+  document.getElementById('filterClass').value='';
+  document.getElementById('filterModel').value='';
+  document.getElementById('filterStatus').value='';
+  document.getElementById('filterScore').value='';
+  applyFilters();
+}
+
+function renderKPIs(entries){
+  const n = entries.length;
   document.getElementById('kpiTotal').textContent = n;
   if(!n){
     document.getElementById('kpiAvg').textContent='0%';
@@ -1041,14 +1144,15 @@ function renderDashboard(data){
     document.getElementById('kpiFail').textContent='0';
     document.getElementById('kpiTop').textContent='0%';
     document.getElementById('kpiOnline').textContent='0';
-    document.getElementById('noStudentsDash').style.display='block';
-    document.getElementById('dashTable').style.display='none';
+    document.getElementById('distA').textContent='0';
+    document.getElementById('distB').textContent='0';
+    document.getElementById('distC').textContent='0';
     document.getElementById('barChart').innerHTML='';
+    document.getElementById('chartSubtitle').textContent='';
     document.getElementById('weaknessArea').innerHTML='<div class="no-data">لا توجد بيانات كافية</div>';
     document.getElementById('strengthArea').innerHTML='<div class="no-data">لا توجد بيانات كافية</div>';
     return;
   }
-
   const avg = Math.round(entries.reduce((s,e)=>s+(e.pct||0),0)/n);
   const pass = entries.filter(e=>(e.pct||0)>=60).length;
   const fail = n - pass;
@@ -1085,12 +1189,17 @@ function renderDashboard(data){
   });
   document.getElementById('chartSubtitle').textContent = '('+n+' طالب)';
 
-  // ── Weakness / Strength analysis from detailAnswers
   analyzeWeaknessStrength(entries);
+}
 
-  // ── Detail table
-  document.getElementById('noStudentsDash').style.display='none';
-  document.getElementById('dashTable').style.display='table';
+function renderTable(entries){
+  const noStu = document.getElementById('noStudentsDash');
+  const tbl   = document.getElementById('dashTable');
+  if(!entries.length){
+    noStu.style.display='block'; tbl.style.display='none'; return;
+  }
+  noStu.style.display='none'; tbl.style.display='table';
+  const sorted = [...entries].sort((a,b)=>(b.pct||0)-(a.pct||0));
   const tbody = document.getElementById('dashTbody');
   tbody.innerHTML='';
   sorted.forEach((e,i)=>{
@@ -1214,8 +1323,12 @@ function cancelPw(){
   ov.style.pointerEvents='none';
 }
 document.addEventListener('keydown',e=>{
-  if(document.getElementById('pwOverlay').classList.contains('show') && e.key==='Enter') checkPw();
-  if(document.getElementById('pwOverlay').classList.contains('show') && e.key==='Escape') cancelPw();
+  const pwVisible = document.getElementById('pwOverlay').style.visibility==='visible';
+  if(pwVisible && e.key==='Enter'){
+    if(document.getElementById('pwInp').value.trim()) checkPw();
+    else { document.getElementById('pwErr').style.display='block'; document.getElementById('pwInp').focus(); }
+  }
+  if(pwVisible && e.key==='Escape') cancelPw();
 });
 
 // ════════════════════════════════════════════════════════
@@ -1304,13 +1417,6 @@ function setMode(m){
   if(m==='t'){
     renderTeacherModels();
     showActiveModelWords(); // show first model words in top panel
-    listenResults();
-    // Show session link
-    const link = getStudentLink();
-    if(document.getElementById('sessionLink')){
-      document.getElementById('sessionLink').href=link;
-      document.getElementById('sessionLink').textContent=link;
-    }
   } else {
     renderModelBar();
     loadStudentView(activeModel);
@@ -1681,8 +1787,43 @@ function mkACell(zone,text,kind,focus){
       _tapMoved=false;
     });
   } else {
-    cell.addEventListener('mousedown',e=>{ if(e.target===inp||e.target===xb)return; beginDrag(e,kind,cell,zone,inp.value.trim()||'؟'); });
-    cell.addEventListener('touchstart',e=>{ if(e.target===inp||e.target===xb)return; beginDrag(e,kind,cell,zone,inp.value.trim()||'؟'); },{passive:false});
+    // Teacher mode: short click → delete; drag → move
+    let _tMoved=false, _tStartX=0, _tStartY=0;
+    cell.addEventListener('mousedown',e=>{
+      if(e.target===inp||e.target===xb) return;
+      _tMoved=false; _tStartX=e.clientX; _tStartY=e.clientY;
+      beginDrag(e,kind,cell,zone,inp.value.trim()||'؟');
+    });
+    cell.addEventListener('mousemove',e=>{
+      if(Math.abs(e.clientX-_tStartX)>5||Math.abs(e.clientY-_tStartY)>5) _tMoved=true;
+    });
+    cell.addEventListener('click',e=>{
+      if(e.target===inp||e.target===xb) return;
+      if(mode!=='t') return;
+      if(_tMoved) return; // was a drag, not a tap
+      const z=cell.parentElement; cell.remove();
+      updateKey(z); refreshPH(z); scheduleSave();
+    });
+    // Touch
+    let _ttMoved=false, _ttX=0, _ttY=0;
+    cell.addEventListener('touchstart',e=>{
+      if(e.target===inp||e.target===xb) return;
+      _ttMoved=false; _ttX=e.touches[0].clientX; _ttY=e.touches[0].clientY;
+    },{passive:false});
+    cell.addEventListener('touchmove',e=>{
+      const dx=Math.abs(e.touches[0].clientX-_ttX), dy=Math.abs(e.touches[0].clientY-_ttY);
+      if(dx>8||dy>8){ _ttMoved=true; beginDrag(e,kind,cell,zone,inp.value.trim()||'؟'); }
+    },{passive:false});
+    cell.addEventListener('touchend',e=>{
+      if(e.target===inp||e.target===xb) return;
+      if(!_ttMoved){
+        e.preventDefault();
+        if(mode!=='t') return;
+        const z=cell.parentElement; cell.remove();
+        updateKey(z); refreshPH(z); scheduleSave();
+      }
+      _ttMoved=false;
+    });
   }
   zone.appendChild(cell);
   if(focus)inp.focus();
@@ -1859,6 +2000,24 @@ function endDrag(){
 }
 
 // ════════════════════════════════════════════════════════
+// FULLSCREEN (STUDENT MODE — topPanel + botPanel only)
+// ════════════════════════════════════════════════════════
+let _isStuFs = false;
+function toggleFullscreen(){
+  _isStuFs = !_isStuFs;
+  document.body.classList.toggle('stu-fs', _isStuFs);
+  const btn = document.getElementById('fsBtn');
+  btn.textContent = _isStuFs ? '✕ خروج من ملء الشاشة' : '⛶ ملء الشاشة';
+  // ensure both panels visible when entering fullscreen
+  if(_isStuFs){
+    const topBody = document.getElementById('topBody');
+    const botBody = document.getElementById('botBody');
+    if(topBody) topBody.style.maxHeight='999px';
+    if(botBody) botBody.style.maxHeight='999px';
+  }
+}
+
+// ════════════════════════════════════════════════════════
 // COLLAPSE TOGGLES
 // ════════════════════════════════════════════════════════
 
@@ -1990,42 +2149,15 @@ window.addEventListener('DOMContentLoaded',()=>{
   <div id="stuInfoBox">
     <h2>👤 بيانات الطالب</h2>
     <p>أدخل اسمك وفصلك للبدء</p>
-    <input class="stu-field" id="stuNameInp" type="text" placeholder="الاسم الكامل" autocomplete="off"/>
-    <input class="stu-field" id="stuClassInp" type="text" placeholder="الفصل (مثال: خامس أ)" autocomplete="off"/>
+    <input class="stu-field" id="stuNameInp" type="text" placeholder="الاسم الكامل" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){document.getElementById('stuClassInp').focus();}"/>
+    <input class="stu-field" id="stuClassInp" type="text" placeholder="الفصل (مثال: خامس أ)" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){startStudent();}"/>
+    <div id="stuFormErr" style="display:none;color:#f87171;font-size:.78rem;text-align:center;margin-top:-6px">⚠️ يرجى إدخال الاسم والفصل للمتابعة</div>
     <button class="btn bg" onclick="startStudent()" style="padding:10px;font-size:.9rem">ابدأ الحل ✏️</button>
   </div>
 </div>
 
-<!-- RESULTS PANEL (inside botPanel, teacher only) -->
-<div id="resultsPanel">
-  <div style="background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:#5eead4;word-break:break-all;direction:ltr;text-align:left">
-    🔗 رابط الطلاب: <a id="sessionLink" href="#" target="_blank" style="color:#5eead4;text-decoration:underline">جارٍ التحميل...</a>
-    <button onclick="copyLink()" class="btn bk" style="margin-right:8px;padding:2px 8px;font-size:.7rem">نسخ</button>
-  </div>
-  <div class="r-title">
-    <span>📊 نتائج الطلاب المباشرة</span>
-    <div style="display:flex;gap:6px">
-      <span id="stuCount" style="font-size:.78rem;color:var(--txt2)"></span>
-      <button class="btn br" onclick="clearAllResults()" style="padding:3px 9px;font-size:.73rem">مسح النتائج</button>
-    </div>
-  </div>
-  <div id="noStudents" class="no-students">لا يوجد طلاب متصلون بعد...</div>
-  <table id="resultsTable" style="display:none">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>الاسم</th>
-        <th>الفصل</th>
-        <th>النموذج</th>
-        <th>الدرجة</th>
-        <th>من</th>
-        <th>%</th>
-        <th>الحالة</th>
-      </tr>
-    </thead>
-    <tbody id="resultsTbody"></tbody>
-  </table>
-</div>
 
 </body>
 </html>
