@@ -719,8 +719,37 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
 <!-- end dashView -->
 
 </div><!-- end app -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ── Firebase SDK dynamic loader with fallback CDNs ──
+(function(){
+  const VERS = '10.12.2';
+  const CDNs = [
+    `https://www.gstatic.com/firebasejs/${VERS}/firebase-app-compat.js`,
+    `https://cdn.jsdelivr.net/npm/firebase@${VERS}/firebase-app-compat.js`
+  ];
+  const CDNsDB = [
+    `https://www.gstatic.com/firebasejs/${VERS}/firebase-database-compat.js`,
+    `https://cdn.jsdelivr.net/npm/firebase@${VERS}/firebase-database-compat.js`
+  ];
+
+  function loadScript(urls, idx, cb){
+    if(idx >= urls.length){ cb(new Error('All CDNs failed')); return; }
+    const s = document.createElement('script');
+    s.src = urls[idx];
+    s.onload = () => cb(null);
+    s.onerror = () => { console.warn('CDN failed, trying next:', urls[idx]); loadScript(urls, idx+1, cb); };
+    document.head.appendChild(s);
+  }
+
+  loadScript(CDNs, 0, function(e1){
+    if(e1){ window._fbLoadErr='app'; return; }
+    loadScript(CDNsDB, 0, function(e2){
+      if(e2){ window._fbLoadErr='db'; return; }
+      window._fbSDKReady = true;
+    });
+  });
+})();
+</script>
 <script>
 // ════════════════════════════════════════════════════════
 // GLOBALS
@@ -797,15 +826,26 @@ let stuName = '', stuClass = '';
 let resultsRef = null;
 let fbConnected = false;
 
+let _fbRetries = 0;
+const _fbMaxRetries = 20; // 10 seconds total
+
 function initFirebase(){
-  // If firebase global not ready yet, retry after short delay
-  if(typeof firebase === 'undefined'){
-    console.log('Firebase SDK loading, retrying in 500ms...');
+  if(window._fbLoadErr){
+    console.error('❌ Firebase SDK failed to load from all CDNs');
+    if(typeof showToast==='function') showToast('تعذّر تحميل قاعدة البيانات — تحقق من الاتصال بالإنترنت');
+    return;
+  }
+  if(!window._fbSDKReady || typeof firebase === 'undefined'){
+    _fbRetries++;
+    if(_fbRetries > _fbMaxRetries){
+      console.error('❌ Firebase SDK never loaded after', _fbMaxRetries, 'retries');
+      if(typeof showToast==='function') showToast('تعذّر تحميل Firebase — تحقق من الاتصال');
+      return;
+    }
     setTimeout(initFirebase, 500);
     return;
   }
   try{
-    // Avoid double initialization
     if(firebase.apps && firebase.apps.length > 0){
       db = firebase.database();
     } else {
@@ -817,6 +857,7 @@ function initFirebase(){
   } catch(e){
     console.warn('Firebase init error:', e.message);
     fbConnected = false;
+    if(typeof showToast==='function') showToast('خطأ في الاتصال بـ Firebase: ' + e.message);
   }
 }
 
@@ -994,6 +1035,14 @@ function startStudent(){
   const name = document.getElementById('stuNameInp').value.trim();
   const cls  = document.getElementById('stuClassInp').value.trim();
   const errEl = document.getElementById('stuFormErr');
+
+  // إذا كانت البيانات فارغة تماماً → افتح مربع كلمة المرور (وضع المعلم)
+  if(!name && !cls){
+    document.getElementById('stuInfoOverlay').style.display='none';
+    requestTeacher();
+    return;
+  }
+
   if(!name){ 
     errEl.style.display='block';
     document.getElementById('stuNameInp').focus();
