@@ -2,10 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>مستخرج المهارات اللغوية</title>
 <style>
-
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;900&display=swap');
 :root{
   --bg:#0b0f1a;--gold:#f5c842;--blue:#3b82f6;--blue2:#1d4ed8;
@@ -277,7 +276,7 @@ body.sm .s-reset{display:flex}
 /* ── STUDENT INFO FORM ── */
 #stuInfoOverlay{position:fixed;inset:0;z-index:9600;
   background:rgba(0,0,0,.85);backdrop-filter:blur(10px);
-  display:none;align-items:center;justify-content:center}
+  display:flex;align-items:center;justify-content:center}
 #stuInfoBox{background:#111827;border:1px solid rgba(20,184,166,.4);
   border-radius:16px;padding:26px 22px;width:min(360px,94vw);
   display:flex;flex-direction:column;gap:14px;text-align:center}
@@ -309,7 +308,154 @@ body.sm #stuBar{display:flex}
 #stuBar .stu-score{margin-right:auto;font-size:.82rem;font-weight:700;
   color:var(--gold)}
 
+/* ── STUDENT FULLSCREEN MODE ── */
+body.stu-fs .hdr,
+body.stu-fs #stuBar,
+body.stu-fs #modelBar{display:none!important}
+body.stu-fs{overflow:hidden!important}
+body.stu-fs #app{padding:0;max-width:100%;height:100vh;display:flex;flex-direction:column}
+body.stu-fs #topPanel,
+body.stu-fs #botPanel{border-radius:0;border-left:none;border-right:none}
+body.stu-fs #topPanel{flex:0 0 66vh;height:66vh;max-height:66vh;overflow-y:auto}
+body.stu-fs #botPanel{flex:0 0 34vh;height:34vh;max-height:34vh;overflow-y:auto}
+body.stu-fs #fsBtn{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.4);color:#fca5a5}
 
+/* ── COLOR PALETTE IN HEADER ── */
+.model-color-palette{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;padding:3px 7px}
+.mcp-dot{width:15px;height:15px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:transform .15s,border-color .15s;flex-shrink:0}
+.mcp-dot:hover{transform:scale(1.35);border-color:rgba(255,255,255,.6)}
+.mcp-dot.active{border-color:#fff;transform:scale(1.2)}
+
+/* قفل التلوين */
+.pal-lock-btn{
+  width:18px;height:18px;border-radius:4px;cursor:pointer;flex-shrink:0;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.5);font-size:.65rem;display:flex;align-items:center;
+  justify-content:center;transition:all .2s;user-select:none}
+.pal-lock-btn:hover{background:rgba(255,255,255,.18);color:#fff}
+.pal-lock-btn.locked{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.5);color:#fca5a5}
+/* عند القفل: تعطيل النقاط بصرياً */
+.model-color-palette.locked .mcp-dot{opacity:.35;pointer-events:none}
+
+/* ── EXAM MODE BUTTON ── */
+.exam-btn{padding:3px 10px;font-size:.72rem;border-radius:7px;
+  background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);
+  color:#fcd34d;font-family:'Cairo',sans-serif;cursor:pointer;
+  transition:all .2s;white-space:nowrap}
+.exam-btn.active{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.6);
+  color:#fca5a5;box-shadow:0 0 8px rgba(239,68,68,.3)}
+
+/* ── WORD BUTTONS: ONE ROW ── */
+.word-btn-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;align-items:center}
+
+/* إخفاء شريط الألوان العائم عن الخلايا في جميع الأوضاع */
+.wc-color-bar{display:none!important}
+
+/* hide palette in non-teacher header */
+body.sm .model-color-palette, body.dm .model-color-palette{display:none!important}
+.wc[data-cat="iraab"]{
+  background:linear-gradient(135deg,rgba(168,85,247,.3),rgba(126,34,206,.2));
+  border-color:rgba(168,85,247,.6);color:#e9d5ff}
+.wc[data-cat="iraab"]:hover{background:linear-gradient(135deg,rgba(168,85,247,.5),rgba(126,34,206,.35));border-color:#a855f7}
+.wc[data-cat="hala"]{
+  background:linear-gradient(135deg,rgba(34,197,94,.28),rgba(21,128,61,.18));
+  border-color:rgba(34,197,94,.55);color:#bbf7d0}
+.wc[data-cat="hala"]:hover{background:linear-gradient(135deg,rgba(34,197,94,.45),rgba(21,128,61,.3));border-color:#22c55e}
+.wc[data-cat="alamat"]{
+  background:linear-gradient(135deg,rgba(251,146,60,.28),rgba(194,65,12,.18));
+  border-color:rgba(251,146,60,.55);color:#fed7aa}
+.wc[data-cat="alamat"]:hover{background:linear-gradient(135deg,rgba(251,146,60,.45),rgba(194,65,12,.3));border-color:#f97316}
+/* drag-over highlight for reordering */
+.wc.drag-over-left{border-right:3px solid #facc15 !important}
+.wc.drag-over-right{border-left:3px solid #facc15 !important}
+/* color picker popup */
+.wc-color-bar{
+  position:absolute;top:-34px;right:0;
+  display:none;flex-direction:row;gap:4px;
+  background:rgba(15,15,30,.95);border:1px solid rgba(255,255,255,.15);
+  border-radius:7px;padding:4px 6px;z-index:500;
+  box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.wc:hover .wc-color-bar{display:flex}
+.wc-color-dot{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;transition:transform .15s}
+.wc-color-dot:hover{transform:scale(1.3)}
+/* category buttons row */
+.cat-btn-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+body.mob-mode #topGrid .wc{
+  padding:2px 5px !important;
+  font-size:.82rem !important;
+  border-radius:5px !important;
+  border-width:1px !important;
+  gap:3px !important;
+}
+body.mob-mode #topBody .cgrid{
+  gap:3px !important;
+  min-height:unset !important;
+}
+body.mob-mode #topBody{
+  overflow-y:scroll;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+}
+body.mob-mode .hdr,
+body.mob-mode #stuBar,
+body.mob-mode #modelBar{display:none!important}
+body.mob-mode{overflow:hidden!important}
+body.mob-mode #app{padding:0;max-width:100%;height:100vh;display:flex;flex-direction:column;gap:0}
+body.mob-mode #topPanel{
+  flex:0 0 60%;height:60vh;max-height:60vh;
+  overflow-y:auto;border-radius:0;border-left:none;border-right:none;margin:0}
+body.mob-mode #botPanel{
+  flex:0 0 40%;height:40vh;max-height:40vh;
+  overflow-y:auto;border-radius:0;border-left:none;border-right:none;margin:0}
+
+/* في وضع الجوال: صفوف المطلوبات تصبح رأسية (زوج واحد لكل صف) */
+body.mob-mode .col-hdr{display:none!important}
+body.mob-mode .trow{
+  display:flex !important;
+  flex-direction:column !important;
+  border-bottom:2px solid rgba(255,255,255,.08) !important;
+  padding-bottom:4px;margin-bottom:2px}
+body.mob-mode .trow .csep{display:none!important}
+body.mob-mode .trow .rdel{
+  display:flex;width:100%;height:28px;border-radius:0 0 7px 7px;
+  border-left:none;border-top:1px solid rgba(239,68,68,.2)}
+/* كل زوج (سؤال+دراج) يصبح صفاً أفقياً من خليتين */
+body.mob-mode .mob-pair{
+  display:flex !important;
+  flex-direction:row !important;
+  width:100%;min-height:44px}
+body.mob-mode .mob-pair .qlbl-wrap{
+  flex:0 0 42%;border-radius:0 !important}
+body.mob-mode .mob-pair .dz{
+  flex:1 1 0;border-radius:0 !important;min-height:44px}
+
+/* أزرار وضع الجوال وملء الشاشة — ثابتة أسفل الشاشة */
+#fsBtn, #mobBtn{
+  position:fixed;
+  bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index:9999;
+  padding:8px 14px;font-size:.8rem;border-radius:10px;
+  font-family:'Cairo',sans-serif;cursor:pointer;
+  display:none;transition:all .2s;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid;font-weight:700;
+  box-shadow:0 2px 12px rgba(0,0,0,.4)}
+#mobBtn{
+  right:14px;
+  background:rgba(20,184,166,.25);border-color:rgba(20,184,166,.5);color:#5eead4}
+#fsBtn{
+  left:14px;
+  background:rgba(139,92,246,.25);border-color:rgba(139,92,246,.5);color:#c4b5fd}
+body.sm #fsBtn, body.sm #mobBtn{display:block}
+body.mob-mode #mobBtn{background:rgba(239,68,68,.25)!important;border-color:rgba(239,68,68,.5)!important;color:#fca5a5!important}
+body.mob-mode #fsBtn{display:none!important}
+body.stu-fs #fsBtn{background:rgba(239,68,68,.25)!important;border-color:rgba(239,68,68,.5)!important;color:#fca5a5!important}
+body.stu-fs #mobBtn{display:none!important}
 
 /* ── DASHBOARD VIEW ── */
 body.dm{overflow-y:auto!important}
@@ -384,32 +530,57 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
 .no-data{text-align:center;color:var(--txt2);font-size:.85rem;
   padding:30px;font-style:italic}
 
-
-/* ── DASH TABS ── */
-.dash-tab-btn{padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);
-  background:rgba(255,255,255,.05);color:var(--txt2);
-  font-family:'Cairo',sans-serif;font-size:.8rem;font-weight:700;
-  cursor:pointer;transition:all .2s;touch-action:manipulation;white-space:nowrap}
-.dash-tab-btn:hover{background:rgba(255,255,255,.1);color:var(--txt)}
-.dash-tab-btn.active{background:linear-gradient(135deg,var(--purple),var(--purple2));
-  color:#fff;border-color:var(--purple);box-shadow:0 2px 10px rgba(139,92,246,.4)}
-
-/* ── FILTER INPUTS ── */
-.f-inp{padding:5px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.1);
-  background:rgba(0,0,0,.35);color:var(--txt);font-family:'Cairo',sans-serif;
-  font-size:.78rem;outline:none;direction:rtl;width:100%}
-.f-inp:focus{border-color:rgba(139,92,246,.6)}
-
-/* ── DASH TABLE TH ── */
-.dt{background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;
-  text-align:center;border:1px solid rgba(255,255,255,.07);
-  font-family:'Cairo',sans-serif;font-weight:700;white-space:nowrap}
-.w-th{background:rgba(239,68,68,.15);color:#fca5a5;padding:6px 10px;
-  text-align:right;border:1px solid rgba(255,255,255,.06);
-  font-family:'Cairo',sans-serif;font-weight:700}
-.s-th{background:rgba(34,197,94,.15);color:#86efac;padding:6px 10px;
-  text-align:right;border:1px solid rgba(255,255,255,.06);
-  font-family:'Cairo',sans-serif;font-weight:700}
+/* ── RESIZABLE SPLITTER (fullscreen & mobile mode, student only) ── */
+#panelSplitter{
+  display:none;
+  flex-shrink:0;
+  width:100%;
+  height:10px;
+  cursor:ns-resize;
+  position:relative;
+  z-index:500;
+  background:transparent;
+  align-items:center;
+  justify-content:center;
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+#panelSplitter::before{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:60px;height:4px;
+  background:rgba(245,200,66,.45);
+  border-radius:4px;
+  transition:background .2s,width .2s;
+  pointer-events:none;
+}
+#panelSplitter:hover::before,
+#panelSplitter.dragging::before{
+  background:var(--gold);
+  width:90px;
+}
+#panelSplitter.dragging{
+  background:rgba(245,200,66,.06);
+}
+/* show splitter in fullscreen or mobile mode */
+body.stu-fs #panelSplitter,
+body.mob-mode #panelSplitter{
+  display:flex;
+}
+/* when splitter active: panels use explicit heights not css classes */
+body.stu-fs #topPanel,
+body.mob-mode #topPanel{
+  flex:none !important;
+  overflow-y:auto;
+}
+body.stu-fs #botPanel,
+body.mob-mode #botPanel{
+  flex:none !important;
+  overflow-y:auto;
+}
 
 /* ── GHOST ── */
 #ghost{position:fixed;pointer-events:none!important;z-index:9999;
@@ -472,83 +643,40 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
   font-family:'Cairo',sans-serif;font-size:.84rem;font-weight:700;
   transition:transform .24s;z-index:9998}
 .toast.show{transform:translateX(-50%) translateY(0)}
-
 </style>
+
 </head>
 <body class="sm">
-
 <div id="ghost"></div>
 <div class="toast" id="toast"></div>
-
-<!-- PASSWORD OVERLAY -->
-<div id="pwOverlay" style="position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.88);
-  backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;
-  visibility:hidden;opacity:0;pointer-events:none;transition:opacity .2s">
-  <div id="pwBox" style="background:#111827;border:1px solid rgba(139,92,246,.4);
-    border-radius:16px;padding:28px 24px;width:min(340px,92vw);
-    display:flex;flex-direction:column;gap:14px;text-align:center">
-    <h2 style="font-family:Amiri,serif;font-size:1.3rem;color:var(--gold)">🔐 كلمة المرور</h2>
-    <p style="font-size:.82rem;color:var(--txt2)">أدخل كلمة المرور للدخول</p>
-    <input id="pwInp" type="password" placeholder="••••••••" autocomplete="off"
-      style="padding:10px 14px;border-radius:8px;border:1px solid rgba(139,92,246,.4);
-      background:rgba(0,0,0,.4);color:var(--txt);font-size:1rem;text-align:center;
-      outline:none;letter-spacing:3px;direction:ltr;width:100%"/>
-    <div id="pwErr" style="color:#f87171;font-size:.8rem;display:none">❌ كلمة المرور غير صحيحة</div>
-    <div style="display:flex;gap:8px">
-      <button class="btn bp" onclick="checkPw()" style="flex:1;padding:9px">دخول</button>
-      <button class="btn br" onclick="cancelPw()" style="flex:1;padding:9px">إلغاء</button>
+<!-- ═══ PASSWORD OVERLAY ═══ -->
+<div id="pwOverlay" style="visibility:hidden;opacity:0;pointer-events:none;display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.85);backdrop-filter:blur(10px)">
+  <div id="pwBox">
+    <h2>🔐 وضع المعلم</h2>
+    <p>أدخل كلمة المرور للدخول إلى واجهة المعلم</p>
+    <input id="pwInp" type="password" placeholder="••••••••" autocomplete="off"/>
+    <div id="pwErr">❌ كلمة المرور غير صحيحة</div>
+    <div class="pw-btns">
+      <button class="btn bp" onclick="checkPw()">دخول</button>
+      <button class="btn br" onclick="cancelPw()">إلغاء</button>
     </div>
   </div>
 </div>
-
-<!-- STUDENT INFO OVERLAY -->
-<div id="stuInfoOverlay" style="position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.85);
-  backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center">
-  <div style="background:#111827;border:1px solid rgba(20,184,166,.4);
-    border-radius:16px;padding:26px 22px;width:min(360px,94vw);
-    display:flex;flex-direction:column;gap:14px;text-align:center">
-    <h2 style="font-family:Amiri,serif;font-size:1.3rem;color:var(--teal)">👤 بيانات الطالب</h2>
-    <p style="font-size:.82rem;color:var(--txt2)">أدخل اسمك وفصلك للبدء</p>
-    <input id="stuNameInp" type="text" placeholder="الاسم الكامل" autocomplete="off"
-      style="padding:10px 14px;border-radius:8px;border:1px solid rgba(20,184,166,.35);
-      background:rgba(0,0,0,.4);color:var(--txt);font-family:Cairo,sans-serif;
-      font-size:.95rem;text-align:right;outline:none;direction:rtl;width:100%"/>
-    <input id="stuClassInp" type="text" placeholder="الفصل (مثال: خامس أ)" autocomplete="off"
-      style="padding:10px 14px;border-radius:8px;border:1px solid rgba(20,184,166,.35);
-      background:rgba(0,0,0,.4);color:var(--txt);font-family:Cairo,sans-serif;
-      font-size:.95rem;text-align:right;outline:none;direction:rtl;width:100%"/>
-    <button onclick="startStudent()" style="padding:12px;font-size:.95rem;border-radius:9px;
-      border:none;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;
-      font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;width:100%">ابدأ الحل ✏️</button>
-  </div>
-</div>
-
-<!-- PRESET OVERLAY -->
-<div id="presetOverlay" style="position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.65);
-  backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center">
-  <div id="presetBox" style="background:#111827;border:1px solid rgba(139,92,246,.35);
-    border-radius:14px;padding:16px;width:min(460px,95vw);max-height:80vh;
-    display:flex;flex-direction:column;gap:8px">
+<!-- ═══ PRESET OVERLAY ═══ -->
+<div id="presetOverlay" style="visibility:hidden;opacity:0;pointer-events:none;display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.65);backdrop-filter:blur(6px)">
+  <div id="presetBox">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <span style="font-family:Amiri,serif;font-size:1.05rem;color:var(--gold)">📋 قائمة المطلوبات</span>
+      <h3>📋 قائمة المطلوبات الافتراضية</h3>
       <button class="btn br" onclick="closePresets()" style="padding:4px 9px">✕</button>
     </div>
-    <div style="display:flex;gap:6px">
+    <div class="preset-add-row">
       <input class="preset-inp" id="pInp" placeholder="أضف مطلوباً جديداً..." type="text"/>
       <button class="btn bp" onclick="addPreset()">+ إضافة</button>
     </div>
-    <div id="presetList" style="overflow-y:auto;flex:1;min-height:0"></div>
+    <div id="presetList"></div>
   </div>
 </div>
-
-<!-- HINT POPUP -->
-<div id="hintPopup" style="position:fixed;z-index:9500;background:linear-gradient(135deg,rgba(17,24,39,.97),rgba(30,15,60,.97));
-  border:1px solid rgba(245,200,66,.5);border-radius:12px;padding:12px 16px;
-  max-width:300px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.6);
-  font-family:Cairo,sans-serif;font-size:.88rem;color:#fef3c7;direction:rtl;
-  line-height:1.6;display:none;pointer-events:none"></div>
-
-<!-- APP -->
+<!-- ═══ APP ═══ -->
 <div id="app">
 
   <!-- HEADER -->
@@ -559,6 +687,7 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
       <button class="mbtn act-s" id="btnS" onclick="setMode('s')">👦 الطالب</button>
       <button class="mbtn" id="btnD" onclick="requestDashboard()">📊 النتائج</button>
     </div>
+    <div id="onlineBadge" style="order:0"><span class="dot"></span>متصل</div>
     <div class="hdr-mid" style="order:2">
       <h1>🌿 مستخرج المهارات اللغوية</h1>
       <span class="sep">|</span>
@@ -577,6 +706,8 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
         <circle cx="50" cy="50" r="47" fill="rgba(139,92,246,0.1)" stroke="url(#lg1)" stroke-width="2.5"/>
         <rect x="27" y="28" width="20" height="38" rx="3" fill="rgba(139,92,246,0.55)" stroke="#8b5cf6" stroke-width="1.5"/>
         <rect x="53" y="28" width="20" height="38" rx="3" fill="rgba(20,184,166,0.55)" stroke="#14b8a6" stroke-width="1.5"/>
+        <path d="M47 28 Q50 33 53 28" stroke="url(#lg2)" stroke-width="2" fill="none"/>
+        <path d="M47 66 Q50 61 53 66" stroke="url(#lg2)" stroke-width="2" fill="none"/>
         <line x1="31" y1="39" x2="43" y2="39" stroke="rgba(255,255,255,.45)" stroke-width="1.2"/>
         <line x1="31" y1="47" x2="43" y2="47" stroke="rgba(255,255,255,.45)" stroke-width="1.2"/>
         <line x1="31" y1="55" x2="43" y2="55" stroke="rgba(255,255,255,.45)" stroke-width="1.2"/>
@@ -588,7 +719,7 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
     </div>
   </div>
 
-  <!-- MODEL BAR (student) -->
+  <!-- MODEL BAR (student only) — single collapsible row -->
   <div id="modelBar">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
       <button class="col-btn" id="modelBarColBtn" onclick="toggleModelBar()" style="flex-shrink:0">▲</button>
@@ -598,20 +729,19 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
     </div>
   </div>
 
-  <!-- STUDENT BAR -->
-  <div id="stuBar">
-    <span class="stu-name" id="stuBarName"></span>
-    <span class="stu-class" id="stuBarClass"></span>
-    <span class="stu-score" id="stuBarScore"></span>
-    <div id="onlineBadge" style="display:none;align-items:center;gap:5px;
-      background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);
-      border-radius:20px;padding:3px 10px;font-size:.72rem;color:#86efac">
-      <span style="width:7px;height:7px;background:#22c55e;border-radius:50%;
-        animation:pulse 1.5s infinite;display:inline-block"></span>متصل
-    </div>
-  </div>
+<!-- STUDENT BAR -->
+<div id="stuBar">
+  <span class="stu-name" id="stuBarName"></span>
+  <span class="stu-class" id="stuBarClass"></span>
+  <span class="stu-score" id="stuBarScore"></span>
+  <div id="onlineBadge"><span class="dot"></span>متصل</div>
+</div>
 
-  <!-- TOP PANEL -->
+<!-- أزرار الطالب الثابتة -->
+<button id="fsBtn" onclick="toggleFullscreen()">⛶ ملء الشاشة</button>
+<button id="mobBtn" onclick="toggleMobileMode()">📱 وضع الجوال</button>
+
+  <!-- TOP PANEL (student: shows active model words) -->
   <div id="topPanel">
     <div class="panel-hdr">
       <div class="sec-lbl" id="topPanelLbl">📖 القطعة النصية</div>
@@ -623,6 +753,9 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
     </div>
   </div>
 
+  <!-- SPLITTER: draggable divider between top & bot panels (student fullscreen/mobile only) -->
+  <div id="panelSplitter" title="اسحب لتغيير الحجم"></div>
+
   <!-- BOTTOM PANEL -->
   <div id="botPanel">
     <div class="panel-hdr">
@@ -632,18 +765,17 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
     <div class="col-body" id="botBody" style="max-height:9999px">
       <div style="height:6px"></div>
 
-      <!-- TEACHER VIEW -->
+      <!-- TEACHER VIEW: all models -->
       <div id="teacherView" class="to">
         <div id="modelsContainer"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;
-          border-top:1px solid rgba(255,255,255,.07)">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)">
           <button class="btn bg" onclick="addModel()">+ إضافة نموذج جديد</button>
         </div>
       </div>
 
-      <!-- STUDENT VIEW -->
+      <!-- STUDENT VIEW: active model tasks -->
       <div id="studentView">
-        <div class="key-note">🔑 وضع المعلم — ما تضعه في خانات الإجابة هو مفتاح التصحيح</div>
+        <div class="key-note">🔑 وضع المعلم — ما تضعه في خانات الإجابة هو مفتاح التصحيح للطالب</div>
         <div class="col-hdr">
           <div class="ch q">المطلوب الأول</div><div></div>
           <div class="ch a">الإجابة</div><div></div>
@@ -661,353 +793,492 @@ body.dm #topPanel,body.dm #botPanel,body.dm #modelBar,body.dm #stuBar{display:no
     </div>
   </div>
 
-  <!-- DASHBOARD VIEW -->
-  <div id="dashView">
-    <div style="background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.25);
-      border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:.78rem;
-      color:#5eead4;display:flex;align-items:center;gap:10px;flex-wrap:wrap;direction:ltr">
-      <span style="direction:rtl;flex-shrink:0;color:var(--txt2)">🔗 رابط الطلاب:</span>
-      <a id="dashSessionLink" href="#" target="_blank"
-        style="color:#5eead4;text-decoration:underline;flex:1;word-break:break-all;font-size:.74rem"></a>
-      <button onclick="copyDashLink()" class="btn bk" style="padding:3px 10px;font-size:.72rem;flex-shrink:0">نسخ الرابط</button>
-    </div>
-    <!-- KPI -->
-    <div class="kpi-row">
-      <div class="kpi blue"><div class="kpi-val" id="kpiTotal">0</div><div class="kpi-lbl">إجمالي الطلاب</div></div>
-      <div class="kpi green"><div class="kpi-val" id="kpiAvg">0%</div><div class="kpi-lbl">متوسط الدرجات</div></div>
-      <div class="kpi green"><div class="kpi-val" id="kpiPass">0</div><div class="kpi-lbl">ناجح (≥60%)</div></div>
-      <div class="kpi red"><div class="kpi-val" id="kpiFail">0</div><div class="kpi-lbl">راسب (&lt;60%)</div></div>
-      <div class="kpi gold"><div class="kpi-val" id="kpiTop">0%</div><div class="kpi-lbl">أعلى درجة</div></div>
-      <div class="kpi teal"><div class="kpi-val" id="kpiOnline">0</div><div class="kpi-lbl">متصل الآن</div></div>
-    </div>
-    <!-- TABS -->
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;direction:rtl">
-      <button class="dash-tab-btn active" onclick="showDashTab('details')">👥 تفاصيل الطلاب</button>
-      <button class="dash-tab-btn" onclick="showDashTab('strength')">✅ مواطن القوة</button>
-      <button class="dash-tab-btn" onclick="showDashTab('weakness')">⚠️ مواطن الضعف</button>
-      <button class="dash-tab-btn" onclick="showDashTab('dist')">🎯 توزيع الدرجات</button>
-      <button class="dash-tab-btn" onclick="showDashTab('chart')">📈 منحنى الدرجات</button>
-    </div>
-    <!-- TAB CONTENTS -->
-    <div class="dash-tab" id="tab-details">
-      <div class="dash-section">
-        <div class="dash-title">👥 تفاصيل الطلاب
-          <div style="display:flex;gap:6px">
-            <button class="btn br" onclick="clearAllResults()" style="padding:3px 9px;font-size:.73rem">مسح النتائج</button>
-            <button class="btn bb" onclick="exportResults()" style="padding:3px 9px;font-size:.73rem">تصدير CSV</button>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 80px;gap:5px;margin-bottom:8px;direction:rtl">
-          <input id="fName"  class="f-inp" oninput="applyFilters()" placeholder="🔍 الاسم..." type="text"/>
-          <input id="fClass" class="f-inp" oninput="applyFilters()" placeholder="🔍 الفصل..." type="text"/>
-          <input id="fModel" class="f-inp" oninput="applyFilters()" placeholder="🔍 النموذج..." type="text"/>
-          <input id="fScoreMin" class="f-inp" oninput="applyFilters()" placeholder="من" type="number"/>
-          <input id="fScoreMax" class="f-inp" oninput="applyFilters()" placeholder="إلى" type="number"/>
-          <button class="btn br" onclick="clearFilters()" style="padding:4px 8px;font-size:.74rem">مسح</button>
-        </div>
-        <div id="noStudentsDash" style="text-align:center;color:var(--txt2);font-size:.85rem;padding:24px">لا يوجد طلاب بعد...</div>
-        <div style="overflow-x:auto">
-          <table id="dashTable" style="display:none;width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl">
-            <thead><tr>
-              <th class="dt">#</th>
-              <th class="dt" onclick="sortTable('name')" style="cursor:pointer">الاسم ↕</th>
-              <th class="dt" onclick="sortTable('class')" style="cursor:pointer">الفصل ↕</th>
-              <th class="dt" onclick="sortTable('modelTitle')" style="cursor:pointer">النموذج ↕</th>
-              <th class="dt" onclick="sortTable('correct')" style="cursor:pointer">الدرجة ↕</th>
-              <th class="dt" onclick="sortTable('pct')" style="cursor:pointer">% ↕</th>
-              <th class="dt">الحالة</th>
-            </tr></thead>
-            <tbody id="dashTbody"></tbody>
-          </table>
-        </div>
+
+<!-- ═══ DASHBOARD VIEW ═══ -->
+<div id="dashView">
+
+  <!-- KPIs -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi blue"><div class="kpi-val" id="kpiTotal">0</div><div class="kpi-lbl">إجمالي الطلاب</div></div>
+    <div class="kpi green"><div class="kpi-val" id="kpiAvg">0%</div><div class="kpi-lbl">متوسط الدرجات</div></div>
+    <div class="kpi green"><div class="kpi-val" id="kpiPass">0</div><div class="kpi-lbl">ناجح (≥60%)</div></div>
+    <div class="kpi red"><div class="kpi-val" id="kpiFail">0</div><div class="kpi-lbl">راسب (&lt;60%)</div></div>
+    <div class="kpi gold"><div class="kpi-val" id="kpiTop">0%</div><div class="kpi-lbl">أعلى درجة</div></div>
+    <div class="kpi teal"><div class="kpi-val" id="kpiOnline">0</div><div class="kpi-lbl">متصل الآن</div></div>
+  </div>
+
+  <!-- جدول الطلاب (مباشرة بعد الإحصاءات) -->
+  <div class="dash-section">
+    <div class="dash-title">
+      👥 تفاصيل الطلاب
+      <div style="display:flex;gap:6px">
+        <button class="btn br" onclick="clearAllResults()" style="padding:3px 9px;font-size:.73rem">مسح النتائج</button>
+        <button class="btn bb" onclick="exportResults()" style="padding:3px 9px;font-size:.73rem">تصدير CSV</button>
       </div>
     </div>
-    <div class="dash-tab" id="tab-strength" style="display:none">
-      <div class="dash-section">
-        <div class="dash-title">✅ مواطن القوة</div>
-        <div id="strengthArea"><div class="no-data">لا توجد بيانات كافية</div></div>
-      </div>
+
+    <!-- فلاتر الترشيح -->
+    <div id="filterBar" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding:10px 12px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);border-radius:8px;align-items:center">
+      <span style="font-size:.78rem;color:#c4b5fd;font-weight:700;flex-shrink:0">🔍 ترشيح:</span>
+      <input id="filterName" type="text" placeholder="بحث بالاسم..." autocomplete="off"
+        oninput="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl;width:150px"/>
+      <select id="filterClass" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل الفصول</option>
+      </select>
+      <select id="filterModel" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل النماذج</option>
+      </select>
+      <select id="filterStatus" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل الحالات</option>
+        <option value="online">متصل الآن</option>
+        <option value="offline">غير متصل</option>
+      </select>
+      <select id="filterScore" onchange="applyFilters()"
+        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
+        <option value="">كل الدرجات</option>
+        <option value="high">ممتاز (≥80%)</option>
+        <option value="mid">جيد (60-79%)</option>
+        <option value="low">ضعيف (&lt;60%)</option>
+      </select>
+      <button onclick="resetFilters()" class="btn" style="padding:4px 10px;font-size:.73rem;background:rgba(255,255,255,.08);color:var(--txt2);border:1px solid rgba(255,255,255,.12)">↺ إعادة تعيين</button>
+      <span id="filterCount" style="font-size:.74rem;color:var(--txt2);margin-right:auto"></span>
     </div>
-    <div class="dash-tab" id="tab-weakness" style="display:none">
-      <div class="dash-section">
-        <div class="dash-title">⚠️ مواطن الضعف</div>
-        <div id="weaknessArea"><div class="no-data">لا توجد بيانات كافية</div></div>
+
+    <div id="noStudentsDash" class="no-data">لا يوجد طلاب بعد...</div>
+    <table id="dashTable" style="display:none;width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl">
+      <thead>
+        <tr>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">#</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الاسم</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الفصل</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">النموذج</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الدرجة</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">%</th>
+          <th style="background:rgba(139,92,246,.2);color:#c4b5fd;padding:6px 8px;border:1px solid rgba(255,255,255,.07);font-family:Cairo,sans-serif">الحالة</th>
+        </tr>
+      </thead>
+      <tbody id="dashTbody"></tbody>
+    </table>
+  </div>
+
+  <!-- منحنى النتائج -->
+  <div class="dash-section">
+    <div class="dash-title">📈 منحنى درجات الطلاب <span id="chartSubtitle"></span></div>
+    <div class="chart-wrap"><div class="bar-chart" id="barChart"></div></div>
+  </div>
+
+  <!-- توزيع الدرجات -->
+  <div class="dash-section">
+    <div class="dash-title">🎯 توزيع الدرجات</div>
+    <div class="dist-row">
+      <div class="dist-seg" style="border-color:rgba(74,222,128,.3)">
+        <div class="d-val" id="distA" style="color:#4ade80">0</div>
+        <div class="d-lbl">ممتاز (80-100%)</div>
       </div>
-    </div>
-    <div class="dash-tab" id="tab-dist" style="display:none">
-      <div class="dash-section">
-        <div class="dash-title">🎯 توزيع الدرجات</div>
-        <div class="dist-row">
-          <div class="dist-seg" style="border-color:rgba(74,222,128,.3)"><div class="d-val" id="distA" style="color:#4ade80">0</div><div class="d-lbl">ممتاز (80-100%)</div></div>
-          <div class="dist-seg" style="border-color:rgba(245,200,66,.3)"><div class="d-val" id="distB" style="color:var(--gold)">0</div><div class="d-lbl">جيد (60-79%)</div></div>
-          <div class="dist-seg" style="border-color:rgba(248,113,113,.3)"><div class="d-val" id="distC" style="color:#f87171">0</div><div class="d-lbl">ضعيف (&lt;60%)</div></div>
-        </div>
+      <div class="dist-seg" style="border-color:rgba(245,200,66,.3)">
+        <div class="d-val" id="distB" style="color:var(--gold)">0</div>
+        <div class="d-lbl">جيد (60-79%)</div>
       </div>
-    </div>
-    <div class="dash-tab" id="tab-chart" style="display:none">
-      <div class="dash-section">
-        <div class="dash-title">📈 منحنى درجات الطلاب <span id="chartSubtitle"></span></div>
-        <div class="chart-wrap"><div class="bar-chart" id="barChart"></div></div>
+      <div class="dist-seg" style="border-color:rgba(248,113,113,.3)">
+        <div class="d-val" id="distC" style="color:#f87171">0</div>
+        <div class="d-lbl">ضعيف (&lt;60%)</div>
       </div>
     </div>
   </div>
 
+  <!-- مواطن الضعف -->
+  <div class="dash-section">
+    <div class="dash-title">⚠️ مواطن الضعف <span>المطلوبات الأكثر خطأً</span></div>
+    <div id="weaknessArea"><div class="no-data">لا توجد بيانات كافية</div></div>
+  </div>
+
+  <!-- مواطن القوة -->
+  <div class="dash-section">
+    <div class="dash-title">✅ مواطن القوة <span>المطلوبات الأعلى إجابةً</span></div>
+    <div id="strengthArea"><div class="no-data">لا توجد بيانات كافية</div></div>
+  </div>
+
+</div>
+<!-- end dashView -->
+
 </div><!-- end app -->
-
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-// ══════════════════════════════════════════════
-// GLOBALS
-// ══════════════════════════════════════════════
-const PASS = '0564125';
-let mode = 's', drag = null, activeModel = 0;
-let hdrOpen=true, topOpen=true, botOpen=true, modelBarOpen=true;
-let models = [], modelIdCounter = 0, _rowIdx = 0;
-let _dashData = {}, _filtered = [], _sortKey='pct', _sortAsc=false;
-let db=null, stuId=null, stuName='', stuClass='', fbConnected=false;
-let _hintTimer=null, _presetTarget=null, _pwTarget='t';
-const SK = 'als_v9';
+// ── Firebase SDK dynamic loader with fallback CDNs ──
+(function(){
+  const VERS = '10.12.2';
+  const CDNs = [
+    `https://www.gstatic.com/firebasejs/${VERS}/firebase-app-compat.js`,
+    `https://cdn.jsdelivr.net/npm/firebase@${VERS}/firebase-app-compat.js`
+  ];
+  const CDNsDB = [
+    `https://www.gstatic.com/firebasejs/${VERS}/firebase-database-compat.js`,
+    `https://cdn.jsdelivr.net/npm/firebase@${VERS}/firebase-database-compat.js`
+  ];
 
-const _cv=document.createElement('canvas'), _cx=_cv.getContext('2d');
-function mw(t,sz){_cx.font=sz+'px Amiri';return Math.max(24,_cx.measureText(t||' ').width+16);}
-
-let PRESETS=['اسم إشارة','اسماً موصولاً','اسماً مقصوراً','اسماً منقوصاً','ضميراً',
-  'همزة متوسطة','همزة متطرفة','همزة ممدودة','اسماً ممدوداً','جمع تكسير',
-  'جمع مذكر سالم','مثنى','همزة وصل','همزة قطع','اسماً مجروراً','اسماً معطوفاً',
-  'نعتاً','موصوفاً','توكيداً','اسماً لحرف ناسخ','خبراً لحرف ناسخ',
-  'اسماً لفعل ناسخ','خبراً لفعل ناسخ','أسلوب أمر','أسلوب نهي',
-  'أسلوب استفهام','أسلوب تمنٍّ','أسلوب رجاء','أسلوب توكيد',
-  'أسلوب قسم','أسلوب إغراء','أسلوب تحذير'];
-
-// ── SESSION: everyone shares ONE fixed room ──
-// Teacher creates/owns the session via ?s= param in URL
-// If no ?s= param → teacher mode creates a new session and shows the link
-// Students MUST use the link with ?s= param
-
-const _urlParam = new URLSearchParams(location.search).get('s');
-
-// If URL has ?s=xxx → use it (student joining teacher's room)
-// If no ?s= → check localStorage for teacher's own session
-//             If none → create new one and save it
-const SESSION_ID = (()=>{
-  if(_urlParam) return 'session_'+_urlParam;
-  // No URL param → this is the teacher's device
-  let id = localStorage.getItem('teacher_session_id');
-  if(!id){
-    id = 'cls'+Math.random().toString(36).substr(2,8);
-    localStorage.setItem('teacher_session_id', id);
+  function loadScript(urls, idx, cb){
+    if(idx >= urls.length){ cb(new Error('All CDNs failed')); return; }
+    const s = document.createElement('script');
+    s.src = urls[idx];
+    s.onload = () => cb(null);
+    s.onerror = () => { console.warn('CDN failed, trying next:', urls[idx]); loadScript(urls, idx+1, cb); };
+    document.head.appendChild(s);
   }
-  return 'session_'+id;
-})();
 
-function getStudentLink(){
-  const base = location.href.split('?')[0];
-  return base + '?s=' + SESSION_ID.replace('session_','');
-}
-
-// ══════════════════════════════════════════════
-// FIREBASE
-// ══════════════════════════════════════════════
-function initFirebase(){
-  if(typeof firebase==='undefined'){setTimeout(initFirebase,400);return;}
-  try{
-    if(!firebase.apps.length){
-      firebase.initializeApp({
-        apiKey:"AIzaSyAGrIhpeD5K7berK-6i8AhtVJ-knQqZBSk",
-        authDomain:"arabic-skills.firebaseapp.com",
-        databaseURL:"https://arabic-skills-default-rtdb.firebaseio.com",
-        projectId:"arabic-skills",
-        storageBucket:"arabic-skills.firebasestorage.app",
-        messagingSenderId:"1036219845598",
-        appId:"1:1036219845598:web:ccd806a01ea9fb5f966b4f"
-      });
-    }
-    db=firebase.database(); fbConnected=true;
-    console.log('Firebase OK, session:',SESSION_ID);
-  }catch(e){console.warn('Firebase:',e.message);fbConnected=false;}
-}
-
-function pushStudentAnswers(){
-  if(!fbConnected||!db||!stuId||mode!=='s') return;
-  const m=models[activeModel]; if(!m) return;
-  let correct=0,total=0;
-  const details={};
-  document.querySelectorAll('#studentTasksC .trow').forEach(row=>{
-    const lbls=row.querySelectorAll('.qlbl-wrap');
-    row.querySelectorAll('.dz').forEach((zone,zi)=>{
-      const key=getKey(zone); if(!key.length) return;
-      const lbl=(lbls[zi]?.querySelector('.qlbl')?.textContent||('س'+(zi+1))).trim();
-      let qc=0;
-      key.forEach(k=>{
-        total++;
-        if([...zone.querySelectorAll('.ac.stu input')].some(i=>i.value.trim()===k)){correct++;qc++;}
-      });
-      const sk=lbl.replace(/[.#$\[\]\/]/g,'_');
-      details[sk]={correct:qc,total:key.length};
+  loadScript(CDNs, 0, function(e1){
+    if(e1){ window._fbLoadErr='app'; return; }
+    loadScript(CDNsDB, 0, function(e2){
+      if(e2){ window._fbLoadErr='db'; return; }
+      window._fbSDKReady = true;
     });
   });
-  db.ref('sessions/'+SESSION_ID+'/students/'+stuId).update({
-    name:stuName,class:stuClass,modelIdx:activeModel,
-    modelTitle:m.title||('نموذج '+(activeModel+1)),
-    correct,total,pct:total>0?Math.round(correct/total*100):0,
-    ts:Date.now(),online:true,details
+})();
+</script>
+<script>
+// ════════════════════════════════════════════════════════
+// GLOBALS
+// ════════════════════════════════════════════════════════
+const PASS = '0564125';
+let mode = 's';
+let drag = null;
+let activeModel = 0; // index of currently viewed model in student mode
+let hdrOpen=true, topOpen=true, botOpen=true, modelBarOpen=true;
+const SK = 'als_v8';
+
+// Models array: each model = { id, title, words[], rows[] }
+// rows[i] = { q1,q2, k1[],k2[], s1[],s2[] }
+let models = [];
+
+// Canvas text measurement
+const _c=document.createElement('canvas'), _x=_c.getContext('2d');
+function mw(t,sz){ _x.font=sz+'px Amiri'; return Math.max(24,_x.measureText(t||' ').width+16); }
+
+let PRESETS=[
+  'اسم إشارة','اسماً موصولاً','اسماً مقصوراً','اسماً منقوصاً','ضميراً',
+  'همزة متوسطة','همزة متطرفة','همزة ممدودة','اسماً ممدوداً',
+  'جمع تكسير','جمع مذكر سالم','مثنى','همزة وصل','همزة قطع',
+  'اسماً مجروراً','اسماً معطوفاً','نعتاً','موصوفاً','توكيداً',
+  'اسماً لحرف ناسخ','خبراً لحرف ناسخ','اسماً لفعل ناسخ','خبراً لفعل ناسخ',
+  'أسلوب أمر','أسلوب نهي','أسلوب استفهام','أسلوب تمنٍّ',
+  'أسلوب رجاء','أسلوب توكيد','أسلوب قسم','أسلوب إغراء','أسلوب تحذير'
+];
+
+
+// ════════════════════════════════════════════════════════
+// FIREBASE CONFIG
+// ════════════════════════════════════════════════════════
+
+/*
+  FIREBASE SECURITY RULES — افتح Firebase Console > Realtime Database > Rules
+  وضع هذه القواعد بالضبط (تسمح للجميع بالقراءة والكتابة):
+
+  {
+    "rules": {
+      ".read": true,
+      ".write": true
+    }
+  }
+
+  ⚠️ الأمان يعتمد على كلمة المرور الموجودة في الكود وليس على Firebase Rules.
+*/
+const FB_CONFIG = {
+  apiKey: "AIzaSyAGrIhpeD5K7berK-6i8AhtVJ-knQqZBSk",
+  authDomain: "arabic-skills.firebaseapp.com",
+  databaseURL: "https://arabic-skills-default-rtdb.firebaseio.com",
+  projectId: "arabic-skills",
+  storageBucket: "arabic-skills.firebasestorage.app",
+  messagingSenderId: "1036219845598",
+  appId: "1:1036219845598:web:ccd806a01ea9fb5f966b4f",
+  measurementId: "G-5C7YSN8LX9"
+};
+
+let db = null;
+let stuId = null; // unique ID for this student session
+let stuName = '', stuClass = '';
+let resultsRef = null;
+let fbConnected = false;
+
+let _fbRetries = 0;
+const _fbMaxRetries = 20; // 10 seconds total
+
+function initFirebase(){
+  if(window._fbLoadErr){
+    console.error('❌ Firebase SDK failed to load from all CDNs');
+    if(typeof showToast==='function') showToast('تعذّر تحميل قاعدة البيانات — تحقق من الاتصال بالإنترنت');
+    return;
+  }
+  if(!window._fbSDKReady || typeof firebase === 'undefined'){
+    _fbRetries++;
+    if(_fbRetries > _fbMaxRetries){
+      console.error('❌ Firebase SDK never loaded after', _fbMaxRetries, 'retries');
+      if(typeof showToast==='function') showToast('تعذّر تحميل Firebase — تحقق من الاتصال');
+      return;
+    }
+    setTimeout(initFirebase, 500);
+    return;
+  }
+  try{
+    if(firebase.apps && firebase.apps.length > 0){
+      db = firebase.database();
+    } else {
+      firebase.initializeApp(FB_CONFIG);
+      db = firebase.database();
+    }
+    fbConnected = true;
+    console.log('✅ Firebase connected, session:', SESSION_ID);
+  } catch(e){
+    console.warn('Firebase init error:', e.message);
+    fbConnected = false;
+    if(typeof showToast==='function') showToast('خطأ في الاتصال بـ Firebase: ' + e.message);
+  }
+}
+
+// ── Push student answers to Firebase ──
+function pushStudentAnswers(){
+  if(!fbConnected || !db || !stuId) return;
+  if(mode !== 's') return;
+  
+  const modelIdx = activeModel;
+  const m = models[modelIdx];
+  if(!m) return;
+
+  // Calculate score
+  let correct=0, total=0;
+  const dzs = document.querySelectorAll('#studentTasksC .dz');
+  dzs.forEach(zone=>{
+    const key = getKey(zone);
+    if(!key.length) return;
+    key.forEach(k=>{
+      total++;
+      const stuCells = zone.querySelectorAll('.ac.stu input');
+      let found = false;
+      stuCells.forEach(inp=>{ if(inp.value.trim()===k) found=true; });
+      if(found) correct++;
+    });
   });
-  const sc=document.getElementById('stuBarScore');
-  if(sc&&total>0) sc.textContent=correct+'/'+total+' ('+Math.round(correct/total*100)+'%)';
+
+  // Build per-question details for analytics
+  const details = {};
+  document.querySelectorAll('#studentTasksC .trow').forEach(row=>{
+    const lbls = row.querySelectorAll('.qlbl');
+    const dzs  = row.querySelectorAll('.dz');
+    dzs.forEach((zone,zi)=>{
+      const key = getKey(zone);
+      if(!key.length) return;
+      const lbl = (lbls[zi] && lbls[zi].textContent ? lbls[zi].textContent.trim() : '')||('س'+(zi+1));
+      let qCorrect=0;
+      key.forEach(k=>{
+        const found = [...zone.querySelectorAll('.ac.stu input')].some(i=>i.value.trim()===k);
+        if(found) qCorrect++;
+      });
+      const safeKey = lbl.replace(/[.#$/\[\]]/g,'_');
+      details[safeKey] = {correct:qCorrect, total:key.length};
+    });
+  });
+
+  const payload = {
+    name: stuName,
+    class: stuClass,
+    modelIdx: modelIdx,
+    modelTitle: m.title || ('نموذج '+(modelIdx+1)),
+    correct, total,
+    pct: total>0 ? Math.round(correct/total*100) : 0,
+    ts: Date.now(),
+    online: true,
+    details
+  };
+
+  db.ref('sessions/'+SESSION_ID+'/students/'+stuId).update(payload);
+  updateStuBar(correct, total);
 }
 
+// ── Listen to results (teacher) ──
+function listenResults(){
+  if(!fbConnected || !db) return;
+  db.ref('sessions/'+SESSION_ID+'/students').on('value', snap=>{
+    const data = snap.val() || {};
+    renderResults(data);
+  });
+}
+
+function renderResults(data){
+  const tbody = document.getElementById('resultsTbody');
+  const noStu = document.getElementById('noStudents');
+  const tbl   = document.getElementById('resultsTable');
+  const cnt   = document.getElementById('stuCount');
+  
+  const entries = Object.values(data);
+  if(!entries.length){
+    noStu.style.display='block'; tbl.style.display='none';
+    cnt.textContent=''; return;
+  }
+  noStu.style.display='none'; tbl.style.display='table';
+  
+  // Sort by score desc then name
+  entries.sort((a,b)=> b.pct - a.pct || (a.name ? a.name.localeCompare(b.name) : 0));
+  cnt.textContent = entries.length + ' طالب';
+  
+  tbody.innerHTML='';
+  entries.forEach((e,i)=>{
+    const pct = e.pct||0;
+    const cls = pct>=80?'full':pct>=50?'half':'low';
+    const isOnline = (Date.now()-e.ts) < 120000; // online if activity in last 2 min
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${i+1}</td>
+      <td style="text-align:right;font-weight:600;color:var(--txt)">${e.name||'-'}</td>
+      <td>${e.class||'-'}</td>
+      <td style="font-size:.73rem">${e.modelTitle||'-'}</td>
+      <td class="r-score ${cls}">${e.correct||0}</td>
+      <td>${e.total||0}</td>
+      <td class="r-score ${cls}">${pct}%</td>
+      <td>${isOnline?'<span class="r-live"></span> متصل':'<span style="color:var(--txt2)">غير متصل</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function copyLink(){
+  const link=getStudentLink();
+  (navigator.clipboard ? navigator.clipboard.writeText(link) : null)||prompt('انسخ الرابط:',link);
+  showToast('تم نسخ الرابط ✔');
+}
+function clearAllResults(){
+  if(!fbConnected || !db) return;
+  if(!confirm('مسح جميع نتائج الطلاب؟')) return;
+  db.ref('sessions/'+SESSION_ID+'/students').remove();
+  showToast('تم مسح النتائج ✔');
+}
+
+// ── Mark student offline on disconnect ──
+function setupPresence(){
+  if(!fbConnected || !db || !stuId) return;
+  const ref = db.ref('sessions/'+SESSION_ID+'/students/'+stuId+'/online');
+  ref.onDisconnect().set(false);
+}
+
+// ── Sync models FROM teacher TO Firebase ──
 function pushModelsToFirebase(){
-  if(!fbConnected||!db||mode!=='t') return;
+  if(!fbConnected || !db || mode!=='t') return;
   syncAllModelsFromDom();
-  db.ref('sessions/'+SESSION_ID+'/models').set({data:JSON.stringify(models),ts:Date.now()});
+  db.ref('sessions/'+SESSION_ID+'/models').set({
+    data: JSON.stringify(models),
+    ts: Date.now()
+  });
 }
 
+// ── Listen for model updates (student) ──
 function listenModels(){
-  if(!fbConnected||!db) return;
-  db.ref('sessions/'+SESSION_ID+'/models').on('value',snap=>{
-    const d=snap.val(); if(!d) return;
+  if(!fbConnected || !db) return;
+  db.ref('sessions/'+SESSION_ID+'/models').on('value', snap=>{
+    const d = snap.val();
+    if(!d) return;
     try{
-      const nm=JSON.parse(d.data);
-      if(JSON.stringify(nm)!==JSON.stringify(models)){
-        models=nm; renderModelBar(); loadStudentView(activeModel);
+      const newModels = JSON.parse(d.data);
+      if(JSON.stringify(newModels) !== JSON.stringify(models)){
+        models = newModels;
+        renderModelBar();
+        loadStudentView(activeModel);
       }
     }catch(e){}
   });
 }
 
-function listenResults(){
-  if(!fbConnected||!db) return;
-  db.ref('sessions/'+SESSION_ID+'/students').on('value',snap=>{
-    _dashData=snap.val()||{}; applyFilters();
-  });
+// ── Session ID (teacher sets it, students join) ──
+// ════════════════════════════════════════════════════════
+// SESSION ID — ثابت لهذا الملف، مشترك بين جميع الأجهزة
+// ════════════════════════════════════════════════════════
+const FIXED_SESSION = 'alfa13_sofianypp'; // معرّف ثابت للجلسة — لا يتغيّر
+
+const SESSION_ID = (()=>{
+  // إذا جاء الطالب برابط يحتوي على ?s= فاستخدمه
+  const p = new URLSearchParams(location.search).get('s');
+  if(p) return 'session_' + p;
+  // وإلا استخدم المعرّف الثابت (المعلم والطلاب على نفس الجهاز)
+  return 'session_' + FIXED_SESSION;
+})();
+
+function getStudentLink(){
+  const base = location.href.split('?')[0];
+  return base + '?s=' + FIXED_SESSION;
 }
 
-// ══════════════════════════════════════════════
-// PASSWORD
-// ══════════════════════════════════════════════
-function requestTeacher(){_pwTarget='t';showPw();}
-function requestDashboard(){_pwTarget='d';showPw();}
-function showPw(){
-  document.getElementById('pwInp').value='';
-  document.getElementById('pwErr').style.display='none';
-  const ov=document.getElementById('pwOverlay');
-  ov.style.visibility='visible';ov.style.opacity='1';ov.style.pointerEvents='all';
-  setTimeout(()=>document.getElementById('pwInp').focus(),100);
-}
-function cancelPw(){
-  const ov=document.getElementById('pwOverlay');
-  ov.style.visibility='hidden';ov.style.opacity='0';ov.style.pointerEvents='none';
-}
-function checkPw(){
-  if(document.getElementById('pwInp').value===PASS){
-    cancelPw();
-    if(_pwTarget==='d') setModeDash(); else setMode('t');
-  } else {
-    document.getElementById('pwErr').style.display='block';
-    document.getElementById('pwInp').value='';
-    document.getElementById('pwInp').focus();
-  }
-}
-document.addEventListener('keydown',e=>{
-  const ov=document.getElementById('pwOverlay');
-  if(ov.style.visibility==='visible'){
-    if(e.key==='Enter') checkPw();
-    if(e.key==='Escape') cancelPw();
-  }
-  // Student form Enter
-  const sov=document.getElementById('stuInfoOverlay');
-  if(sov.style.display==='flex'&&e.key==='Enter') startStudent();
-});
-
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // STUDENT IDENTITY
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function startStudent(){
-  const name=document.getElementById('stuNameInp').value.trim();
-  const cls=document.getElementById('stuClassInp').value.trim();
-  if(!name){document.getElementById('stuNameInp').focus();return;}
-  if(!cls){document.getElementById('stuClassInp').focus();return;}
-  stuName=name; stuClass=cls;
-  stuId='stu_'+name.replace(/\s+/g,'_')+'_'+cls.replace(/\s+/g,'_')+'_'+Date.now().toString(36);
+  const name = document.getElementById('stuNameInp').value.trim();
+  const cls  = document.getElementById('stuClassInp').value.trim();
+  const errEl = document.getElementById('stuFormErr');
+
+  // إذا كانت البيانات فارغة تماماً → افتح مربع كلمة المرور (وضع المعلم)
+  if(!name && !cls){
+    document.getElementById('stuInfoOverlay').style.display='none';
+    requestTeacher();
+    return;
+  }
+
+  if(!name){ 
+    errEl.style.display='block';
+    document.getElementById('stuNameInp').focus();
+    document.getElementById('stuNameInp').style.borderColor='rgba(239,68,68,.7)';
+    return; 
+  }
+  if(!cls) { 
+    errEl.style.display='block';
+    document.getElementById('stuClassInp').focus();
+    document.getElementById('stuClassInp').style.borderColor='rgba(239,68,68,.7)';
+    return; 
+  }
+  errEl.style.display='none';
+  document.getElementById('stuNameInp').style.borderColor='';
+  document.getElementById('stuClassInp').style.borderColor='';
+  
+  stuName = name; stuClass = cls;
+  stuId = 'stu_' + name.replace(/\s+/g,'_') + '_' + cls.replace(/\s+/g,'_') + '_' + Date.now().toString(36);
+  
+  // Hide overlay
   document.getElementById('stuInfoOverlay').style.display='none';
-  document.getElementById('stuBarName').textContent=name;
-  document.getElementById('stuBarClass').textContent='| '+cls;
-  document.getElementById('onlineBadge').style.display='flex';
-  if(fbConnected&&db){
+  
+  // Update bar
+  document.getElementById('stuBarName').textContent = name;
+  document.getElementById('stuBarClass').textContent = '| ' + cls;
+  
+  // Firebase
+  if(fbConnected && db){
     db.ref('sessions/'+SESSION_ID+'/students/'+stuId).set({
-      name,class:cls,correct:0,total:0,pct:0,ts:Date.now(),online:true
+      name, class:cls, correct:0, total:0, pct:0,
+      ts: Date.now(), online:true
     });
-    db.ref('sessions/'+SESSION_ID+'/students/'+stuId+'/online').onDisconnect().set(false);
+    setupPresence();
     listenModels();
   }
-  showToast('أهلاً '+name+' 👋');
 }
 
-// ══════════════════════════════════════════════
-// SAVE / LOAD
-// ══════════════════════════════════════════════
-let _st=null;
-function scheduleSave(){clearTimeout(_st);_st=setTimeout(doSave,700);}
-function doSave(){
-  try{
-    if(mode==='t'){syncAllModelsFromDom();pushModelsToFirebase();}
-    const words=[];
-    document.querySelectorAll('#topGrid .wc').forEach(c=>words.push(c.querySelector('input').value));
-    localStorage.setItem(SK,JSON.stringify({models,activeModel,presets:PRESETS,
-      hdrOpen,topOpen,botOpen,modelBarOpen,words}));
-  }catch(e){}
+function updateStuBar(correct, total){
+  const score = document.getElementById('stuBarScore');
+  if(total>0) score.textContent = correct+'/'+total+' ('+Math.round(correct/total*100)+'%)';
 }
-function doLoad(){
-  try{
-    const raw=localStorage.getItem(SK); if(!raw) return false;
-    const d=JSON.parse(raw);
-    if(d.presets?.length) PRESETS=d.presets;
-    if(d.models?.length) models=d.models;
-    activeModel=d.activeModel||0;
-    if(activeModel>=models.length) activeModel=0;
-    if(d.hdrOpen===false){hdrOpen=true;toggleHdr();}
-    if(d.topOpen===false){topOpen=true;toggleTop();}
-    if(d.botOpen===false){botOpen=true;toggleBot();}
-    if(d.modelBarOpen===false){modelBarOpen=true;toggleModelBar();}
-    return models.length>0;
-  }catch(e){return false;}
-}
-document.addEventListener('input',scheduleSave);
 
-// ══════════════════════════════════════════════
-// MODE
-// ══════════════════════════════════════════════
-function setMode(m){
-  mode=m;
-  document.body.className=m==='s'?'sm':'tm';
-  document.getElementById('btnT').className='mbtn'+(m==='t'?' act-t':'');
-  document.getElementById('btnS').className='mbtn'+(m==='s'?' act-s':'');
-  document.getElementById('btnD').className='mbtn';
-  document.getElementById('teacherView').style.display=m==='t'?'block':'none';
-  document.getElementById('studentView').style.display=m==='s'?'block':'none';
-  document.getElementById('dashView').style.display='none';
-  document.getElementById('topPanel').style.display=m==='t'?'none':'';
-  document.querySelectorAll('.qlbl').forEach(l=>l.setAttribute('contenteditable',m==='t'?'true':'false'));
-  document.querySelectorAll('.ac.key').forEach(c=>c.style.display=m==='t'?'':'none');
-  if(m==='t'){
-    renderTeacherModels();
-    document.getElementById('topGrid').innerHTML='';
-    // Show session link notice
-    setTimeout(()=>{
-      const link = getStudentLink();
-      if(!_urlParam){
-        showToast('رابط الطلاب جاهز — افتح لوحة النتائج لنسخه');
-      }
-    }, 800);
-  } else {
-    renderModelBar();
-    loadStudentView(activeModel);
-    if(!stuName){
-      document.getElementById('stuInfoOverlay').style.display='flex';
-    }
-  }
-  showToast(m==='s'?'وضع الطالب 👦':'وضع المعلم 🎓');
+
+
+// ════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════
+let _dashData = {};
+
+function requestDashboard(){
+  // Reuse password overlay
+  document.getElementById('pwInp').value='';
+  document.getElementById('pwErr').style.display='none';
+  document.getElementById('pwOverlay').dataset.target='d';
+  document.getElementById('pwOverlay').style.visibility='visible';
+  document.getElementById('pwOverlay').style.opacity='1';
+  document.getElementById('pwOverlay').style.pointerEvents='all';
+  setTimeout(()=>document.getElementById('pwInp').focus(),120);
 }
 
 function setModeDash(){
@@ -1016,33 +1287,402 @@ function setModeDash(){
   document.getElementById('btnT').className='mbtn';
   document.getElementById('btnS').className='mbtn';
   document.getElementById('btnD').className='mbtn act-d';
-  document.getElementById('teacherView').style.display='none';
-  document.getElementById('studentView').style.display='none';
-  document.getElementById('dashView').style.display='block';
-  document.getElementById('topPanel').style.display='none';
-  const link=getStudentLink();
-  const la=document.getElementById('dashSessionLink');
-  if(la){la.href=link;la.textContent=link;}
-  listenResults();
+  // Listen for live data
+  if(fbConnected && db){
+    db.ref('sessions/'+SESSION_ID+'/students').on('value', snap=>{
+      _dashData = snap.val()||{};
+      renderDashboard(_dashData);
+    });
+  }
   showToast('لوحة التحليل 📊');
 }
 
-// ══════════════════════════════════════════════
+// ── All entries cache (full, unfiltered)
+let _allEntries = [];
+
+function renderDashboard(data){
+  _allEntries = Object.values(data).filter(e=>e.name);
+
+  // Populate class filter dropdown
+  const classSel = document.getElementById('filterClass');
+  const prevClass = classSel.value;
+  const classNames = [...new Set(_allEntries.map(e=>e.class).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  classSel.innerHTML = '<option value="">كل الفصول</option>'
+    + classNames.map(c=>`<option value="${c}"${c===prevClass?' selected':''}>${c}</option>`).join('');
+
+  // Populate model filter dropdown
+  const modelSel = document.getElementById('filterModel');
+  const prevModel = modelSel.value;
+  const modelTitles = [...new Set(_allEntries.map(e=>e.modelTitle).filter(Boolean))].sort();
+  modelSel.innerHTML = '<option value="">كل النماذج</option>'
+    + modelTitles.map(t=>`<option value="${t}"${t===prevModel?' selected':''}>${t}</option>`).join('');
+
+  applyFilters();
+}
+
+function applyFilters(){
+  const nameQ   = ((document.getElementById('filterName')?document.getElementById('filterName').value:'')||'').trim().toLowerCase();
+  const classQ  = (document.getElementById('filterClass')?document.getElementById('filterClass').value:'')||'';
+  const modelQ  = (document.getElementById('filterModel')?document.getElementById('filterModel').value:'')||'';
+  const statusQ = (document.getElementById('filterStatus')?document.getElementById('filterStatus').value:'')||'';
+  const scoreQ  = (document.getElementById('filterScore')?document.getElementById('filterScore').value:'')||'';
+
+  const filtered = _allEntries.filter(e=>{
+    if(nameQ  && !(e.name||'').toLowerCase().includes(nameQ)) return false;
+    if(classQ && (e.class||'')!==classQ) return false;
+    if(modelQ && (e.modelTitle||'')!==modelQ) return false;
+    const isOnline = (Date.now()-e.ts)<120000;
+    if(statusQ==='online'  && !isOnline) return false;
+    if(statusQ==='offline' &&  isOnline) return false;
+    const pct = e.pct||0;
+    if(scoreQ==='high' && pct<80) return false;
+    if(scoreQ==='mid'  && (pct<60||pct>=80)) return false;
+    if(scoreQ==='low'  && pct>=60) return false;
+    return true;
+  });
+
+  renderKPIs(filtered);
+  renderTable(filtered);
+
+  const cnt = document.getElementById('filterCount');
+  if(cnt){
+    const total = _allEntries.length;
+    cnt.textContent = filtered.length < total
+      ? `يُعرض ${filtered.length} من ${total}`
+      : `${total} طالب`;
+  }
+}
+
+function resetFilters(){
+  document.getElementById('filterName').value='';
+  document.getElementById('filterClass').value='';
+  document.getElementById('filterModel').value='';
+  document.getElementById('filterStatus').value='';
+  document.getElementById('filterScore').value='';
+  applyFilters();
+}
+
+function renderKPIs(entries){
+  const n = entries.length;
+  document.getElementById('kpiTotal').textContent = n;
+  if(!n){
+    document.getElementById('kpiAvg').textContent='0%';
+    document.getElementById('kpiPass').textContent='0';
+    document.getElementById('kpiFail').textContent='0';
+    document.getElementById('kpiTop').textContent='0%';
+    document.getElementById('kpiOnline').textContent='0';
+    document.getElementById('distA').textContent='0';
+    document.getElementById('distB').textContent='0';
+    document.getElementById('distC').textContent='0';
+    document.getElementById('barChart').innerHTML='';
+    document.getElementById('chartSubtitle').textContent='';
+    document.getElementById('weaknessArea').innerHTML='<div class="no-data">لا توجد بيانات كافية</div>';
+    document.getElementById('strengthArea').innerHTML='<div class="no-data">لا توجد بيانات كافية</div>';
+    return;
+  }
+  const avg = Math.round(entries.reduce((s,e)=>s+(e.pct||0),0)/n);
+  const pass = entries.filter(e=>(e.pct||0)>=60).length;
+  const fail = n - pass;
+  const top  = Math.max(...entries.map(e=>e.pct||0));
+  const online = entries.filter(e=>(Date.now()-e.ts)<120000).length;
+  const distA = entries.filter(e=>(e.pct||0)>=80).length;
+  const distB = entries.filter(e=>(e.pct||0)>=60&&(e.pct||0)<80).length;
+  const distC = entries.filter(e=>(e.pct||0)<60).length;
+
+  document.getElementById('kpiAvg').textContent = avg+'%';
+  document.getElementById('kpiPass').textContent = pass;
+  document.getElementById('kpiFail').textContent = fail;
+  document.getElementById('kpiTop').textContent  = top+'%';
+  document.getElementById('kpiOnline').textContent = online;
+  document.getElementById('distA').textContent = distA;
+  document.getElementById('distB').textContent = distB;
+  document.getElementById('distC').textContent = distC;
+
+  // ── Bar chart
+  const sorted = [...entries].sort((a,b)=>(b.pct||0)-(a.pct||0));
+  const chart = document.getElementById('barChart');
+  chart.innerHTML='';
+  sorted.forEach(e=>{
+    const pct = e.pct||0;
+    const col = pct>=80?'#4ade80':pct>=60?'#f5c842':'#f87171';
+    const col2= document.createElement('div'); col2.className='bar-col';
+    const bar = document.createElement('div');  bar.className='bar';
+    bar.style.cssText=`height:${Math.max(4,pct*1.3)}px;background:${col};`;
+    bar.title = e.name+': '+pct+'%';
+    const pctLbl = document.createElement('div'); pctLbl.className='bar-pct'; pctLbl.textContent=pct+'%';
+    const namLbl = document.createElement('div'); namLbl.className='bar-name'; namLbl.textContent=e.name||'-';
+    col2.appendChild(pctLbl); col2.appendChild(bar); col2.appendChild(namLbl);
+    chart.appendChild(col2);
+  });
+  document.getElementById('chartSubtitle').textContent = '('+n+' طالب)';
+
+  analyzeWeaknessStrength(entries);
+}
+
+function renderTable(entries){
+  const noStu = document.getElementById('noStudentsDash');
+  const tbl   = document.getElementById('dashTable');
+  if(!entries.length){
+    noStu.style.display='block'; tbl.style.display='none'; return;
+  }
+  noStu.style.display='none'; tbl.style.display='table';
+  const sorted = [...entries].sort((a,b)=>(b.pct||0)-(a.pct||0));
+  const tbody = document.getElementById('dashTbody');
+  tbody.innerHTML='';
+  sorted.forEach((e,i)=>{
+    const pct=e.pct||0;
+    const col=pct>=80?'color:#4ade80':pct>=60?'color:var(--gold)':'color:#f87171';
+    const isOnline=(Date.now()-e.ts)<120000;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">${i+1}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:right;color:var(--txt);font-weight:600">${e.name||'-'}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;color:var(--txt2)">${e.class||'-'}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-size:.72rem;color:var(--txt2)">${e.modelTitle||'-'}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-weight:700;${col}">${e.correct||0}/${e.total||0}</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-weight:700;${col}">${pct}%</td>
+      <td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">${isOnline?'<span style="color:#4ade80">● متصل</span>':'<span style="color:var(--txt2)">○ غير متصل</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function analyzeWeaknessStrength(entries){
+  // entries should have detailAnswers: [{q, correct, total}]
+  // Aggregate per question label
+  const qMap = {};
+  entries.forEach(e=>{
+    if(!e.details) return;
+    Object.entries(e.details).forEach(([q,d])=>{
+      if(!qMap[q]) qMap[q]={q, correct:0, total:0};
+      qMap[q].correct += d.correct||0;
+      qMap[q].total   += d.total||0;
+    });
+  });
+  const qList = Object.values(qMap).filter(q=>q.total>0)
+    .map(function(q){ return {label:q.label, correct:q.correct, total:q.total, pct:Math.round(q.correct/q.total*100)}; })
+    .sort((a,b)=>a.pct-b.pct);
+
+  const weakArea = document.getElementById('weaknessArea');
+  const strongArea = document.getElementById('strengthArea');
+
+  if(!qList.length){
+    weakArea.innerHTML='<div class="no-data">لا توجد بيانات تحليلية كافية</div>';
+    strongArea.innerHTML='<div class="no-data">لا توجد بيانات تحليلية كافية</div>';
+    return;
+  }
+
+  // Weakest 5
+  const weak = qList.slice(0,5);
+  weakArea.innerHTML='<table class="w-table"><thead><tr><th>المطلوب</th><th>نسبة الإجابة الصحيحة</th><th>عدد الصح</th><th>الإجمالي</th></tr></thead><tbody>'
+    + weak.map(q=>`<tr>
+      <td style="text-align:right;color:var(--txt);font-weight:600">${q.q}</td>
+      <td><span class="w-bar" style="width:${Math.max(4,q.pct)}px"></span>${q.pct}%</td>
+      <td style="text-align:center">${q.correct}</td>
+      <td style="text-align:center">${q.total}</td>
+    </tr>`).join('')
+    +'</tbody></table>';
+
+  // Strongest 5
+  const strong = [...qList].reverse().slice(0,5);
+  strongArea.innerHTML='<table class="s-table"><thead><tr><th>المطلوب</th><th>نسبة الإجابة الصحيحة</th><th>عدد الصح</th><th>الإجمالي</th></tr></thead><tbody>'
+    + strong.map(q=>`<tr>
+      <td style="text-align:right;color:var(--txt);font-weight:600">${q.q}</td>
+      <td><span class="s-bar" style="width:${Math.max(4,q.pct)}px"></span>${q.pct}%</td>
+      <td style="text-align:center">${q.correct}</td>
+      <td style="text-align:center">${q.total}</td>
+    </tr>`).join('')
+    +'</tbody></table>';
+}
+
+function exportResults(){
+  const entries = Object.values(_dashData).filter(e=>e.name);
+  if(!entries.length){ showToast('لا توجد بيانات للتصدير'); return; }
+  let csv = '\uFEFF#,الاسم,الفصل,النموذج,الدرجة,الإجمالي,%\n';
+  entries.sort((a,b)=>(b.pct||0)-(a.pct||0)).forEach((e,i)=>{
+    csv += [i+1, e.name||'', e.class||'', e.modelTitle||'',
+            e.correct||0, e.total||0, (e.pct||0)+'%'].join(',')+'\n';
+  });
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'نتائج_الطلاب.csv';
+  a.click();
+  showToast('تم تصدير النتائج ✔');
+}
+
+// ════════════════════════════════════════════════════════
+// PASSWORD
+// ════════════════════════════════════════════════════════
+function requestTeacher(){
+  const ov=document.getElementById('pwOverlay');
+  document.getElementById('pwInp').value='';
+  document.getElementById('pwErr').style.display='none';
+  ov.classList.add('show');
+  // belt-and-suspenders for all browsers
+  ov.style.visibility='visible';
+  ov.style.opacity='1';
+  ov.style.pointerEvents='all';
+  setTimeout(()=>document.getElementById('pwInp').focus(),120);
+}
+function checkPw(){
+  const v=document.getElementById('pwInp').value;
+  if(v===PASS){
+    const ov=document.getElementById('pwOverlay');
+    ov.classList.remove('show');
+    ov.style.visibility='hidden';
+    ov.style.opacity='0';
+    ov.style.pointerEvents='none';
+    const target = ov.dataset.target||'t';
+    ov.dataset.target='t'; // reset
+    if(target==='d') setModeDash(); else setMode('t');
+  } else {
+    document.getElementById('pwErr').style.display='block';
+    document.getElementById('pwInp').value='';
+    setTimeout(()=>document.getElementById('pwInp').focus(),50);
+  }
+}
+function cancelPw(){
+  const ov=document.getElementById('pwOverlay');
+  ov.classList.remove('show');
+  ov.style.visibility='hidden';
+  ov.style.opacity='0';
+  ov.style.pointerEvents='none';
+}
+document.addEventListener('keydown',e=>{
+  const pwVisible = document.getElementById('pwOverlay').style.visibility==='visible';
+  if(pwVisible && e.key==='Enter'){
+    if(document.getElementById('pwInp').value.trim()) checkPw();
+    else { document.getElementById('pwErr').style.display='block'; document.getElementById('pwInp').focus(); }
+  }
+  if(pwVisible && e.key==='Escape') cancelPw();
+});
+
+// ════════════════════════════════════════════════════════
+// SAVE / LOAD
+// ════════════════════════════════════════════════════════
+let _st=null;
+function scheduleSave(){ clearTimeout(_st); _st=setTimeout(doSave,700); }
+
+function doSave(){
+  try{
+    // Sync current model data from DOM before saving
+    if(mode==='t'){ syncAllModelsFromDom(); pushModelsToFirebase(); }
+    localStorage.setItem(SK, JSON.stringify({
+      models, activeModel, presets:PRESETS,
+      hdrOpen, topOpen, botOpen, modelBarOpen
+    }));
+  }catch(e){}
+}
+
+function doLoad(){
+  try{
+    const raw=localStorage.getItem(SK); if(!raw)return false;
+    const d=JSON.parse(raw);
+    if((d.presets && d.presets.length)) PRESETS=d.presets;
+    if((d.models && d.models.length)){ models=d.models; }
+    activeModel=d.activeModel||0;
+    if(activeModel>=models.length) activeModel=0;
+    // restore collapse states
+    if(d.hdrOpen===false){hdrOpen=true;toggleHdr();}
+    if(d.topOpen===false){topOpen=true;toggleTop();}
+    if(d.botOpen===false){botOpen=true;toggleBot();}
+    if(d.modelBarOpen===false){modelBarOpen=true;toggleModelBar();}
+    return models.length>0;
+  }catch(e){return false;}
+}
+
+// Read all model data from teacher DOM into models[]
+function syncAllModelsFromDom(){
+  document.querySelectorAll('.model-card').forEach((card,i)=>{
+    if(!models[i]) return;
+    // title
+    const ti=card.querySelector('.model-title-inp');
+    if(ti) models[i].title=ti.value;
+    // examMode
+    models[i].examMode = card.dataset.examMode==='1';
+    // words — save text + cat + color
+    const words=[];
+    card.querySelectorAll('.wc').forEach(wcel=>{
+      const inp=wcel.querySelector('input');
+      if(!inp) return;
+      const w={text:inp.value};
+      if(wcel.dataset.cat) w.cat=wcel.dataset.cat;
+      if(wcel.dataset.color) w.color=parseInt(wcel.dataset.color);
+      words.push(w);
+    });
+    models[i].words=words;
+    // rows
+    const rows=[];
+    card.querySelectorAll('.trow').forEach(row=>{
+      const lbls=row.querySelectorAll('.qlbl');
+      const dzs=row.querySelectorAll('.dz');
+      const q1=(lbls[0] ? lbls[0].textContent.trim() : '')||'',q2=(lbls[1] ? lbls[1].textContent.trim() : '')||'';
+      const k1=[],k2=[],s1=[],s2=[];
+      if(dzs[0]) dzs[0].querySelectorAll('.ac.key input').forEach(i=>k1.push(i.value));
+      if(dzs[0]) dzs[0].querySelectorAll('.ac.stu input').forEach(i=>s1.push(i.value));
+      if(dzs[1]) dzs[1].querySelectorAll('.ac.key input').forEach(i=>k2.push(i.value));
+      if(dzs[1]) dzs[1].querySelectorAll('.ac.stu input').forEach(i=>s2.push(i.value));
+      const k3=[],s3=[];
+      if(dzs[2]) dzs[2].querySelectorAll('.ac.key input').forEach(i=>k3.push(i.value));
+      if(dzs[2]) dzs[2].querySelectorAll('.ac.stu input').forEach(i=>s3.push(i.value));
+      // Read hints from data attributes
+      const hint1=row.dataset.hint1||'';
+      const hint2=row.dataset.hint2||'';
+      const hint3=row.dataset.hint3||'';
+      rows.push({q1,q2,q3:(lbls[2] ? lbls[2].textContent.trim() : '')||'',k1,k2,k3,s1,s2,s3,hint1,hint2,hint3});
+    });
+    models[i].rows=rows;
+  });
+}
+
+document.addEventListener('input', scheduleSave);
+
+// ════════════════════════════════════════════════════════
+// MODE
+// ════════════════════════════════════════════════════════
+function setMode(m){
+  mode=m;
+  document.body.className=m==='s'?'sm':'tm';
+  document.getElementById('btnT').className='mbtn'+(m==='t'?' act-t':'');
+  document.getElementById('btnS').className='mbtn'+(m==='s'?' act-s':'');
+  document.getElementById('btnD').className='mbtn';
+  document.getElementById('teacherView').style.display=m==='t'?'block':'none';
+  document.getElementById('studentView').style.display=m==='s'?'block':'none';
+
+  if(m==='t'){
+    renderTeacherModels();
+    showActiveModelWords(); // show first model words in top panel
+  } else {
+    renderModelBar();
+    loadStudentView(activeModel);
+  }
+  showToast(m==='s'?'وضع الطالب 👦':'وضع المعلم 🎓');
+}
+
+// ════════════════════════════════════════════════════════
 // MODELS — TEACHER
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+let modelIdCounter=0;
+
 function addModel(data){
   modelIdCounter++;
-  let inheritedRows=[];
-  if(!data&&models.length>0){
-    const last=models[models.length-1];
-    inheritedRows=last.rows.map(r=>({
-      q1:r.q1,q2:r.q2,q3:r.q3||'',
-      hint1:r.hint1||'',hint2:r.hint2||'',hint3:r.hint3||'',
-      k1:[],k2:[],k3:[],s1:[],s2:[],s3:[]
+  // Copy row structure (questions only, no key/student answers) from last model
+  let inheritedRows = [];
+  if(!data && models.length>0){
+    const last = models[models.length-1];
+    inheritedRows = last.rows.map(r=>({
+      q1:r.q1, q2:r.q2, q3:r.q3||'',
+      hint1:r.hint1||'', hint2:r.hint2||'', hint3:r.hint3||'',
+      k1:[], k2:[], k3:[], s1:[], s2:[], s3:[]
     }));
   }
-  const m={id:modelIdCounter,title:data?.title||('نموذج '+(models.length+1)),
-    words:data?.words||[],rows:data?.rows||inheritedRows};
+  const m={
+    id: modelIdCounter,
+    title: (data ? data.title : undefined) || ('نموذج '+(models.length+1)),
+    words: (data ? data.words : undefined) || [],
+    rows:  (data ? data.rows  : undefined)  || inheritedRows
+  };
   models.push(m);
   renderTeacherModels();
   scheduleSave();
@@ -1053,42 +1693,18 @@ function deleteModel(idx){
   if(!confirm('حذف هذا النموذج نهائياً؟')) return;
   models.splice(idx,1);
   if(activeModel>=models.length) activeModel=Math.max(0,models.length-1);
-  renderTeacherModels(); scheduleSave();
-}
-
-function syncAllModelsFromDom(){
-  document.querySelectorAll('.model-card').forEach((card,i)=>{
-    if(!models[i]) return;
-    const ti=card.querySelector('.model-title-inp');
-    if(ti) models[i].title=ti.value;
-    const words=[];
-    card.querySelectorAll('.cgrid .wc input').forEach(inp=>words.push(inp.value));
-    models[i].words=words;
-    const rows=[];
-    card.querySelectorAll('.trow').forEach(row=>{
-      const lbls=row.querySelectorAll('.qlbl');
-      const dzs=row.querySelectorAll('.dz');
-      const q1=lbls[0]?.textContent.trim()||'';
-      const q2=lbls[1]?.textContent.trim()||'';
-      const q3=lbls[2]?.textContent.trim()||'';
-      const k1=[],k2=[],k3=[];
-      dzs[0]?.querySelectorAll('.ac.key input').forEach(i=>k1.push(i.value));
-      dzs[1]?.querySelectorAll('.ac.key input').forEach(i=>k2.push(i.value));
-      dzs[2]?.querySelectorAll('.ac.key input').forEach(i=>k3.push(i.value));
-      const hint1=row.dataset.hint1||'',hint2=row.dataset.hint2||'',hint3=row.dataset.hint3||'';
-      rows.push({q1,q2,q3,k1,k2,k3,s1:[],s2:[],s3:[],hint1,hint2,hint3});
-    });
-    models[i].rows=rows;
-  });
+  renderTeacherModels();
+  scheduleSave();
 }
 
 function renderTeacherModels(){
+  // Sync DOM before re-render
   if(document.querySelectorAll('.model-card').length>0) syncAllModelsFromDom();
   const cont=document.getElementById('modelsContainer');
   cont.innerHTML='';
   models.forEach((m,idx)=>{
     const card=document.createElement('div'); card.className='model-card';
-    // Header
+    // card header
     const chdr=document.createElement('div'); chdr.className='model-card-hdr';
     const badge=document.createElement('span'); badge.className='model-num-badge';
     badge.textContent='نموذج '+(idx+1);
@@ -1096,43 +1712,160 @@ function renderTeacherModels(){
     ti.type='text'; ti.value=m.title; ti.placeholder='عنوان النموذج...';
     ti.addEventListener('input',scheduleSave);
     const colBtn=document.createElement('button'); colBtn.className='col-btn model-col-btn';
-    colBtn.textContent='▲';
+    colBtn.textContent='▲'; colBtn.title='طي/نشر';
     const delBtn=document.createElement('button'); delBtn.className='model-del-btn';
-    delBtn.textContent='🗑 حذف'; delBtn.onclick=()=>deleteModel(idx);
-    chdr.appendChild(badge); chdr.appendChild(ti); chdr.appendChild(colBtn); chdr.appendChild(delBtn);
-    // Body
-    const cbody=document.createElement('div'); cbody.className='col-body'; cbody.style.maxHeight='2000px';
-    colBtn.onclick=()=>{
-      const open=!cbody.classList.contains('collapsed');
-      if(open){cbody.style.maxHeight='0';cbody.classList.add('collapsed');colBtn.textContent='▼';}
-      else{cbody.style.maxHeight='2000px';cbody.classList.remove('collapsed');colBtn.textContent='▲';}
-    };
+    delBtn.textContent='🗑 حذف';
+    delBtn.onclick=()=>deleteModel(idx);
+    // ── لوحة الألوان (7 ألوان)
+    const PALETTE=[
+      {bg:'#1e3a5f',border:'#3b82f6',text:'#dbeafe',label:'أزرق'},
+      {bg:'#14532d',border:'#22c55e',text:'#bbf7d0',label:'أخضر'},
+      {bg:'#4a1d96',border:'#a855f7',text:'#e9d5ff',label:'بنفسجي'},
+      {bg:'#7c2d12',border:'#f97316',text:'#fed7aa',label:'برتقالي'},
+      {bg:'#831843',border:'#ec4899',text:'#fce7f3',label:'وردي'},
+      {bg:'#1f2937',border:'#9ca3af',text:'#f3f4f6',label:'رمادي'},
+      {bg:'#451a03',border:'#f59e0b',text:'#fef3c7',label:'ذهبي'},
+    ];
+    let activePalIdx=null;
+    let palLocked=false;
+    const palette=document.createElement('div'); palette.className='model-color-palette';
+
+    // زر القفل
+    const lockBtn=document.createElement('div'); lockBtn.className='pal-lock-btn';
+    lockBtn.title='قفل/فتح التلوين'; lockBtn.textContent='🔓';
+    lockBtn.addEventListener('click',()=>{
+      palLocked=!palLocked;
+      lockBtn.textContent=palLocked?'🔒':'🔓';
+      lockBtn.classList.toggle('locked',palLocked);
+      palette.classList.toggle('locked',palLocked);
+    });
+    palette.appendChild(lockBtn);
+
+    // نقطة إعادة التعيين
+    const resetDot=document.createElement('div'); resetDot.className='mcp-dot';
+    resetDot.style.cssText='background:rgba(255,255,255,.1);border:2px dashed rgba(255,255,255,.3)';
+    resetDot.title='إزالة اللون';
+    resetDot.addEventListener('click',()=>{
+      if(palLocked) return;
+      activePalIdx=null;
+      palette.querySelectorAll('.mcp-dot').forEach(d=>d.classList.remove('active'));
+      resetDot.classList.add('active');
+    });
+    palette.appendChild(resetDot);
+    PALETTE.forEach((c,i)=>{
+      const dot=document.createElement('div'); dot.className='mcp-dot';
+      dot.style.background=c.bg; dot.style.borderColor=c.border; dot.title=c.label;
+      dot.addEventListener('click',()=>{
+        if(palLocked) return;
+        activePalIdx=i;
+        palette.querySelectorAll('.mcp-dot').forEach(d=>d.classList.remove('active'));
+        dot.classList.add('active');
+      });
+      palette.appendChild(dot);
+    });
+
+    // ── زر وضع الاختبار
+    const examBtn=document.createElement('button'); examBtn.className='exam-btn';
+    examBtn.textContent='📝 وضع الاختبار';
+    examBtn.title='تفعيل/إيقاف وضع الاختبار';
+    const examActive=m.examMode||false;
+    if(examActive){ examBtn.classList.add('active'); examBtn.textContent='🔒 وضع الاختبار'; }
+    card.dataset.examMode=examActive?'1':'0';
+    examBtn.addEventListener('click',()=>{
+      const isOn=examBtn.classList.toggle('active');
+      examBtn.textContent=isOn?'🔒 وضع الاختبار':'📝 وضع الاختبار';
+      card.dataset.examMode=isOn?'1':'0';
+      m.examMode=isOn;
+      scheduleSave();
+      showToast(isOn?'وضع الاختبار مفعّل 🔒':'وضع الاختبار مُوقف ✔');
+    });
+
+    chdr.appendChild(badge); chdr.appendChild(ti);
+    chdr.appendChild(palette);
+    chdr.appendChild(examBtn);
+    chdr.appendChild(colBtn); chdr.appendChild(delBtn);
+
+    // collapsible body
+    const cbody=document.createElement('div'); cbody.className='col-body';
+    cbody.style.maxHeight='2000px';
+    colBtn.onclick=()=>toggleCardBody(cbody,colBtn);
+
     // Words section
-    const wlbl=document.createElement('div');
-    wlbl.style.cssText='font-family:Amiri,serif;font-size:.88rem;margin-bottom:6px;color:rgba(245,200,66,.8);font-weight:700';
+    const wlbl=document.createElement('div'); wlbl.className='sec-lbl';
+    wlbl.style.cssText='font-size:.88rem;margin-bottom:6px;color:rgba(245,200,66,.8)';
     wlbl.textContent='📖 كلمات القطعة';
     const bulkRow=document.createElement('div'); bulkRow.className='bulk-row';
     const bta=document.createElement('textarea'); bta.className='bulk-ta';
-    bta.placeholder='الصق النص هنا ثم اضغط توزيع...'; bta.rows=2;
+    bta.placeholder='الصق النص هنا...'; bta.rows=2;
+    bta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();parseBulkForModel(idx,bta);}});
     const bBtn=document.createElement('button'); bBtn.className='btn bp'; bBtn.textContent='توزيع ⚡';
-    const grid=document.createElement('div'); grid.className='cgrid';
-    bBtn.onclick=()=>{
-      const val=bta.value.trim(); if(!val) return;
-      const words=val.split(/\s+|[،,؛;؟?!.]+/).filter(w=>w.trim().length>0);
-      grid.innerHTML=''; words.forEach(w=>appendWordToGrid(grid,w));
-      bta.value=''; scheduleSave(); showToast('تم توزيع '+words.length+' كلمة ✔');
-    };
+    bBtn.onclick=()=>parseBulkForModel(idx,bta);
     bulkRow.appendChild(bta); bulkRow.appendChild(bBtn);
-    const wtb=document.createElement('div'); wtb.className='tb';
+
+    // grid أولاً لأن الأزرار تحتاجه في closure
+    const grid=document.createElement('div'); grid.className='cgrid';
+    m.words.forEach(w=>{
+      if(typeof w==='string') appendWordToGrid(grid,w);
+      else appendWordToGrid(grid,w.text||'',w.cat||null,w.color!=null?w.color:null);
+    });
+
+    // ربط لوحة الألوان بالـ grid (بعد تعريف grid)
+    grid.addEventListener('focusin',e=>{
+      if(mode!=='t') return;
+      if(palLocked) return;
+      if(activePalIdx===null) return;
+      const inp=e.target; if(!inp.matches('.wc input')) return;
+      const cell=inp.closest('.wc'); if(!cell) return;
+      const c=PALETTE[activePalIdx];
+      cell.style.background=`linear-gradient(135deg,${c.bg}dd,${c.bg}99)`;
+      cell.style.borderColor=c.border; inp.style.color=c.text;
+      cell.dataset.color=activePalIdx;
+      scheduleSave();
+    });
+
+    // ── شريط الأزرار الموحد (سطر واحد)
+    const wordBtnRow=document.createElement('div'); wordBtnRow.className='word-btn-row';
+
     const addWBtn=document.createElement('button'); addWBtn.className='btn bb'; addWBtn.textContent='+ كلمة';
-    addWBtn.onclick=()=>{appendWordToGrid(grid,'');scheduleSave();};
+    addWBtn.style.cssText='padding:3px 8px;font-size:.75rem';
+    addWBtn.onclick=()=>{ insertWordAfterFocused(grid,''); };
+
     const clrWBtn=document.createElement('button'); clrWBtn.className='btn br'; clrWBtn.textContent='مسح الكلمات';
-    clrWBtn.onclick=()=>{if(confirm('مسح كلمات هذه القطعة؟')){grid.innerHTML='';scheduleSave();}};
-    wtb.appendChild(addWBtn); wtb.appendChild(clrWBtn);
-    m.words.forEach(w=>appendWordToGrid(grid,w));
+    clrWBtn.style.cssText='padding:3px 8px;font-size:.75rem';
+    clrWBtn.onclick=()=>{ if(confirm('مسح كلمات هذه القطعة؟')){grid.innerHTML='';scheduleSave();} };
+
+    const IRAAB=['مبتدأ','خبر','فاعل','مفعول به','مفعول مطلق','مفعول لأجله','اسم مجرور','اسم لفعل ناسخ','اسم لحرف ناسخ','مضاف إليه','نعت','اسم معطوف'];
+    const addIraabBtn=document.createElement('button'); addIraabBtn.className='btn'; addIraabBtn.textContent='+ الإعرابات';
+    addIraabBtn.style.cssText='padding:3px 8px;font-size:.75rem;background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.5);color:#e9d5ff';
+    addIraabBtn.onclick=()=>{ IRAAB.forEach(w=>appendWordToGrid(grid,w,'iraab')); scheduleSave(); showToast('تمت إضافة الإعرابات ✔'); };
+    const clrIraabBtn=document.createElement('button'); clrIraabBtn.className='btn br'; clrIraabBtn.textContent='مسح الإعرابات';
+    clrIraabBtn.style.cssText='padding:3px 8px;font-size:.75rem';
+    clrIraabBtn.onclick=()=>{ grid.querySelectorAll('.wc[data-cat="iraab"]').forEach(c=>c.remove()); scheduleSave(); showToast('تم مسح الإعرابات'); };
+
+    const HALA=['مرفوع','منصوب','مجرور','مبني على'];
+    const addHalaBtn=document.createElement('button'); addHalaBtn.className='btn'; addHalaBtn.textContent='+ الحالات';
+    addHalaBtn.style.cssText='padding:3px 8px;font-size:.75rem;background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.5);color:#bbf7d0';
+    addHalaBtn.onclick=()=>{ HALA.forEach(w=>appendWordToGrid(grid,w,'hala')); scheduleSave(); showToast('تمت إضافة الحالات ✔'); };
+    const clrHalaBtn=document.createElement('button'); clrHalaBtn.className='btn br'; clrHalaBtn.textContent='مسح الحالات';
+    clrHalaBtn.style.cssText='padding:3px 8px;font-size:.75rem';
+    clrHalaBtn.onclick=()=>{ grid.querySelectorAll('.wc[data-cat="hala"]').forEach(c=>c.remove()); scheduleSave(); showToast('تم مسح الحالات'); };
+
+    const ALAMAT=['الضمة','الفتحة','الكسرة','المقدرة','الألف','الواو','الياء','ثبوت النون','حذف النون','الفتح','الضم','السكون','الكسر'];
+    const addAlamatBtn=document.createElement('button'); addAlamatBtn.className='btn'; addAlamatBtn.textContent='+ العلامات';
+    addAlamatBtn.style.cssText='padding:3px 8px;font-size:.75rem;background:rgba(251,146,60,.2);border:1px solid rgba(251,146,60,.5);color:#fed7aa';
+    addAlamatBtn.onclick=()=>{ ALAMAT.forEach(w=>appendWordToGrid(grid,w,'alamat')); scheduleSave(); showToast('تمت إضافة العلامات ✔'); };
+    const clrAlamatBtn=document.createElement('button'); clrAlamatBtn.className='btn br'; clrAlamatBtn.textContent='مسح العلامات';
+    clrAlamatBtn.style.cssText='padding:3px 8px;font-size:.75rem';
+    clrAlamatBtn.onclick=()=>{ grid.querySelectorAll('.wc[data-cat="alamat"]').forEach(c=>c.remove()); scheduleSave(); showToast('تم مسح العلامات'); };
+
+    wordBtnRow.appendChild(addWBtn); wordBtnRow.appendChild(clrWBtn);
+    wordBtnRow.appendChild(addIraabBtn); wordBtnRow.appendChild(clrIraabBtn);
+    wordBtnRow.appendChild(addHalaBtn); wordBtnRow.appendChild(clrHalaBtn);
+    wordBtnRow.appendChild(addAlamatBtn); wordBtnRow.appendChild(clrAlamatBtn);
+
     // Tasks section
-    const tlbl=document.createElement('div');
-    tlbl.style.cssText='font-family:Amiri,serif;font-size:.88rem;margin:10px 0 6px;color:rgba(245,200,66,.8);font-weight:700';
+    const tlbl=document.createElement('div'); tlbl.className='sec-lbl';
+    tlbl.style.cssText='font-size:.88rem;margin:10px 0 6px;color:rgba(245,200,66,.8)';
     tlbl.textContent='✏️ المطلوبات';
     const colHdr=document.createElement('div'); colHdr.className='col-hdr';
     colHdr.innerHTML='<div class="ch q">المطلوب الأول</div><div></div><div class="ch a">الإجابة</div><div></div><div class="ch q">المطلوب الثاني</div><div></div><div class="ch a">الإجابة</div><div></div><div class="ch q">المطلوب الثالث</div><div></div><div class="ch a">الإجابة</div><div></div>';
@@ -1140,46 +1873,186 @@ function renderTeacherModels(){
     m.rows.forEach(r=>addRowToContainer(tc,r.q1,r.q2,r.k1,r.k2,[],[],r.q3,r.k3,[],r.hint1||'',r.hint2||'',r.hint3||''));
     const bc=document.createElement('div'); bc.className='bc';
     const addRBtn=document.createElement('button'); addRBtn.className='btn bg'; addRBtn.textContent='+ إضافة سطر';
-    addRBtn.onclick=()=>{addRowToContainer(tc,'','','');scheduleSave();};
+    addRBtn.onclick=()=>{ addRowToContainer(tc,'',''); scheduleSave(); };
     const presBtn=document.createElement('button'); presBtn.className='btn bp'; presBtn.textContent='📋 قائمة المطلوبات';
     presBtn.onclick=()=>openPresets(tc);
     const clrABtn=document.createElement('button'); clrABtn.className='btn br'; clrABtn.textContent='🗑 مسح إجابات المعلم';
     clrABtn.onclick=()=>{
-      if(!confirm('مسح إجابات المعلم في هذا النموذج؟')) return;
-      tc.querySelectorAll('.ac.key').forEach(c=>{const z=c.parentElement;c.remove();updateKey(z);refreshPH(z);});
+      if(!confirm('مسح إجابات المعلم (مفاتيح التصحيح) في هذا النموذج؟'))return;
+      tc.querySelectorAll('.ac.key').forEach(c=>{const z=c.parentElement;c.remove();if(mode==='t')updateKey(z);refreshPH(z);});
       scheduleSave(); showToast('تم مسح إجابات المعلم ✔');
     };
     bc.appendChild(addRBtn); bc.appendChild(presBtn); bc.appendChild(clrABtn);
-    cbody.appendChild(wlbl); cbody.appendChild(bulkRow); cbody.appendChild(wtb);
+
+    cbody.appendChild(wlbl); cbody.appendChild(bulkRow);
+    cbody.appendChild(wordBtnRow);
     cbody.appendChild(grid); cbody.appendChild(tlbl); cbody.appendChild(colHdr);
     cbody.appendChild(tc); cbody.appendChild(bc);
     card.appendChild(chdr); card.appendChild(cbody);
     cont.appendChild(card);
   });
+  // Update top panel label
+  document.getElementById('topPanelLbl').textContent='📖 القطعة النصية';
 }
 
-// ══════════════════════════════════════════════
+function toggleCardBody(body,btn){
+  const open=body.style.maxHeight!=='0px'&&!body.classList.contains('collapsed');
+  if(open){ body.style.maxHeight='0'; body.classList.add('collapsed'); btn.textContent='▼'; }
+  else { body.style.maxHeight='2000px'; body.classList.remove('collapsed'); btn.textContent='▲'; }
+}
+
+function parseBulkForModel(idx,ta){
+  const val=ta.value.trim(); if(!val)return;
+  const words=val.split(/\s+|[،,؛;؟?!.]+/).filter(w=>w.trim().length>0);
+  if(!words.length)return;
+  // Find the grid of this card
+  const cards=document.querySelectorAll('.model-card');
+  if(!cards[idx])return;
+  const grid=cards[idx].querySelector('.cgrid');
+  grid.innerHTML='';
+  words.forEach(w=>appendWordToGrid(grid,w));
+  ta.value='';
+  scheduleSave(); showToast('تم توزيع '+words.length+' كلمة ✔');
+}
+
+// ════════════════════════════════════════════════════════
 // WORD CELLS
-// ══════════════════════════════════════════════
-function appendWordToGrid(grid,text){
-  const cell=document.createElement('div'); cell.className='wc';
-  const inp=document.createElement('input');
+// ════════════════════════════════════════════════════════
+let _lastFocusedCell = null; // آخر خلية تم التركيز عليها
+
+const WC_COLORS = [
+  {label:'افتراضي', bg:null},
+  {label:'أزرق',    bg:'#1d4ed8',border:'#3b82f6',text:'#dbeafe'},
+  {label:'أخضر',    bg:'#166534',border:'#22c55e',text:'#bbf7d0'},
+  {label:'بنفسجي',  bg:'#6b21a8',border:'#a855f7',text:'#e9d5ff'},
+  {label:'برتقالي', bg:'#9a3412',border:'#f97316',text:'#fed7aa'},
+  {label:'وردي',    bg:'#9d174d',border:'#ec4899',text:'#fce7f3'},
+  {label:'رمادي',   bg:'#374151',border:'#9ca3af',text:'#f3f4f6'},
+  {label:'ذهبي',    bg:'#78350f',border:'#f59e0b',text:'#fef3c7'},
+];
+
+function applyCellColor(cell, colorIdx){
+  const c = WC_COLORS[colorIdx] || WC_COLORS[0];
+  if(!c.bg){
+    cell.style.background='';cell.style.borderColor='';
+    cell.querySelector('input').style.color='';
+    cell.removeAttribute('data-color');
+  } else {
+    cell.style.background=`linear-gradient(135deg,${c.bg}cc,${c.bg}88)`;
+    cell.style.borderColor=c.border;
+    cell.querySelector('input').style.color=c.text;
+    cell.dataset.color=colorIdx;
+  }
+}
+
+function applyCatStyle(cell, cat){
+  cell.dataset.cat = cat||'';
+}
+
+function appendWordToGrid(grid, text, cat, colorIdx){
+  const cell = document.createElement('div'); cell.className='wc';
+  if(cat) cell.dataset.cat=cat;
+
+  // color picker bar
+  const colorBar = document.createElement('div'); colorBar.className='wc-color-bar';
+  WC_COLORS.forEach((c,i)=>{
+    const dot = document.createElement('div'); dot.className='wc-color-dot';
+    dot.title=c.label;
+    dot.style.background = c.bg||'rgba(255,255,255,.15)';
+    dot.style.borderColor = c.border||'rgba(255,255,255,.3)';
+    dot.addEventListener('mousedown',e=>{ e.preventDefault(); e.stopPropagation(); applyCellColor(cell,i); scheduleSave(); });
+    colorBar.appendChild(dot);
+  });
+
+  const inp = document.createElement('input');
   inp.value=text||''; inp.placeholder='كلمة'; inp.dir='rtl'; inp.type='text';
   inp.style.width=mw(text,18.8)+'px';
-  inp.addEventListener('input',()=>{inp.style.width=mw(inp.value,18.8)+'px';scheduleSave();});
+  inp.addEventListener('input',()=>{ inp.style.width=mw(inp.value,18.8)+'px'; scheduleSave(); });
+  inp.addEventListener('focus',()=>{ _lastFocusedCell=cell; });
   inp.addEventListener('mousedown',e=>e.stopPropagation());
   inp.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-  const xb=document.createElement('button'); xb.className='xb'; xb.innerHTML='✕';
-  xb.addEventListener('click',e=>{e.stopPropagation();cell.remove();scheduleSave();});
-  cell.appendChild(inp); cell.appendChild(xb);
-  cell.addEventListener('mousedown',e=>{if(e.target===inp||e.target===xb)return;beginDrag(e,'top',cell,null,inp.value.trim()||'؟');});
-  cell.addEventListener('touchstart',e=>{if(e.target===inp||e.target===xb)return;beginDrag(e,'top',cell,null,inp.value.trim()||'؟');},{passive:false});
-  grid.appendChild(cell); return cell;
+
+  const xb = document.createElement('button'); xb.className='xb'; xb.innerHTML='✕';
+  xb.addEventListener('click',e=>{e.stopPropagation();cell.remove();scheduleSave();if(_lastFocusedCell===cell)_lastFocusedCell=null;});
+  xb.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();cell.remove();scheduleSave();});
+
+  cell.appendChild(colorBar);
+  cell.appendChild(inp);
+  cell.appendChild(xb);
+
+  // apply color if given
+  if(colorIdx!=null) applyCellColor(cell, colorIdx);
+
+  // drag reorder within grid
+  cell.addEventListener('mousedown',e=>{
+    if(e.target===inp||e.target===xb||colorBar.contains(e.target)) return;
+    beginDrag(e,'top',cell,null,inp.value.trim()||'؟');
+  });
+  cell.addEventListener('touchstart',e=>{
+    if(e.target===inp||e.target===xb||colorBar.contains(e.target)) return;
+    beginDrag(e,'top',cell,null,inp.value.trim()||'؟');
+  },{passive:false});
+
+  grid.appendChild(cell);
+  return cell;
 }
 
-// ══════════════════════════════════════════════
+// أضف كلمة بعد آخر خلية تم التركيز عليها (أو في النهاية)
+function insertWordAfterFocused(grid, text, cat, colorIdx){
+  const newCell = document.createElement('div');
+  grid.appendChild(newCell); // placeholder
+  const built = appendWordToGrid(newCell.parentElement, text, cat, colorIdx);
+  // remove placeholder since appendWordToGrid already appended
+  // Now reposition: insert after focused cell
+  if(_lastFocusedCell && _lastFocusedCell.parentElement===grid){
+    _lastFocusedCell.insertAdjacentElement('afterend', built);
+  }
+  // else it's already at the end (from appendChild inside appendWordToGrid)
+  newCell.remove(); // remove the placeholder div
+  built.querySelector('input').focus();
+  scheduleSave();
+  return built;
+}
+
+// Helpers for old single-model top grid (used in student view) — renders read-only drag cells
+function renderTopGridForModel(mi){
+  const grid=document.getElementById('topGrid');
+  grid.innerHTML='';
+  if(mi<0||mi>=models.length)return;
+  models[mi].words.forEach(w=>{
+    if(typeof w==='string') appendWordToGrid(grid,w);
+    else appendWordToGrid(grid,w.text||'',w.cat||null,w.color!=null?w.color:null);
+  });
+}
+
+// teacher helpers for active model
+function addWordToActive(){
+  if(mode!=='t')return;
+  const cards=document.querySelectorAll('.model-card');
+  if(!cards.length)return;
+  const grid=cards[0].querySelector('.cgrid'); // TODO: use focused card
+  appendWordToGrid(grid,''); scheduleSave();
+}
+function loadSampleToActive(){ /* not used in new design */ }
+function clearWordsOfActive(){ /* not used */ }
+function parseBulk(){
+  const val=document.getElementById('bulkTA').value.trim(); if(!val)return;
+  const words=val.split(/\s+|[،,؛;؟?!.]+/).filter(w=>w.trim().length>0);
+  if(!words.length)return;
+  const grid=document.getElementById('topGrid'); grid.innerHTML='';
+  words.forEach(w=>appendWordToGrid(grid,w));
+  document.getElementById('bulkTA').value='';
+  scheduleSave(); showToast('تم توزيع '+words.length+' كلمة ✔');
+}
+function showActiveModelWords(){
+  // In teacher mode, top grid not the main entry point
+  const grid=document.getElementById('topGrid'); grid.innerHTML='';
+}
+
+// ════════════════════════════════════════════════════════
 // TASK ROWS
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+let _rowIdx=0;
 function addRowToContainer(tc,q1,q2,k1,k2,s1,s2,q3,k3,s3,hint1,hint2,hint3){
   _rowIdx++;
   q1=q1||('المطلوب '+_rowIdx+' أ');
@@ -1191,72 +2064,92 @@ function addRowToContainer(tc,q1,q2,k1,k2,s1,s2,q3,k3,s3,hint1,hint2,hint3){
   const lb1=mkLbl(q1,'q1',hint1),sp1=mkSep(),dz1=mkDZ(false),
         sp2=mkSep(),lb2=mkLbl(q2,'q2',hint2),sp3=mkSep(),dz2=mkDZ(false),
         sp4=mkSep(),lb3=mkLbl(q3,'q3',hint3),sp5=mkSep(),dz3=mkDZ(true);
-  const del=document.createElement('button'); del.className='rdel to'; del.innerHTML='✕';
+  const del=document.createElement('button');
+  del.className='rdel to'; del.innerHTML='✕';
   del.addEventListener('click',()=>{row.remove();scheduleSave();});
+  del.addEventListener('touchend',e=>{e.preventDefault();row.remove();scheduleSave();});
   row.appendChild(lb1);row.appendChild(sp1);row.appendChild(dz1);
   row.appendChild(sp2);row.appendChild(lb2);row.appendChild(sp3);row.appendChild(dz2);
   row.appendChild(sp4);row.appendChild(lb3);row.appendChild(sp5);row.appendChild(dz3);
-  row.appendChild(del); tc.appendChild(row);
-  if(k1)k1.forEach(t=>{if(t&&t.trim())mkACell(dz1,t,'key');});
-  if(k2)k2.forEach(t=>{if(t&&t.trim())mkACell(dz2,t,'key');});
-  if(k3)k3.forEach(t=>{if(t&&t.trim())mkACell(dz3,t,'key');});
-  if(s1)s1.forEach(t=>{if(t&&t.trim())mkACell(dz1,t,'stu');});
-  if(s2)s2.forEach(t=>{if(t&&t.trim())mkACell(dz2,t,'stu');});
-  if(s3)s3.forEach(t=>{if(t&&t.trim())mkACell(dz3,t,'stu');});
-  refreshPH(dz1);refreshPH(dz2);refreshPH(dz3);
+  row.appendChild(del);
+  tc.appendChild(row);
+  if(k1)k1.forEach(t=>{if(t.trim())mkACell(dz1,t,'key');});
+  if(k2)k2.forEach(t=>{if(t.trim())mkACell(dz2,t,'key');});
+  if(k3)k3.forEach(t=>{if(t.trim())mkACell(dz3,t,'key');});
+  if(s1)s1.forEach(t=>{if(t.trim())mkACell(dz1,t,'stu');});
+  if(s2)s2.forEach(t=>{if(t.trim())mkACell(dz2,t,'stu');});
+  if(s3)s3.forEach(t=>{if(t.trim())mkACell(dz3,t,'stu');});
+  refreshPH(dz1); refreshPH(dz2); refreshPH(dz3);
   scheduleSave();
 }
 
 function mkLbl(txt,cls,hint){
   const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;align-items:center;gap:4px;padding:0';
   wrap.className='qlbl-wrap '+cls;
-  const bulb=document.createElement('button'); bulb.className='bulb-btn'+(hint?' has-hint':'');
+
+  const bulb=document.createElement('button');
+  bulb.className='bulb-btn'+(hint?' has-hint':'');
   bulb.textContent='💡';
-  const l=document.createElement('div'); l.className='qlbl '+cls;
-  l.style.cssText='flex:1;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;text-align:center;direction:rtl;word-break:break-word;padding:2px 0';
+  bulb.title=mode==='t'?'أضف تغذية راجعة':'اضغط لمعرفة تلميح';
+
+  const l=document.createElement('div');
+  l.className='qlbl '+cls;
+  l.style.cssText='flex:1;border:none;background:none';
   l.setAttribute('contenteditable',mode==='t'?'true':'false');
   l.dir='rtl'; l.textContent=txt;
   l.addEventListener('input',scheduleSave);
+
+  // Store hint on row element via dataset
   const getRow=()=>wrap.closest('.trow');
+
   if(mode==='t'){
+    // Teacher: click bulb → prompt to enter hint
     bulb.addEventListener('click',e=>{
       e.stopPropagation();
       const row=getRow(); if(!row) return;
       const hintKey='hint'+cls.replace(/[^123]/g,'');
       const current=row.dataset[hintKey]||'';
-      const val=prompt('أدخل التغذية الراجعة للطالب (اتركه فارغاً للحذف):',current);
-      if(val===null) return;
+      const val=prompt('أدخل التغذية الراجعة للطالب (اتركه فارغاً للحذف):', current);
+      if(val===null) return; // cancelled
       row.dataset[hintKey]=val.trim();
-      bulb.classList.toggle('has-hint',val.trim().length>0);
+      bulb.classList.toggle('has-hint', val.trim().length>0);
       scheduleSave();
     });
   } else {
+    // Student: click bulb → show hint (unless exam mode)
     bulb.addEventListener('click',e=>{
       e.stopPropagation();
+      // وضع الاختبار: لا تغذية راجعة
+      if(models[activeModel] && models[activeModel].examMode) return;
       const row=getRow(); if(!row) return;
       const hintKey='hint'+cls.replace(/[^123]/g,'');
       const hintText=row.dataset[hintKey]||'';
-      showHintPopup(hintText||'لا توجد تغذية راجعة لهذا المطلوب',bulb);
+      if(!hintText){ showHintPopup('لا توجد تغذية راجعة لهذا المطلوب',bulb); return; }
+      showHintPopup(hintText, bulb);
     });
-    bulb.addEventListener('touchend',e=>{e.preventDefault();bulb.click();});
+    bulb.addEventListener('touchend',e=>{
+      e.preventDefault(); bulb.click();
+    });
   }
-  wrap.appendChild(bulb); wrap.appendChild(l); return wrap;
+
+  wrap.appendChild(bulb);
+  wrap.appendChild(l);
+  return wrap;
 }
-
-function mkSep(){const s=document.createElement('div');s.className='csep';return s;}
-
+function mkSep(){ const s=document.createElement('div'); s.className='csep'; return s; }
 function mkDZ(isLast){
-  const z=document.createElement('div'); z.className='dz'+(isLast?' last':'');
+  const z=document.createElement('div');
+  z.className='dz'+(isLast?' last':'');
   addPH(z);
-  z.addEventListener('mouseenter',()=>{if(drag)z.classList.add('over');});
+  z.addEventListener('mouseenter',()=>{ if(drag)z.classList.add('over'); });
   z.addEventListener('mouseleave',()=>z.classList.remove('over'));
   z.addEventListener('dblclick',e=>{
-    if(mode!=='t') return;
+    if(mode!=='t')return;
     if(e.target===z||e.target.classList.contains('ph')) mkACell(z,'','key',true);
   });
   return z;
 }
-
 function addPH(z){
   if(!z.querySelector('.ph')){
     const ph=document.createElement('span'); ph.className='ph';
@@ -1264,10 +2157,11 @@ function addPH(z){
     z.appendChild(ph);
   }
 }
-
 function refreshPH(z){
   z.querySelectorAll('.ph').forEach(p=>p.remove());
-  const has=mode==='s'?z.querySelectorAll('.ac.stu').length>0:z.querySelectorAll('.ac').length>0;
+  const has=mode==='s'
+    ?z.querySelectorAll('.ac.stu').length>0
+    :z.querySelectorAll('.ac').length>0;
   if(!has) addPH(z);
 }
 
@@ -1288,49 +2182,120 @@ function mkACell(zone,text,kind,focus){
   const xb=document.createElement('button'); xb.className='xb'; xb.innerHTML='✕';
   xb.addEventListener('click',e=>{
     e.stopPropagation(); const z=cell.parentElement; cell.remove();
-    if(kind==='key') updateKey(z); refreshPH(z); scheduleSave();
+    if(kind==='key')updateKey(z); refreshPH(z); scheduleSave();
+  });
+  xb.addEventListener('touchend',e=>{
+    e.preventDefault();e.stopPropagation(); const z=cell.parentElement; cell.remove();
+    if(kind==='key')updateKey(z); refreshPH(z); scheduleSave();
   });
   cell.appendChild(inp); cell.appendChild(xb);
+
+  // Student mode: single tap/click on answer cell → delete it immediately
   if(kind==='stu'){
-    cell.addEventListener('click',e=>{
+    let _tapTimer=null, _tapMoved=false;
+    const _tapThresh=8;
+    let _tapStartX=0, _tapStartY=0;
+
+    // Mouse: click (not drag)
+    cell.addEventListener('click', e=>{
       if(e.target===inp||e.target===xb) return;
       if(mode!=='s') return;
       const z=cell.parentElement; cell.remove(); refreshPH(z); scheduleSave();
-      setTimeout(pushStudentAnswers,300);
+      setTimeout(pushStudentAnswers,500);
     });
+
+    // Touch: distinguish tap from drag
     cell.addEventListener('touchstart',e=>{
       if(e.target===inp||e.target===xb) return;
-      if(mode==='s') beginDrag(e,kind,cell,zone,inp.value.trim()||'؟');
+      if(mode==='s'){
+        _tapMoved=false;
+        _tapStartX=e.touches[0].clientX; _tapStartY=e.touches[0].clientY;
+      } else {
+        beginDrag(e,kind,cell,zone,inp.value.trim()||'؟');
+      }
     },{passive:false});
+    cell.addEventListener('touchmove',e=>{
+      if(mode!=='s') return;
+      const dx=Math.abs(e.touches[0].clientX-_tapStartX);
+      const dy=Math.abs(e.touches[0].clientY-_tapStartY);
+      if(dx>_tapThresh||dy>_tapThresh){ _tapMoved=true; beginDrag(e,kind,cell,zone,inp.value.trim()||'؟'); }
+    },{passive:false});
+    cell.addEventListener('touchend',e=>{
+      if(mode!=='s') return;
+      if(!_tapMoved){ e.preventDefault(); const z=cell.parentElement; cell.remove(); refreshPH(z); scheduleSave(); }
+      _tapMoved=false;
+    });
   } else {
-    cell.addEventListener('mousedown',e=>{if(e.target===inp||e.target===xb)return;beginDrag(e,kind,cell,zone,inp.value.trim()||'؟');});
-    cell.addEventListener('touchstart',e=>{if(e.target===inp||e.target===xb)return;beginDrag(e,kind,cell,zone,inp.value.trim()||'؟');},{passive:false});
+    // Teacher mode: short click → delete; drag → move
+    let _tMoved=false, _tStartX=0, _tStartY=0;
+    cell.addEventListener('mousedown',e=>{
+      if(e.target===inp||e.target===xb) return;
+      _tMoved=false; _tStartX=e.clientX; _tStartY=e.clientY;
+      beginDrag(e,kind,cell,zone,inp.value.trim()||'؟');
+    });
+    cell.addEventListener('mousemove',e=>{
+      if(Math.abs(e.clientX-_tStartX)>5||Math.abs(e.clientY-_tStartY)>5) _tMoved=true;
+    });
+    cell.addEventListener('click',e=>{
+      if(e.target===inp||e.target===xb) return;
+      if(mode!=='t') return;
+      if(_tMoved) return; // was a drag, not a tap
+      const z=cell.parentElement; cell.remove();
+      updateKey(z); refreshPH(z); scheduleSave();
+    });
+    // Touch
+    let _ttMoved=false, _ttX=0, _ttY=0;
+    cell.addEventListener('touchstart',e=>{
+      if(e.target===inp||e.target===xb) return;
+      _ttMoved=false; _ttX=e.touches[0].clientX; _ttY=e.touches[0].clientY;
+    },{passive:false});
+    cell.addEventListener('touchmove',e=>{
+      const dx=Math.abs(e.touches[0].clientX-_ttX), dy=Math.abs(e.touches[0].clientY-_ttY);
+      if(dx>8||dy>8){ _ttMoved=true; beginDrag(e,kind,cell,zone,inp.value.trim()||'؟'); }
+    },{passive:false});
+    cell.addEventListener('touchend',e=>{
+      if(e.target===inp||e.target===xb) return;
+      if(!_ttMoved){
+        e.preventDefault();
+        if(mode!=='t') return;
+        const z=cell.parentElement; cell.remove();
+        updateKey(z); refreshPH(z); scheduleSave();
+      }
+      _ttMoved=false;
+    });
   }
   zone.appendChild(cell);
-  if(focus) inp.focus();
-  if(kind==='key') updateKey(zone);
-  if(kind==='stu') checkAns(cell,zone);
+  if(focus)inp.focus();
+  if(kind==='key')updateKey(zone);
+  if(kind==='stu')checkAns(cell,zone);
   scheduleSave(); return cell;
 }
 
 function updateKey(zone){
-  const vals=[]; zone.querySelectorAll('.ac.key input').forEach(i=>{if(i.value.trim())vals.push(i.value.trim());});
+  const vals=[]; zone.querySelectorAll('.ac.key input').forEach(i=>{ if(i.value.trim())vals.push(i.value.trim()); });
   zone.dataset.key=JSON.stringify(vals);
   zone.querySelectorAll('.ac.stu').forEach(c=>checkAns(c,zone));
 }
-function getKey(zone){try{return JSON.parse(zone.dataset.key||'[]');}catch(e){return[];}}
+function getKey(zone){ try{return JSON.parse(zone.dataset.key||'[]');}catch(e){return[];} }
 function checkAns(cell,zone){
   cell.querySelectorAll('.fb').forEach(f=>f.remove());
-  const key=getKey(zone); if(!key.length) return;
-  const v=cell.querySelector('input').value.trim(); if(!v) return;
+  // وضع الاختبار: تحقق من النموذج النشط
+  if(mode==='s' && models[activeModel] && models[activeModel].examMode) return;
+  // في واجهة المعلم: تحقق من data-exam-mode على card
+  if(mode==='t'){
+    const card=zone.closest('.model-card');
+    if(card && card.dataset.examMode==='1') return;
+  }
+  const key=getKey(zone); if(!key.length)return;
+  const v=cell.querySelector('input').value.trim(); if(!v)return;
   const ok=key.includes(v);
   const fb=document.createElement('span'); fb.className='fb '+(ok?'ok':'er');
   fb.textContent=ok?' ✓':' ✗'; cell.appendChild(fb);
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // STUDENT VIEW
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function renderModelBar(){
   const nums=document.getElementById('modelNums'); nums.innerHTML='';
   models.forEach((m,i)=>{
@@ -1342,67 +2307,80 @@ function renderModelBar(){
   if(!models.length){
     const msg=document.createElement('span');
     msg.style.cssText='color:rgba(255,255,255,.3);font-size:.8rem';
-    msg.textContent='لا توجد نماذج بعد';
+    msg.textContent='لا توجد نماذج بعد — يُضيفها المعلم من واجهته';
     nums.appendChild(msg);
   }
 }
 
 function loadStudentView(mi){
   activeModel=mi;
-  document.querySelectorAll('.model-num-btn').forEach((b,i)=>b.classList.toggle('active',i===mi));
-  const grid=document.getElementById('topGrid'); grid.innerHTML='';
-  if(mi<0||mi>=models.length) return;
-  const m=models[mi];
-  document.getElementById('topPanelLbl').textContent='📖 '+(m.title||('نموذج '+(mi+1)));
-  m.words.forEach(w=>appendWordToGrid(grid,w));
+  // Update bar buttons
+  document.querySelectorAll('.model-num-btn').forEach((b,i)=>
+    b.classList.toggle('active',i===mi));
+  // Render words in top grid
+  renderTopGridForModel(mi);
+  // Render tasks in student tasksC
   const tc=document.getElementById('studentTasksC'); tc.innerHTML=''; _rowIdx=0;
-  m.rows.forEach(r=>addRowToContainer(tc,r.q1,r.q2,r.k1,r.k2,r.s1,r.s2,r.q3,r.k3,r.s3,r.hint1||'',r.hint2||'',r.hint3||''));
+  if(mi<0||mi>=models.length)return;
+  const m=models[mi];
+  // Update label
+  document.getElementById('topPanelLbl').textContent=
+    '📖 '+(m.title||('نموذج '+(mi+1)));
+  m.rows.forEach(r=>{
+    addRowToContainer(tc,r.q1,r.q2,r.k1,r.k2,r.s1,r.s2,r.q3,r.k3,r.s3,r.hint1||'',r.hint2||'',r.hint3||'');
+  });
+  // Hide key cells (student mode)
   tc.querySelectorAll('.ac.key').forEach(c=>c.style.display='none');
+  // Set labels non-editable
   tc.querySelectorAll('.qlbl').forEach(l=>l.setAttribute('contenteditable','false'));
+  // إن كان وضع الجوال مفعلاً طبّق التخطيط فوراً
+  if(_isMobMode) applyMobileLayout(true);
   scheduleSave();
 }
 
 function resetMyAnswers(){
-  if(!confirm('مسح إجاباتك وإعادة المحاولة؟')) return;
+  if(!confirm('مسح إجاباتك وإعادة المحاولة؟'))return;
   document.querySelectorAll('#studentTasksC .dz').forEach(z=>{
     z.querySelectorAll('.ac.stu').forEach(c=>c.remove()); refreshPH(z);
   });
   scheduleSave(); showToast('تم مسح إجاباتك ✔');
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // PRESETS
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+let _presetTarget=null;
 function openPresets(tc){
   _presetTarget=tc||document.getElementById('studentTasksC');
-  const ov=document.getElementById('presetOverlay');
-  ov.style.display='flex'; renderPresets();
+  document.getElementById('presetOverlay').classList.add('show');
+  renderPresets();
 }
-function closePresets(){document.getElementById('presetOverlay').style.display='none';_presetTarget=null;}
+function closePresets(){ document.getElementById('presetOverlay').classList.remove('show'); _presetTarget=null; }
 function renderPresets(){
   const cont=document.getElementById('presetList'); cont.innerHTML='';
   PRESETS.forEach((p,i)=>{
     const row=document.createElement('div'); row.className='prow';
     const lbl=document.createElement('span'); lbl.className='prow-lbl'; lbl.textContent=p;
     const ab=document.createElement('button'); ab.className='btn bb'; ab.textContent='+ إضافة سطر';
-    ab.onclick=()=>{addRowToContainer(_presetTarget||document.getElementById('studentTasksC'),p,'');closePresets();showToast('تم إضافة: '+p);};
+    ab.onclick=()=>{ addRowToContainer(_presetTarget||document.getElementById('studentTasksC'),p,'',''); closePresets(); showToast('تم إضافة: '+p); };
     const db=document.createElement('button'); db.className='btn br'; db.textContent='✕ حذف';
-    db.onclick=()=>{PRESETS.splice(i,1);renderPresets();scheduleSave();};
-    row.appendChild(lbl); row.appendChild(ab); row.appendChild(db); cont.appendChild(row);
+    db.onclick=()=>{ PRESETS.splice(i,1); renderPresets(); scheduleSave(); };
+    row.appendChild(lbl); row.appendChild(ab); row.appendChild(db);
+    cont.appendChild(row);
   });
 }
 function addPreset(){
-  const inp=document.getElementById('pInp'),v=inp.value.trim(); if(!v) return;
+  const inp=document.getElementById('pInp'), v=inp.value.trim(); if(!v)return;
   PRESETS.push(v); inp.value=''; renderPresets(); scheduleSave(); showToast('تم إضافة: '+v);
 }
-document.getElementById('pInp').addEventListener('keydown',e=>{if(e.key==='Enter')addPreset();});
+document.getElementById('pInp').addEventListener('keydown',e=>{ if(e.key==='Enter')addPreset(); });
 document.getElementById('presetOverlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('presetOverlay'))closePresets();
 });
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // DRAG & DROP
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function getXY(e){
   if(e.touches&&e.touches.length) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
   if(e.changedTouches&&e.changedTouches.length) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
@@ -1420,39 +2398,44 @@ function beginDrag(e,srcType,cell,zone,text){
   document.addEventListener('touchmove',onDragMove,{passive:false});
   document.addEventListener('touchend',onDragEnd);
 }
-function dzUnder(x,y){const el=document.elementFromPoint(x,y);return el?.closest?.('.dz')||null;}
+function dzUnderPoint(x,y){
+  const el=document.elementFromPoint(x,y);
+  return (el && el.closest ? el.closest('.dz') : null)||null;
+}
 function onDragMove(e){
-  if(e.cancelable)e.preventDefault();
-  const{x,y}=getXY(e); moveGhost(x,y);
+  if(e.cancelable) e.preventDefault();
+  const {x,y}=getXY(e); moveGhost(x,y);
   document.querySelectorAll('.dz').forEach(z=>z.classList.remove('over'));
-  const z=dzUnder(x,y); if(z)z.classList.add('over');
+  const z=dzUnderPoint(x,y); if(z) z.classList.add('over');
 }
 function moveGhost(x,y){
   const g=document.getElementById('ghost');
-  g.style.left=(x-g.offsetWidth/2)+'px'; g.style.top=(y-g.offsetHeight/2-12)+'px';
+  g.style.left=(x-g.offsetWidth/2)+'px';
+  g.style.top=(y-g.offsetHeight/2-12)+'px';
 }
 function onDragEnd(e){
-  if(!drag) return;
-  const{x,y}=getXY(e); const zone=dzUnder(x,y);
-  if(zone&&!drag.dropped){drag.dropped=true;doDrop(zone);}
+  if(!drag)return;
+  const {x,y}=getXY(e);
+  const zone=dzUnderPoint(x,y);
+  if(zone&&!drag.dropped){ drag.dropped=true; doDrop(zone); }
   endDrag();
 }
 document.addEventListener('mouseup',e=>{
-  if(!drag||drag.dropped) return;
-  const zone=e.target.closest?.('.dz');
-  if(zone){drag.dropped=true;doDrop(zone);endDrag();}
+  if(!drag||drag.dropped)return;
+  const zone=(e.target.closest ? e.target.closest('.dz') : null);
+  if(zone){ drag.dropped=true; doDrop(zone); endDrag(); }
 },true);
 function doDrop(zone){
-  const fromKey=drag.srcType==='key',fromStu=drag.srcType==='stu';
+  const fromKey=drag.srcType==='key', fromStu=drag.srcType==='stu';
   const targetKind=mode==='t'?(fromStu?'stu':'key'):'stu';
   mkACell(zone,drag.text,targetKind,false);
   if((fromKey||fromStu)&&drag.srcCell.parentElement!==zone){
     drag.srcCell.remove();
     if(drag.srcZone){updateKey(drag.srcZone);refreshPH(drag.srcZone);}
   }
-  if(mode==='t') updateKey(zone);
+  if(mode==='t')updateKey(zone);
   scheduleSave();
-  if(mode==='s') setTimeout(pushStudentAnswers,400);
+  if(mode==='s') setTimeout(pushStudentAnswers,500);
 }
 function endDrag(){
   if(drag){drag.srcCell.classList.remove('dragging');drag=null;}
@@ -1463,11 +2446,324 @@ function endDrag(){
   document.removeEventListener('touchmove',onDragMove);
   document.removeEventListener('touchend',onDragEnd);
 }
-document.addEventListener('contextmenu',e=>{if(e.target.closest('.wc,.ac'))e.preventDefault();});
 
-// ══════════════════════════════════════════════
-// COLLAPSE TOGGLES
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// FULLSCREEN (STUDENT MODE — topPanel + botPanel only)
+// ════════════════════════════════════════════════════════
+let _isStuFs = false;
+let _isMobMode = false;
+
+function toggleFullscreen(){
+  if(_isMobMode) toggleMobileMode();
+  _isStuFs = !_isStuFs;
+  document.body.classList.toggle('stu-fs', _isStuFs);
+  const btn = document.getElementById('fsBtn');
+  btn.textContent = _isStuFs ? '✕ خروج من ملء الشاشة' : '⛶ ملء الشاشة';
+  if(_isStuFs){
+    const topBody = document.getElementById('topBody');
+    const botBody = document.getElementById('botBody');
+    if(topBody) topBody.style.maxHeight='999px';
+    if(botBody) botBody.style.maxHeight='999px';
+  }
+}
+
+function toggleMobileMode(){
+  if(_isStuFs) toggleFullscreen();
+  _isMobMode = !_isMobMode;
+  document.body.classList.toggle('mob-mode', _isMobMode);
+  const btn = document.getElementById('mobBtn');
+  btn.textContent = _isMobMode ? '✕ خروج من وضع الجوال' : '📱 وضع الجوال';
+  if(_isMobMode){
+    const topBody = document.getElementById('topBody');
+    const botBody = document.getElementById('botBody');
+    if(topBody) topBody.style.maxHeight='999px';
+    if(botBody) botBody.style.maxHeight='999px';
+    applyMobileLayout(true);
+  } else {
+    applyMobileLayout(false);
+  }
+}
+
+function applyMobileLayout(on){
+  // كل .trow → نعيد تنظيم الأزواج كـ mob-pair
+  document.querySelectorAll('#studentTasksC .trow').forEach(row=>{
+    if(on){
+      wrapTaskRowForMobile(row);
+    } else {
+      unwrapTaskRow(row);
+    }
+  });
+}
+
+function wrapTaskRowForMobile(row){
+  if(row.dataset.mobWrapped) return;
+  row.dataset.mobWrapped = '1';
+
+  // الخلايا الأصلية بالترتيب: q1 sep dz sep q2 sep dz sep q3 sep dz rdel
+  const cells = Array.from(row.children);
+  // نجمع الأزواج: [qlbl-wrap , dz] × 3 + [rdel]
+  const pairs = [];
+  let i = 0;
+  while(i < cells.length){
+    const c = cells[i];
+    if(c.classList.contains('csep')){ i++; continue; }
+    if(c.classList.contains('rdel')){ break; }
+    if(c.classList.contains('qlbl-wrap')){
+      const pair = document.createElement('div');
+      pair.className = 'mob-pair';
+      pair.dataset.pairIdx = pairs.length;
+      // السؤال
+      pair.appendChild(c);
+      // تخطّ separator إن وُجد
+      if((cells[i+1] && cells[i+1].classList.contains('csep'))) i++;
+      // خانة الإجابة
+      const dz = cells[i+1];
+      if((dz && dz.classList.contains('dz'))) pair.appendChild(dz);
+      pairs.push(pair);
+      i += 2;
+    } else { i++; }
+  }
+  const rdel = cells[cells.length-1];
+
+  // أفرغ الصف وأعد بناءه
+  row.innerHTML = '';
+  pairs.forEach(p => row.appendChild(p));
+  if((rdel && rdel.classList.contains('rdel'))) row.appendChild(rdel);
+}
+
+function unwrapTaskRow(row){
+  if(!row.dataset.mobWrapped) return;
+  delete row.dataset.mobWrapped;
+  // استعد الخلايا من داخل mob-pairs
+  const allCells = [];
+  row.querySelectorAll('.mob-pair').forEach(pair=>{
+    Array.from(pair.children).forEach(c => allCells.push(c));
+  });
+  const rdel = row.querySelector('.rdel');
+  row.innerHTML = '';
+
+  // أعد إدراجها بنمط الشبكة الأصلي مع separators
+  allCells.forEach((c, idx)=>{
+    row.appendChild(c);
+    // أضف separator بعد كل خلية إلا الأخيرة
+    if(idx < allCells.length - 1){
+      const sep = document.createElement('div');
+      sep.className = 'csep';
+      row.appendChild(sep);
+    }
+  });
+  if(rdel) row.appendChild(rdel);
+}
+
+// ════════════════════════════════════════════════════════
+// PANEL SPLITTER — drag to resize top/bot panels
+// (active only in fullscreen or mobile mode, student interface)
+// ════════════════════════════════════════════════════════
+(function(){
+  const LONG_PRESS_MS = 350;   // مدة الضغط المطول للتفعيل
+  const MIN_TOP_VH    = 15;    // أدنى ارتفاع للقطعة (%)
+  const MAX_TOP_VH    = 85;    // أقصى ارتفاع للقطعة (%)
+
+  let _splitterActive = false; // هل نحن في حالة سحب؟
+  let _startY   = 0;
+  let _startTop = 0;           // ارتفاع topPanel عند بدء السحب (px)
+  let _longTimer = null;
+  let _appH     = 0;
+
+  const splitter = document.getElementById('panelSplitter');
+  if(!splitter) return;
+
+  function isEnabled(){
+    return document.body.classList.contains('stu-fs') ||
+           document.body.classList.contains('mob-mode');
+  }
+
+  function getTopPanel(){ return document.getElementById('topPanel'); }
+  function getBotPanel(){ return document.getElementById('botPanel'); }
+
+  function applyHeights(topPx){
+    const appH   = document.getElementById('app').clientHeight;
+    const splH   = splitter.offsetHeight;
+    const minPx  = (MIN_TOP_VH / 100) * window.innerHeight;
+    const maxPx  = (MAX_TOP_VH / 100) * window.innerHeight;
+    topPx = Math.max(minPx, Math.min(maxPx, topPx));
+    const botPx  = appH - splH - topPx;
+    const top  = getTopPanel();
+    const bot  = getBotPanel();
+    if(!top || !bot) return;
+    top.style.height    = topPx + 'px';
+    top.style.maxHeight = topPx + 'px';
+    bot.style.height    = Math.max(60, botPx) + 'px';
+    bot.style.maxHeight = Math.max(60, botPx) + 'px';
+  }
+
+  function startSplitter(clientY){
+    if(!isEnabled()) return;
+    const top = getTopPanel();
+    if(!top) return;
+    _splitterActive = true;
+    _startY   = clientY;
+    _startTop = top.getBoundingClientRect().height;
+    _appH     = document.getElementById('app').clientHeight;
+    splitter.classList.add('dragging');
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  function moveSplitter(clientY){
+    if(!_splitterActive) return;
+    const delta  = clientY - _startY;
+    applyHeights(_startTop + delta);
+  }
+
+  function endSplitter(){
+    if(!_splitterActive) return;
+    _splitterActive = false;
+    splitter.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
+  /* ── Mouse events ── */
+  splitter.addEventListener('mousedown', function(e){
+    if(!isEnabled()) return;
+    e.preventDefault();
+    startSplitter(e.clientY);
+  });
+  document.addEventListener('mousemove', function(e){
+    if(_splitterActive) moveSplitter(e.clientY);
+  });
+  document.addEventListener('mouseup', function(){
+    endSplitter();
+  });
+
+  /* ── Touch events (long-press to activate) ── */
+  splitter.addEventListener('touchstart', function(e){
+    if(!isEnabled()) return;
+    if(e.touches.length !== 1) return;
+    const t = e.touches[0];
+    clearTimeout(_longTimer);
+    _longTimer = setTimeout(function(){
+      // تفعيل بعد الضغط المطول
+      e.preventDefault && e.preventDefault();
+      startSplitter(t.clientY);
+      // اهتزاز بسيط إن كان مدعوماً
+      if(navigator.vibrate) navigator.vibrate(30);
+    }, LONG_PRESS_MS);
+  }, {passive:true});
+
+  splitter.addEventListener('touchmove', function(e){
+    if(_splitterActive){
+      e.preventDefault();
+      moveSplitter(e.touches[0].clientY);
+    } else {
+      // إلغاء المؤقت إذا تحرك الإصبع قبل انتهائه
+      clearTimeout(_longTimer);
+    }
+  }, {passive:false});
+
+  splitter.addEventListener('touchend', function(){
+    clearTimeout(_longTimer);
+    endSplitter();
+  }, {passive:true});
+
+  splitter.addEventListener('touchcancel', function(){
+    clearTimeout(_longTimer);
+    endSplitter();
+  }, {passive:true});
+
+  /* ── Reset heights when entering/leaving a mode ── */
+  const _origToggleFS  = window.toggleFullscreen;
+  const _origToggleMob = window.toggleMobileMode;
+
+  window.toggleFullscreen = function(){
+    _origToggleFS();
+    setTimeout(function(){
+      if(document.body.classList.contains('stu-fs')){
+        applyHeights(window.innerHeight * 0.62);
+      }
+    }, 50);
+  };
+
+  window.toggleMobileMode = function(){
+    _origToggleMob();
+    setTimeout(function(){
+      if(document.body.classList.contains('mob-mode')){
+        applyHeights(window.innerHeight * 0.55);
+      }
+    }, 50);
+  };
+
+})();
+
+
+(function(){
+  let _scrolling = false;
+  let _scrollStartY = 0;
+  let _scrollStartTop = 0;
+
+  function getTopBody(){ return document.getElementById('topBody'); }
+
+  // touchstart: إذا كان إصبعان وداخل topBody → ابدأ وضع التمرير
+  document.addEventListener('touchstart', function(e){
+    if(!_isMobMode) return;
+    const topBody = getTopBody();
+    if(!topBody || !topBody.contains(e.target)) return;
+
+    if(e.touches.length >= 2){
+      // أوقف أي سحب جارٍ
+      if(drag){ endDrag(); }
+      _scrolling = true;
+      _scrollStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      _scrollStartTop = topBody.scrollTop;
+      e.stopPropagation();
+    } else {
+      _scrolling = false;
+    }
+  }, {passive:true, capture:true});
+
+  // touchmove: إذا كانت إصبعان → مرّر يدوياً ومنع كل شيء آخر
+  document.addEventListener('touchmove', function(e){
+    if(!_isMobMode) return;
+    const topBody = getTopBody();
+    if(!topBody) return;
+    if(e.touches.length >= 2 && topBody.contains(e.target)){
+      _scrolling = true;
+      if(drag){ endDrag(); }
+      e.preventDefault();
+      e.stopPropagation();
+      const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const delta = _scrollStartY - currentY;
+      topBody.scrollTop = _scrollStartTop + delta;
+    }
+  }, {passive:false, capture:true});
+
+  document.addEventListener('touchend', function(e){
+    if(e.touches.length < 2){ _scrolling = false; }
+  }, {passive:true, capture:true});
+
+  // منع beginDrag إذا كانت إصبعان نشطتان
+  document.addEventListener('touchstart', function(e){
+    if(_isMobMode && e.touches.length >= 2){
+      e.stopImmediatePropagation();
+    }
+  }, {passive:true, capture:true});
+})();
+
+// ═══════════════════════════════════════════════════════════
+// PIN TOGGLE
+// ═══════════════════════════════════════════════════════════
+let topPinned = false;
+function togglePin(){
+  topPinned = !topPinned;
+  const panel = document.getElementById('topPanel');
+  const btn   = document.getElementById('pinTopBtn');
+  panel.classList.toggle('pinned', topPinned);
+  btn.classList.toggle('pinned', topPinned);
+  showToast(topPinned ? 'تم تثبيت القطعة 📌' : 'تم تحرير القطعة');
+  scheduleSave();
+}
+
 function toggleHdr(){
   hdrOpen=!hdrOpen;
   document.getElementById('mainHdr').classList.toggle('collapsed',!hdrOpen);
@@ -1476,14 +2772,16 @@ function toggleHdr(){
 }
 function toggleTop(){
   topOpen=!topOpen;
-  const body=document.getElementById('topBody'),btn=document.getElementById('topColBtn');
+  const body=document.getElementById('topBody');
+  const btn=document.getElementById('topColBtn');
   if(topOpen){body.style.maxHeight='600px';body.classList.remove('collapsed');}
   else{body.style.maxHeight='0';body.classList.add('collapsed');}
   btn.textContent=topOpen?'▲':'▼'; scheduleSave();
 }
 function toggleBot(){
   botOpen=!botOpen;
-  const body=document.getElementById('botBody'),btn=document.getElementById('botColBtn');
+  const body=document.getElementById('botBody');
+  const btn=document.getElementById('botColBtn');
   const panel=document.getElementById('botPanel');
   if(botOpen){body.style.maxHeight='9999px';body.classList.remove('collapsed');panel.style.flex='1';panel.style.overflow='auto';}
   else{body.style.maxHeight='0';body.classList.add('collapsed');panel.style.flex='0 0 auto';panel.style.overflow='hidden';}
@@ -1491,198 +2789,104 @@ function toggleBot(){
 }
 function toggleModelBar(){
   modelBarOpen=!modelBarOpen;
-  const body=document.getElementById('modelBarBody'),btn=document.getElementById('modelBarColBtn');
+  const body=document.getElementById('modelBarBody');
+  const btn=document.getElementById('modelBarColBtn');
   if(modelBarOpen){body.style.maxHeight='60px';body.classList.remove('collapsed');}
   else{body.style.maxHeight='0';body.classList.add('collapsed');}
   btn.textContent=modelBarOpen?'▲':'▼'; scheduleSave();
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // HINT POPUP
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+let _hintTimer=null;
 function showHintPopup(text,anchor){
   const pop=document.getElementById('hintPopup');
   pop.innerHTML='<span>'+text+'</span>';
-  pop.style.display='block'; pop.style.pointerEvents='auto';
+  pop.classList.add('show'); pop.style.pointerEvents='auto';
   const rect=anchor.getBoundingClientRect();
-  let top=rect.bottom+6,left=rect.left;
+  let top=rect.bottom+6, left=rect.left;
   if(top+130>window.innerHeight) top=rect.top-136;
   if(left+300>window.innerWidth) left=window.innerWidth-310;
   if(left<6) left=6;
   pop.style.top=top+'px'; pop.style.left=left+'px';
-  clearTimeout(_hintTimer); _hintTimer=setTimeout(hideHintPopup,5000);
+  clearTimeout(_hintTimer);
+  _hintTimer=setTimeout(hideHintPopup,5000);
 }
 function hideHintPopup(){
   const pop=document.getElementById('hintPopup');
-  pop.style.display='none'; pop.style.pointerEvents='none';
+  pop.classList.remove('show'); pop.style.pointerEvents='none';
   clearTimeout(_hintTimer);
 }
-document.addEventListener('click',e=>{if(!e.target.closest('.bulb-btn,.hintPopup'))hideHintPopup();});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.bulb-btn')&&!e.target.closest('#hintPopup')) hideHintPopup();
+});
+document.addEventListener('touchstart',e=>{
+  if(!e.target.closest('.bulb-btn')&&!e.target.closest('#hintPopup')) hideHintPopup();
+},{passive:true});
 
-// ══════════════════════════════════════════════
-// DASHBOARD
-// ══════════════════════════════════════════════
-function showDashTab(tab){
-  document.querySelectorAll('.dash-tab').forEach(t=>t.style.display='none');
-  document.querySelectorAll('.dash-tab-btn').forEach(b=>b.classList.remove('active'));
-  const el=document.getElementById('tab-'+tab); if(el)el.style.display='block';
-  const order=['details','strength','weakness','dist','chart'];
-  const btns=document.querySelectorAll('.dash-tab-btn');
-  const idx=order.indexOf(tab); if(btns[idx])btns[idx].classList.add('active');
-}
-function copyDashLink(){
-  const link=getStudentLink();
-  navigator.clipboard?.writeText(link).catch(()=>{});
-  prompt('انسخ الرابط وأرسله للطلاب:',link);
-  showToast('تم نسخ الرابط ✔');
-}
-function applyFilters(){
-  const entries=Object.values(_dashData).filter(e=>e.name);
-  const fn=(document.getElementById('fName')?.value||'').toLowerCase();
-  const fc=(document.getElementById('fClass')?.value||'').toLowerCase();
-  const fm=(document.getElementById('fModel')?.value||'').toLowerCase();
-  const fmin=parseFloat(document.getElementById('fScoreMin')?.value||'');
-  const fmax=parseFloat(document.getElementById('fScoreMax')?.value||'');
-  _filtered=entries.filter(e=>{
-    if(fn&&!(e.name||'').toLowerCase().includes(fn)) return false;
-    if(fc&&!(e.class||'').toLowerCase().includes(fc)) return false;
-    if(fm&&!(e.modelTitle||'').toLowerCase().includes(fm)) return false;
-    if(!isNaN(fmin)&&(e.correct||0)<fmin) return false;
-    if(!isNaN(fmax)&&(e.correct||0)>fmax) return false;
-    return true;
-  });
-  renderDashboard();
-}
-function clearFilters(){
-  ['fName','fClass','fModel','fScoreMin','fScoreMax'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  applyFilters();
-}
-function sortTable(key){
-  if(_sortKey===key)_sortAsc=!_sortAsc; else{_sortKey=key;_sortAsc=false;}
-  renderDashboard();
-}
-function renderDashboard(){
-  const all=Object.values(_dashData).filter(e=>e.name);
-  const n=_filtered.length;
-  document.getElementById('kpiTotal').textContent=n;
-  const avg=n?Math.round(_filtered.reduce((s,e)=>s+(e.pct||0),0)/n):0;
-  const pass=_filtered.filter(e=>(e.pct||0)>=60).length;
-  document.getElementById('kpiAvg').textContent=avg+'%';
-  document.getElementById('kpiPass').textContent=pass;
-  document.getElementById('kpiFail').textContent=n-pass;
-  document.getElementById('kpiTop').textContent=(n?Math.max(..._filtered.map(e=>e.pct||0)):0)+'%';
-  document.getElementById('kpiOnline').textContent=all.filter(e=>(Date.now()-e.ts)<120000).length;
-  document.getElementById('distA').textContent=_filtered.filter(e=>(e.pct||0)>=80).length;
-  document.getElementById('distB').textContent=_filtered.filter(e=>(e.pct||0)>=60&&(e.pct||0)<80).length;
-  document.getElementById('distC').textContent=_filtered.filter(e=>(e.pct||0)<60).length;
-  document.getElementById('chartSubtitle').textContent='('+n+' طالب)';
-  // Sort
-  const sorted=[..._filtered].sort((a,b)=>{
-    let va=a[_sortKey]||0,vb=b[_sortKey]||0;
-    if(typeof va==='string'){const r=va.localeCompare(vb);return _sortAsc?r:-r;}
-    return _sortAsc?va-vb:vb-va;
-  });
-  // Bar chart
-  const chart=document.getElementById('barChart'); if(chart){
-    chart.innerHTML='';
-    [...sorted].sort((a,b)=>(b.pct||0)-(a.pct||0)).forEach(e=>{
-      const pct=e.pct||0,col=pct>=80?'#4ade80':pct>=60?'#f5c842':'#f87171';
-      const col2=document.createElement('div'); col2.className='bar-col';
-      const bar=document.createElement('div'); bar.className='bar';
-      bar.style.cssText='height:'+Math.max(4,pct*1.3)+'px;background:'+col;
-      bar.title=(e.name||'')+': '+pct+'%';
-      const pl=document.createElement('div'); pl.className='bar-pct'; pl.textContent=pct+'%';
-      const nl=document.createElement('div'); nl.className='bar-name'; nl.textContent=e.name||'-';
-      col2.appendChild(pl);col2.appendChild(bar);col2.appendChild(nl); chart.appendChild(col2);
-    });
-  }
-  // Weakness/Strength
-  const qMap={};
-  _filtered.forEach(e=>{if(!e.details)return;Object.entries(e.details).forEach(([q,d])=>{
-    if(!qMap[q])qMap[q]={q,correct:0,total:0};
-    qMap[q].correct+=(d.correct||0); qMap[q].total+=(d.total||0);
-  });});
-  const qList=Object.values(qMap).filter(q=>q.total>0)
-    .map(q=>({...q,pct:Math.round(q.correct/q.total*100)})).sort((a,b)=>a.pct-b.pct);
-  const mkT=(rows,thCls,barCls)=>{
-    if(!rows.length) return '<div class="no-data">لا توجد بيانات كافية</div>';
-    return '<table style="width:100%;border-collapse:collapse;font-size:.8rem;direction:rtl"><thead><tr>'
-      +'<th class="'+thCls+'">المطلوب</th><th class="'+thCls+'">نسبة الصح</th><th class="'+thCls+'">صح</th><th class="'+thCls+'">الإجمالي</th></tr></thead><tbody>'
-      +rows.map(q=>'<tr><td style="padding:5px 10px;border:1px solid rgba(255,255,255,.05);text-align:right;color:var(--txt);font-weight:600">'+q.q+'</td>'
-        +'<td style="padding:5px 10px;border:1px solid rgba(255,255,255,.05)"><span class="'+barCls+'" style="width:'+Math.max(4,q.pct)+'px"></span>'+q.pct+'%</td>'
-        +'<td style="padding:5px 10px;border:1px solid rgba(255,255,255,.05);text-align:center">'+q.correct+'</td>'
-        +'<td style="padding:5px 10px;border:1px solid rgba(255,255,255,.05);text-align:center">'+q.total+'</td></tr>').join('')
-      +'</tbody></table>';
-  };
-  const wA=document.getElementById('weaknessArea'),sA=document.getElementById('strengthArea');
-  if(wA)wA.innerHTML=mkT(qList.slice(0,8),'w-th','w-bar');
-  if(sA)sA.innerHTML=mkT([...qList].reverse().slice(0,8),'s-th','s-bar');
-  // Table
-  const noStu=document.getElementById('noStudentsDash'),tbl=document.getElementById('dashTable'),tbody=document.getElementById('dashTbody');
-  if(!n){if(noStu)noStu.style.display='block';if(tbl)tbl.style.display='none';return;}
-  if(noStu)noStu.style.display='none';if(tbl)tbl.style.display='table';
-  if(!tbody)return; tbody.innerHTML='';
-  sorted.forEach((e,i)=>{
-    const pct=e.pct||0,col=pct>=80?'color:#4ade80':pct>=60?'color:var(--gold)':'color:#f87171';
-    const isOnline=(Date.now()-e.ts)<120000;
-    const tr=document.createElement('tr');
-    tr.innerHTML='<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">'+(i+1)+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);color:var(--txt);font-weight:600">'+(e.name||'-')+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">'+(e.class||'-')+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-size:.72rem">'+(e.modelTitle||'-')+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-weight:700;'+col+'">'+(e.correct||0)+'/'+(e.total||0)+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-weight:700;'+col+'">'+pct+'%</td>'
-      +'<td style="padding:5px 8px;border:1px solid rgba(255,255,255,.05);text-align:center">'+(isOnline?'<span style="color:#4ade80">● متصل</span>':'<span style="color:var(--txt2)">○</span>')+'</td>';
-    tbody.appendChild(tr);
-  });
-}
-function clearAllResults(){
-  if(!fbConnected||!db) return;
-  if(!confirm('مسح جميع نتائج الطلاب نهائياً؟')) return;
-  db.ref('sessions/'+SESSION_ID+'/students').remove();
-  showToast('تم مسح النتائج ✔');
-}
-function exportResults(){
-  if(!_filtered.length){showToast('لا توجد بيانات للتصدير');return;}
-  let csv='\uFEFF#,الاسم,الفصل,النموذج,الدرجة,الإجمالي,%\n';
-  [..._filtered].sort((a,b)=>(b.pct||0)-(a.pct||0)).forEach((e,i)=>{
-    csv+=[i+1,e.name||'',e.class||'',e.modelTitle||'',e.correct||0,e.total||0,(e.pct||0)+'%'].join(',')+'\\n';
-  });
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='نتائج_الطلاب.csv'; a.click(); showToast('تم تصدير النتائج ✔');
-}
-
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // TOAST
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2300);
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // INIT
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+document.addEventListener('contextmenu',e=>{
+  if(e.target.closest('.wc,.ac')) e.preventDefault();
+});
+
 window.addEventListener('DOMContentLoaded',()=>{
   initFirebase();
   const loaded=doLoad();
   if(!loaded){
-    models.push({id:1,title:'نموذج 1',
+    // Create default sample model
+    models.push({
+      id:1, title:'نموذج 1',
       words:['الصحراء','مستوى','الفتى','بناءٌ','الذكاء','مرتجى','سماءٌ','الهدى',
              'قضاءٌ','المصطفى','علاءٌ','النبأ','الأولى','وفاءٌ','الكبرى','ضياءٌ','مرعى','غناءٌ'],
       rows:[
         {q1:'اسماً ممدوداً',q2:'اسماً مقصوراً',q3:'اسماً منقوصاً',
          k1:['بناءٌ','سماءٌ','قضاءٌ','علاءٌ','وفاءٌ','ضياءٌ','غناءٌ'],
          k2:['الفتى','مرتجى','الهدى','المصطفى','الأولى','الكبرى','مرعى'],
-         k3:[],s1:[],s2:[],s3:[],hint1:'',hint2:'',hint3:''},
+         k3:['الهدى','مرتجى'],s1:[],s2:[],s3:[]},
         {q1:'اسماً نكرةً',q2:'اسماً معرفةً',q3:'ضميراً',k1:[],k2:[],k3:[],s1:[],s2:[],s3:[],hint1:'',hint2:'',hint3:''}
-      ]});
+      ]
+    });
     modelIdCounter=1;
   }
   setMode('s');
+  // Show student info form when in student mode
+  if(mode==='s'){
+    // Check if came from URL with session param (student)
+    const isStudent = new URLSearchParams(location.search).get('s');
+    if(isStudent || true){ // always ask for name
+      document.getElementById('stuInfoOverlay').style.display='flex';
+    }
+  }
 });
 </script>
+<div id="hintPopup"></div>
+
+<!-- STUDENT INFO OVERLAY -->
+<div id="stuInfoOverlay">
+  <div id="stuInfoBox">
+    <h2>👤 بيانات الطالب</h2>
+    <p>أدخل اسمك وفصلك للبدء</p>
+    <input class="stu-field" id="stuNameInp" type="text" placeholder="الاسم الكامل" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){document.getElementById('stuClassInp').focus();}"/>
+    <input class="stu-field" id="stuClassInp" type="text" placeholder="الفصل (مثال: خامس أ)" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){startStudent();}"/>
+    <div id="stuFormErr" style="display:none;color:#f87171;font-size:.78rem;text-align:center;margin-top:-6px">⚠️ يرجى إدخال الاسم والفصل للمتابعة</div>
+    <button class="btn bg" onclick="startStudent()" style="padding:10px;font-size:.9rem">ابدأ الحل ✏️</button>
+  </div>
+</div>
+
+
 </body>
 </html>
