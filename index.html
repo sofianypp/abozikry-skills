@@ -635,6 +635,11 @@ body.mob-mode #botPanel{
 .prow-lbl{flex:1;font-family:'Cairo',sans-serif;font-size:.82rem;color:#e2e8f0;direction:rtl}
 .prow .btn{padding:3px 9px;font-size:.73rem}
 
+/* ── NAME DROPDOWN ── */
+.name-opt{padding:6px 12px;cursor:pointer;font-size:.8rem;color:var(--txt);
+  font-family:'Cairo',sans-serif;direction:rtl;transition:background .15s;white-space:nowrap}
+.name-opt:hover,.name-opt.selected{background:rgba(139,92,246,.25);color:#e9d5ff}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:14px;left:50%;
   transform:translateX(-50%) translateY(60px);
@@ -820,9 +825,15 @@ body.mob-mode #botPanel{
     <!-- فلاتر الترشيح -->
     <div id="filterBar" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding:10px 12px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);border-radius:8px;align-items:center">
       <span style="font-size:.78rem;color:#c4b5fd;font-weight:700;flex-shrink:0">🔍 ترشيح:</span>
-      <input id="filterName" type="text" placeholder="بحث بالاسم..." autocomplete="off"
-        oninput="applyFilters()"
-        style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl;width:150px"/>
+      <div style="position:relative;display:inline-block">
+        <input id="filterName" type="text" placeholder="بحث بالاسم..." autocomplete="off"
+          oninput="applyFilters();updateNameDropdown()"
+          onfocus="showNameDropdown()"
+          style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl;width:160px"/>
+        <div id="nameDropdown" style="display:none;position:absolute;top:100%;right:0;min-width:160px;max-height:200px;overflow-y:auto;
+          background:#1e1b4b;border:1px solid rgba(139,92,246,.4);border-radius:7px;z-index:9000;
+          box-shadow:0 6px 20px rgba(0,0,0,.5);margin-top:2px"></div>
+      </div>
       <select id="filterClass" onchange="applyFilters()"
         style="padding:5px 10px;border-radius:6px;border:1px solid rgba(139,92,246,.3);background:rgba(0,0,0,.35);color:var(--txt);font-family:Cairo,sans-serif;font-size:.78rem;outline:none;direction:rtl">
         <option value="">كل الفصول</option>
@@ -907,16 +918,21 @@ body.mob-mode #botPanel{
 
 </div><!-- end app -->
 <script>
-// ── Firebase SDK dynamic loader with fallback CDNs ──
+// ── Firebase SDK loader with multiple CDN fallbacks ──
 (function(){
   const VERS = '10.12.2';
-  const CDNs = [
-    `https://www.gstatic.com/firebasejs/${VERS}/firebase-app-compat.js`,
-    `https://cdn.jsdelivr.net/npm/firebase@${VERS}/firebase-app-compat.js`
+  // Multiple CDNs sorted by reliability
+  const CDNs_APP = [
+    'https://cdn.jsdelivr.net/npm/firebase@'+VERS+'/firebase-app-compat.min.js',
+    'https://unpkg.com/firebase@'+VERS+'/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/'+VERS+'/firebase-app-compat.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/firebase/'+VERS+'/firebase-app-compat.min.js'
   ];
-  const CDNsDB = [
-    `https://www.gstatic.com/firebasejs/${VERS}/firebase-database-compat.js`,
-    `https://cdn.jsdelivr.net/npm/firebase@${VERS}/firebase-database-compat.js`
+  const CDNs_DB = [
+    'https://cdn.jsdelivr.net/npm/firebase@'+VERS+'/firebase-database-compat.min.js',
+    'https://unpkg.com/firebase@'+VERS+'/firebase-database-compat.js',
+    'https://www.gstatic.com/firebasejs/'+VERS+'/firebase-database-compat.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/firebase/'+VERS+'/firebase-database-compat.min.js'
   ];
 
   function loadScript(urls, idx, cb){
@@ -924,15 +940,19 @@ body.mob-mode #botPanel{
     const s = document.createElement('script');
     s.src = urls[idx];
     s.onload = () => cb(null);
-    s.onerror = () => { console.warn('CDN failed, trying next:', urls[idx]); loadScript(urls, idx+1, cb); };
+    s.onerror = () => {
+      console.warn('CDN failed, trying next:', urls[idx]);
+      loadScript(urls, idx+1, cb);
+    };
     document.head.appendChild(s);
   }
 
-  loadScript(CDNs, 0, function(e1){
-    if(e1){ window._fbLoadErr='app'; return; }
-    loadScript(CDNsDB, 0, function(e2){
-      if(e2){ window._fbLoadErr='db'; return; }
+  loadScript(CDNs_APP, 0, function(e1){
+    if(e1){ window._fbLoadErr='app'; console.error('All Firebase app CDNs failed'); return; }
+    loadScript(CDNs_DB, 0, function(e2){
+      if(e2){ window._fbLoadErr='db'; console.error('All Firebase DB CDNs failed'); return; }
       window._fbSDKReady = true;
+      console.log('✅ Firebase SDK loaded successfully');
     });
   });
 })();
@@ -1047,34 +1067,31 @@ function pushStudentAnswers(){
 
   // Calculate score
   let correct=0, total=0;
-  const dzs = document.querySelectorAll('#studentTasksC .dz');
-  dzs.forEach(zone=>{
-    const key = getKey(zone);
-    if(!key.length) return;
-    key.forEach(k=>{
-      total++;
-      const stuCells = zone.querySelectorAll('.ac.stu input');
-      let found = false;
-      stuCells.forEach(inp=>{ if(inp.value.trim()===k) found=true; });
-      if(found) correct++;
-    });
-  });
-
-  // Build per-question details for analytics
   const details = {};
+
   document.querySelectorAll('#studentTasksC .trow').forEach(row=>{
-    const lbls = row.querySelectorAll('.qlbl');
-    const dzs  = row.querySelectorAll('.dz');
+    // Get labels — support both .qlbl-wrap .qlbl and direct .qlbl
+    const allLblEls = row.querySelectorAll('.qlbl-wrap .qlbl, .qlbl:not(.qlbl-wrap .qlbl)');
+    const dzs = row.querySelectorAll('.dz');
     dzs.forEach((zone,zi)=>{
       const key = getKey(zone);
       if(!key.length) return;
-      const lbl = (lbls[zi] && lbls[zi].textContent ? lbls[zi].textContent.trim() : '')||('س'+(zi+1));
+      // Get label text for this column
+      const lblEl = allLblEls[zi] || null;
+      const lbl = (lblEl ? lblEl.textContent.trim() : '') || ('س'+(zi+1));
+      // Get unique student answers (no duplicates counted)
+      const stuVals = [...zone.querySelectorAll('.ac.stu input')]
+        .map(i=>i.value.trim()).filter(v=>v);
+      // Count correctly: each key item counts once if present in student answers
       let qCorrect=0;
+      const usedStu = new Set();
       key.forEach(k=>{
-        const found = [...zone.querySelectorAll('.ac.stu input')].some(i=>i.value.trim()===k);
-        if(found) qCorrect++;
+        total++;
+        // Find first unused matching student answer
+        const idx = stuVals.findIndex((v,i)=>v===k && !usedStu.has(i));
+        if(idx !== -1){ usedStu.add(idx); correct++; qCorrect++; }
       });
-      const safeKey = lbl.replace(/[.#$/\[\]]/g,'_');
+      const safeKey = lbl.replace(/[.#$\/\[\]]/g,'_');
       details[safeKey] = {correct:qCorrect, total:key.length};
     });
   });
@@ -1299,6 +1316,7 @@ function setModeDash(){
 
 // ── All entries cache (full, unfiltered)
 let _allEntries = [];
+  updateNameDropdown();
 
 function renderDashboard(data){
   _allEntries = Object.values(data).filter(e=>e.name);
@@ -1319,6 +1337,44 @@ function renderDashboard(data){
 
   applyFilters();
 }
+
+// Name dropdown helpers
+function showNameDropdown(){
+  updateNameDropdown();
+  document.getElementById('nameDropdown').style.display='block';
+}
+function hideNameDropdown(){
+  setTimeout(()=>{ document.getElementById('nameDropdown').style.display='none'; }, 200);
+}
+function updateNameDropdown(){
+  const dd = document.getElementById('nameDropdown');
+  if(!dd) return;
+  const q = (document.getElementById('filterName').value||'').trim().toLowerCase();
+  // Get unique names from data
+  const names = [...new Set((_allEntries||[]).map(e=>e.name).filter(n=>n&&(!q||n.toLowerCase().includes(q))))];
+  names.sort((a,b)=>a.localeCompare(b));
+  dd.innerHTML='';
+  if(!names.length){ dd.style.display='none'; return; }
+  dd.style.display='block';
+  // Add "الكل" option
+  const all=document.createElement('div'); all.className='name-opt';
+  all.textContent='— كل الطلاب —';
+  all.onclick=()=>{ document.getElementById('filterName').value=''; applyFilters(); dd.style.display='none'; };
+  dd.appendChild(all);
+  names.forEach(name=>{
+    const opt=document.createElement('div'); opt.className='name-opt';
+    opt.textContent=name;
+    opt.onclick=()=>{ document.getElementById('filterName').value=name; applyFilters(); dd.style.display='none'; };
+    dd.appendChild(opt);
+  });
+}
+// Close dropdown on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#filterName')&&!e.target.closest('#nameDropdown')){
+    const dd=document.getElementById('nameDropdown');
+    if(dd) dd.style.display='none';
+  }
+});
 
 function applyFilters(){
   const nameQ   = ((document.getElementById('filterName')?document.getElementById('filterName').value:'')||'').trim().toLowerCase();
@@ -1460,7 +1516,7 @@ function analyzeWeaknessStrength(entries){
     });
   });
   const qList = Object.values(qMap).filter(q=>q.total>0)
-    .map(function(q){ return {label:q.label, correct:q.correct, total:q.total, pct:Math.round(q.correct/q.total*100)}; })
+    .map(function(q){ return {q:q.q, correct:q.correct, total:q.total, pct:Math.round(q.correct/q.total*100)}; })
     .sort((a,b)=>a.pct-b.pct);
 
   const weakArea = document.getElementById('weaknessArea');
