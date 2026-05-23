@@ -121,7 +121,7 @@ body.sm #modelBar{display:block}
 .wc{display:inline-flex;align-items:center;justify-content:center;
   -webkit-user-select:none;user-select:none;
   background:linear-gradient(135deg,rgba(59,130,246,.24),rgba(29,78,216,.17));
-  border:1.5px solid rgba(59,130,246,.45);border-radius:8px;padding:5px 9px;
+  border:1.5px solid rgba(59,130,246,.45);border-radius:8px;padding:2px 4px;
   color:#dbeafe;font-family:'Amiri',serif;font-size:1.18rem;
   cursor:grab;transition:background .15s,border-color .15s;
   position:relative;white-space:nowrap;touch-action:none}
@@ -288,14 +288,10 @@ body.sm .s-reset{display:flex}
 .stu-field:focus{border-color:rgba(20,184,166,.8)}
 
 /* ── ONLINE STATUS BADGE ── */
-#onlineBadge{display:none;align-items:center;gap:5px;
-  background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);
-  border-radius:20px;padding:3px 10px;font-size:.72rem;color:#86efac;
-  flex-shrink:0}
-#onlineBadge .dot{width:7px;height:7px;background:#22c55e;
-  border-radius:50%;animation:pulse 1.5s infinite}
+
+#onlineBadge 
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-body.sm #onlineBadge{display:flex}
+body.sm 
 
 /* ── STUDENT INFO BAR (student mode) ── */
 #stuBar{display:none;background:rgba(20,184,166,.07);
@@ -446,7 +442,7 @@ body.mob-mode .mob-pair .dz{
   border:1px solid;font-weight:700;
   box-shadow:0 2px 12px rgba(0,0,0,.4)}
 #mobBtn{
-  right:14px;
+  right:50%;transform:translateX(50%);bottom:auto!important;top:6px;
   background:rgba(20,184,166,.25);border-color:rgba(20,184,166,.5);color:#5eead4}
 #fsBtn{
   left:14px;
@@ -640,6 +636,12 @@ body.mob-mode #botPanel{
   font-family:'Cairo',sans-serif;direction:rtl;transition:background .15s;white-space:nowrap}
 .name-opt:hover,.name-opt.selected{background:rgba(139,92,246,.25);color:#e9d5ff}
 
+
+/* Word Filter */
+.wf-btn{padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--txt2);font-family:'Cairo',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .18s;touch-action:manipulation;white-space:nowrap}
+.wf-btn:hover{background:rgba(255,255,255,.14);color:var(--txt)}
+.wf-btn.active{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff;border-color:var(--teal)}
+body.sm #wordFilterBtns{display:flex!important}
 /* ── TOAST ── */
 .toast{position:fixed;bottom:14px;left:50%;
   transform:translateX(-50%) translateY(60px);
@@ -692,7 +694,6 @@ body.mob-mode #botPanel{
       <button class="mbtn act-s" id="btnS" onclick="setMode('s')">👦 الطالب</button>
       <button class="mbtn" id="btnD" onclick="requestDashboard()">📊 النتائج</button>
     </div>
-    <div id="onlineBadge" style="order:0"><span class="dot"></span>متصل</div>
     <div class="hdr-mid" style="order:2">
       <h1>🌿 مستخرج المهارات اللغوية</h1>
       <span class="sep">|</span>
@@ -739,7 +740,6 @@ body.mob-mode #botPanel{
   <span class="stu-name" id="stuBarName"></span>
   <span class="stu-class" id="stuBarClass"></span>
   <span class="stu-score" id="stuBarScore"></span>
-  <div id="onlineBadge"><span class="dot"></span>متصل</div>
 </div>
 
 <!-- أزرار الطالب الثابتة -->
@@ -748,8 +748,13 @@ body.mob-mode #botPanel{
 
   <!-- TOP PANEL (student: shows active model words) -->
   <div id="topPanel">
-    <div class="panel-hdr">
-      <div class="sec-lbl" id="topPanelLbl">📖 القطعة النصية</div>
+    <div class="panel-hdr" style="flex-wrap:wrap;gap:5px">
+      <div class="sec-lbl" id="topPanelLbl" style="flex:1;min-width:0">📖 القطعة النصية</div>
+      <div id="wordFilterBtns" style="display:none;gap:3px">
+        <button class="wf-btn active" data-wf="all"  onclick="setWordFilter('all')">الجميع</button>
+        <button class="wf-btn"        data-wf="text" onclick="setWordFilter('text')">القطعة</button>
+        <button class="wf-btn"        data-wf="cat"  onclick="setWordFilter('cat')">الإعراب</button>
+      </div>
       <button class="col-btn" id="topColBtn" onclick="toggleTop()">▲</button>
     </div>
     <div class="col-body" id="topBody" style="max-height:600px">
@@ -1108,7 +1113,23 @@ function pushStudentAnswers(){
     details
   };
 
-  db.ref('sessions/'+SESSION_ID+'/students/'+stuId).update(payload);
+  // Store summary (name, class, latest)
+  db.ref('sessions/'+SESSION_ID+'/students/'+stuId).update({
+    name: stuName, class: stuClass,
+    ts: Date.now(), online: true,
+    lastModel: modelIdx,
+    lastModelTitle: m.title||('نموذج '+(modelIdx+1)),
+    lastCorrect: correct, lastTotal: total,
+    lastPct: total>0 ? Math.round(correct/total*100) : 0
+  });
+  // Store per-model result under models sub-key
+  const mKey = 'model_'+modelIdx;
+  db.ref('sessions/'+SESSION_ID+'/students/'+stuId+'/models/'+mKey).set({
+    modelIdx, modelTitle: m.title||('نموذج '+(modelIdx+1)),
+    correct, total,
+    pct: total>0 ? Math.round(correct/total*100) : 0,
+    ts: Date.now(), details
+  });
   updateStuBar(correct, total);
 }
 
@@ -1319,7 +1340,27 @@ let _allEntries = [];
   updateNameDropdown();
 
 function renderDashboard(data){
-  _allEntries = Object.values(data).filter(e=>e.name);
+  // Flatten: one entry per student×model
+  var _rawStu2 = Object.values(data).filter(function(e){return e && e.name;});
+  var _flat2 = [];
+  _rawStu2.forEach(function(stu){
+    if(stu.models && Object.keys(stu.models).length>0){
+      Object.values(stu.models).forEach(function(mres){
+        _flat2.push({name:stu.name,class:stu.class,
+          modelIdx:mres.modelIdx,modelTitle:mres.modelTitle,
+          correct:mres.correct,total:mres.total,pct:mres.pct,
+          ts:mres.ts,online:(Date.now()-stu.ts)<120000,details:mres.details||{}});
+      });
+    } else {
+      _flat2.push({name:stu.name,class:stu.class,
+        modelTitle:stu.lastModelTitle||stu.modelTitle||'-',
+        correct:stu.lastCorrect||stu.correct||0,
+        total:stu.lastTotal||stu.total||0,
+        pct:stu.lastPct||stu.pct||0,
+        ts:stu.ts,online:(Date.now()-stu.ts)<120000,details:stu.details||{}});
+    }
+  });
+  _allEntries = _flat2;
 
   // Populate class filter dropdown
   const classSel = document.getElementById('filterClass');
@@ -1614,6 +1655,61 @@ document.addEventListener('keydown',e=>{
   if(pwVisible && e.key==='Escape') cancelPw();
 });
 
+
+// ════════════════════════════════════════════════════════
+// UNANSWERED WARNING
+// ════════════════════════════════════════════════════════
+let _pendingSwitch = null;
+
+function checkUnansweredThenSwitch(mi){
+  if(mode!=='s'){ loadStudentView(mi); return; }
+  var unanswered=0, total=0;
+  document.querySelectorAll('#studentTasksC .dz').forEach(function(zone){
+    var key=getKey(zone); if(!key.length) return;
+    key.forEach(function(k){
+      total++;
+      if(![...zone.querySelectorAll('.ac.stu input')].some(function(i){return i.value.trim()===k;}))
+        unanswered++;
+    });
+  });
+  if(unanswered===0||total===0){ loadStudentView(mi); return; }
+  _pendingSwitch = mi;
+  var ov=document.getElementById('warnOverlay');
+  document.getElementById('warnDetail').textContent=
+    'لم تجب على '+unanswered+' سؤال من أصل '+total+' — ستُخصم '+unanswered+' درجة';
+  ov.style.display='flex';
+  document.getElementById('warnContinue').onclick=function(){ ov.style.display='none'; _pendingSwitch=null; };
+  document.getElementById('warnFinish').onclick=function(){
+    ov.style.display='none';
+    pushStudentAnswers();
+    loadStudentView(_pendingSwitch);
+    _pendingSwitch=null;
+  };
+}
+
+
+// ════════════════════════════════════════════════════════
+// WORD FILTER
+// ════════════════════════════════════════════════════════
+var _wordFilter='all';
+function setWordFilter(f){
+  _wordFilter=f;
+  document.querySelectorAll('.wf-btn').forEach(function(b){
+    b.classList.toggle('active',b.dataset.wf===f);
+  });
+  applyWordFilter();
+}
+function applyWordFilter(){
+  var grid=document.getElementById('topGrid'); if(!grid) return;
+  var SPECIAL=['iraab','hala','alamat','noun','verb','adj'];
+  grid.querySelectorAll('.wc').forEach(function(cell){
+    var cat=cell.dataset.cat||'';
+    var isSpecial=SPECIAL.includes(cat);
+    if(_wordFilter==='all') cell.style.display='';
+    else if(_wordFilter==='text') cell.style.display=isSpecial?'none':'';
+    else if(_wordFilter==='cat')  cell.style.display=isSpecial?'':'none';
+  });
+}
 // ════════════════════════════════════════════════════════
 // SAVE / LOAD
 // ════════════════════════════════════════════════════════
@@ -2079,6 +2175,8 @@ function renderTopGridForModel(mi){
     if(typeof w==='string') appendWordToGrid(grid,w);
     else appendWordToGrid(grid,w.text||'',w.cat||null,w.color!=null?w.color:null);
   });
+
+  if(typeof applyWordFilter!=="undefined") applyWordFilter();
 }
 
 // teacher helpers for active model
@@ -2357,7 +2455,7 @@ function renderModelBar(){
   models.forEach((m,i)=>{
     const btn=document.createElement('button'); btn.className='model-num-btn'+(i===activeModel?' active':'');
     btn.textContent=(i+1)+(m.title&&m.title!==('نموذج '+(i+1))?'  '+m.title:'');
-    btn.onclick=()=>loadStudentView(i);
+    btn.onclick=function(){checkUnansweredThenSwitch(i);};
     nums.appendChild(btn);
   });
   if(!models.length){
@@ -2898,6 +2996,7 @@ document.addEventListener('contextmenu',e=>{
 });
 
 window.addEventListener('DOMContentLoaded',()=>{
+  if(typeof updatePwBtn==='function') updatePwBtn();
   initFirebase();
   const loaded=doLoad();
   if(!loaded){
@@ -2944,5 +3043,21 @@ window.addEventListener('DOMContentLoaded',()=>{
 </div>
 
 
+
+<!-- WARNING OVERLAY -->
+<div id="warnOverlay" style="position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.78);
+  backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center">
+  <div style="background:#111827;border:1px solid rgba(245,200,66,.4);border-radius:14px;
+    padding:22px 20px;width:min(340px,90vw);text-align:center;
+    display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:1.6rem">&#9888;</div>
+    <div style="font-family:Amiri,serif;font-size:1.1rem;color:var(--gold)">هناك أسئلة لم يتم حلها</div>
+    <div id="warnDetail" style="font-size:.82rem;color:var(--txt2)"></div>
+    <div style="display:flex;gap:10px">
+      <button id="warnContinue" class="btn bb" style="flex:1;padding:10px">&#9654; أكمل الاختبار</button>
+      <button id="warnFinish"   class="btn br" style="flex:1;padding:10px">&#10004; إنهاء الاختبار</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
