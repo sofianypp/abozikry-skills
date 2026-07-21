@@ -493,11 +493,16 @@ const BACKUP_ADMIN = { username:"الأستاذ", password:"100%" };
    وتُشارك فعليًا بين المشرف والمعلمين والطلاب من أي جهاز.
    خطوات الإنشاء موضّحة في رسالة التسليم المرفقة مع هذا الملف.
    اترك القيم كما هي (فارغة) إذا كنت ستشغّل الملف داخل Claude.ai فقط. */
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  databaseURL: "",   // مهم جدًا: رابط Realtime Database (وليس Firestore)
-  projectId: "",
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAGrIhpeD5K7berK-6i8AhtVJ-knQqZBSk",
+  authDomain: "arabic-skills.firebaseapp.com",
+  databaseURL: "https://arabic-skills-default-rtdb.firebaseio.com",
+  projectId: "arabic-skills",
+  storageBucket: "arabic-skills.firebasestorage.app",
+  messagingSenderId: "1036219845598",
+  appId: "1:1036219845598:web:ccd806a01ea9fb5f966b4f",
+  measurementId: "G-5C7YSN8LX9"
 };
 /* ================================================================ */
 
@@ -560,6 +565,7 @@ async function initStorage(){
       const saved = JSON.parse(raw);
       Object.keys(saved).forEach(k=>{ DB[k]=saved[k]; });
       lastSavedSnapshot = raw;
+      lastLocalSnapshot = raw;
     }
     sanitizeLoadedModels();
     storageReady = true;
@@ -581,15 +587,28 @@ async function initStorage(){
 let saveTimer=null;
 let saveInFlight=false;
 let lastSavedSnapshot="";
+let lastLocalSnapshot="";
+
+function persistLocalNow(){
+  // خط الدفاع الأول: نسخة محلية متزامنة (synchronous) تُكتب فورًا وبلا أي تأجيل
+  // في كل مرة يُستدعى فيها saveDB()، وليس بعد مهلة 400ms كما كانت سابقًا.
+  // هذا يغلق نافذة السباق (race condition) التي كانت تفقد آخر تعديل بصمت إن
+  // أُغلق التبويب/المتصفح خلال تلك المهلة قبل أن يُنفَّذ الحفظ الفعلي —
+  // وهو السبب الجذري لاختفاء ما يصنعه المعلم/الطالب بعد إغلاق الموقع وإعادة فتحه.
+  try{
+    const snapshot = JSON.stringify(DB);
+    if(snapshot === lastLocalSnapshot) return snapshot;
+    localStorage.setItem("platform-db-local", snapshot);
+    lastLocalSnapshot = snapshot;
+    return snapshot;
+  }catch(e){ console.error("فشل الحفظ المحلي الفوري:", e); return JSON.stringify(DB); }
+}
 
 async function persistDBNow(){
-  // التنفيذ الفعلي والوحيد الذي يكتب البيانات فعليًا (بلا أي تأجيل).
-  const snapshot = JSON.stringify(DB);
-  if(snapshot === lastSavedSnapshot && !saveInFlight) return; // لا تغيير حقيقي منذ آخر حفظ ناجح
-  // خط الدفاع الأول: نسخة محلية متزامنة (synchronous) تُكتب فورًا مهما
-  // حدث بعد ذلك (حتى لو أُغلق التبويب قبل اكتمال الحفظ السحابي)، وتعمل
-  // في أي متصفح دون أي إعداد مسبق.
-  try{ localStorage.setItem("platform-db-local", snapshot); }catch(e){}
+  // التنفيذ الفعلي لمزامنة السحابة (Firebase أو تخزين الـ Artifact)؛ النسخة
+  // المحلية تُكتب فورًا ومنفصلة عبر persistLocalNow() بلا انتظار هذه الدالة.
+  const snapshot = persistLocalNow();
+  if(snapshot === lastSavedSnapshot && !saveInFlight) return; // لا تغيير حقيقي منذ آخر حفظ سحابي ناجح
   saveInFlight = true;
   try{
     if(firebaseDB){
@@ -603,6 +622,10 @@ async function persistDBNow(){
 }
 
 function saveDB(){
+  // الحفظ المحلي فوري دائمًا (بلا أي مخاطرة بالفقدان)، وتبقى مزامنة السحابة
+  // فقط مؤجّلة قليلًا لتجميع التعديلات المتتالية السريعة (أثناء الكتابة مثلًا)
+  // وتقليل عدد الكتابات السحابية دون أي تأثير على أمان النسخة المحلية.
+  persistLocalNow();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{ saveTimer=null; persistDBNow(); }, 400);
 }
@@ -617,6 +640,7 @@ function flushSaveDBNow(){
 window.addEventListener("beforeunload", flushSaveDBNow);
 window.addEventListener("pagehide", flushSaveDBNow);
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") flushSaveDBNow(); });
+
 
 function attachRealtimeSync(){
   // يجعل تعديلات معلّم/مشرف/منسق تصل لبقية الجلسات المفتوحة فعليًا بدل
@@ -1825,7 +1849,7 @@ function renderFormsWindow(view, role){
     if(!checkFormsPermission(grade, subject)) return;
     if(sel==="__new__"){
       const nextNum = matchingModels(term, grade, subject).length + 1;
-      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, blocks:[] };
+      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, blocks:[], data:[] };
       DB.models.push(model);
       openModel(model);
     } else if(sel==="__all__"){
@@ -1894,7 +1918,7 @@ function renderFormsWindow(view, role){
     if(warnings.length){
       alert(`⚠️ تم الحفظ، لكن ${warnings.length} سؤال/أسئلة لم تُحفظ ولن تظهر للطالب لنقص في تحديد الإجابة الصحيحة:\n\n${warnings.map((w,i)=>`${i+1}. ${w}`).join("\n")}\n\nأكمل الخطوة الناقصة في كل سؤال أعلاه ثم اضغط "حفظ" مرة أخرى.`);
     } else {
-      alert(`تم حفظ النموذج «${activeModel.title}» بنجاح.\nعدد الأسئلة القابلة للتصحيح الآلي المحفوظة: ${gradable}\n(الأنماط الأخرى محفوظة في الورشة، وسيتم تفعيل تصحيحها الآلي في التحديثات القادمة).`);
+      alert(`تم حفظ النموذج «${activeModel.title}» بنجاح.\nعدد الأسئلة المحفوظة: ${gradable}\n(جميع الأسئلة محفوظة وستظهر للطالب؛ الأسئلة المقالية وفهم المقروء تُصحَّح يدويًا من المعلم بينما تُصحَّح بقية الأنواع آليًا).`);
     }
   });
 
@@ -3755,6 +3779,10 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   document.getElementById("solveBack").addEventListener("click", ()=>renderStudentModelsList(view,"all"));
   const area = document.getElementById("solveArea");
   const already = !forceRetry && DB.results.find(r=>r.studentUsername===session.user.username && r.modelId===model.id);
+  // حارس دفاعي: بعض النماذج القديمة/التجريبية قد لا تملك حقل data إطلاقًا
+  // (لم تُحفظ عبر آلية الحفظ الحالية بعد)، فنمنع بذلك انهيار الصفحة أو ظهور
+  // درجة/مجموع فارغ عند فتحها، ونعرض بدلًا من ذلك نموذجًا بلا أسئلة بوضوح.
+  if(!Array.isArray(model.data)) model.data = [];
   // answers[idx]: mcq -> number | tf -> bool | spellchoice -> Set of indices | reorder -> array of strings
   const answers = model.data.map(q => q.type==="spellchoice" ? new Set() : null);
   let qNumCounter = 0;
