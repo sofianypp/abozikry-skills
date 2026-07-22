@@ -5135,10 +5135,18 @@ function drawAttachSendTable(wrap, role){
       <table class="data" id="atkTable"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>
     </div>`;
   const tbody = wrap.querySelector("#atkTable tbody");
+  const atkTableEl = wrap.querySelector("#atkTable");
 
   function mine(){
     return (DB.attachTasks||[]).map((a,i)=>({a,i})).filter(x=>x.a.senderRole===role && x.a.senderName===senderName);
   }
+  // حذف كل مرفقات هذا المرسل فقط (وليس مرفقات بقية المستخدمين) بالاعتماد على id، مع حفظ فعلي
+  atkTableEl._clearAllHandler = ()=>{
+    const idsToDelete = new Set(mine().map(({a})=>a.id));
+    if(!idsToDelete.size){ alert("لا توجد مرفقات لحذفها."); return; }
+    DB.attachTasks = (DB.attachTasks||[]).filter(a=>!idsToDelete.has(a.id));
+    saveDB(); draw();
+  };
   function draw(){
     const rows = mine();
     tbody.innerHTML = "";
@@ -5422,9 +5430,17 @@ function drawCorrOutgoingTable(wrap, role){
       <table class="data" id="corkTable"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>
     </div>`;
   const tbody = wrap.querySelector("#corkTable tbody");
+  const corkTableEl = wrap.querySelector("#corkTable");
   function mine(){
     return (DB.correspondence||[]).map((c,i)=>({c,i})).filter(x=>x.c.senderRole===role && x.c.senderName===senderName);
   }
+  // حذف كل مراسلات هذا المرسل فقط (وليس مراسلات بقية المستخدمين) بالاعتماد على id، مع حفظ فعلي
+  corkTableEl._clearAllHandler = ()=>{
+    const idsToDelete = new Set(mine().map(({c})=>c.id));
+    if(!idsToDelete.size){ alert("لا توجد مراسلات لحذفها."); return; }
+    DB.correspondence = (DB.correspondence||[]).filter(c=>!idsToDelete.has(c.id));
+    saveDB(); draw();
+  };
   function draw(){
     const rows = mine();
     tbody.innerHTML = "";
@@ -5955,20 +5971,23 @@ function addMiniTableToolbar(table){
   exportBtn.className="icon-btn"; exportBtn.style.cssText="width:24px;height:24px;font-size:12px;padding:0;";
   exportBtn.addEventListener("click",(e)=>{ e.stopPropagation(); genericExportTable(table); });
   // زر حذف جميع بيانات الجدول (سلة 🗑) بعد الموافقة على رسالة تحذير
-  const clearBtn = document.createElement("button");
-  clearBtn.type="button"; clearBtn.title="حذف جميع بيانات الجدول"; clearBtn.textContent="🗑️";
-  clearBtn.className="icon-btn danger"; clearBtn.style.cssText="width:24px;height:24px;font-size:12px;padding:0;";
-  clearBtn.addEventListener("click",(e)=>{
-    e.stopPropagation();
-    if(!confirm("تحذير: سيتم حذف جميع البيانات الموجودة داخل هذا الجدول نهائيًا. هل أنت متأكد من المتابعة؟")) return;
-    if(typeof table._clearAllHandler === "function"){
+  // ملاحظة مهمة: هذا الزر لا يُضاف إطلاقًا إلا إذا كان للجدول _clearAllHandler حقيقي مرتبط
+  // بمصدر البيانات الفعلي (DB.* + saveDB). قديمًا كان الزر يظهر على كل الجداول، وإن لم يوجد
+  // handler كان يكتفي بتفريغ الصفوف بصريًا (tbody.innerHTML = "") دون لمس DB، فتعود
+  // البيانات فور إعادة رسم الجدول أو إعادة تحميل الصفحة — وهو ما كان يبدو للمستخدم حذفًا وهميًا.
+  // الآن: بلا handler حقيقي = بلا زر حذف من الأساس، بدل حذف مزيّف.
+  if(typeof table._clearAllHandler === "function"){
+    const clearBtn = document.createElement("button");
+    clearBtn.type="button"; clearBtn.title="حذف جميع بيانات الجدول"; clearBtn.textContent="🗑️";
+    clearBtn.className="icon-btn danger"; clearBtn.style.cssText="width:24px;height:24px;font-size:12px;padding:0;";
+    clearBtn.addEventListener("click",(e)=>{
+      e.stopPropagation();
+      if(!confirm("تحذير: سيتم حذف جميع البيانات الموجودة داخل هذا الجدول نهائيًا. هل أنت متأكد من المتابعة؟")) return;
       table._clearAllHandler();
-    } else {
-      const tb = table.querySelector("tbody");
-      if(tb) tb.innerHTML = "";
-    }
-  });
-  bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn); bar.appendChild(clearBtn);
+    });
+    bar.appendChild(clearBtn);
+  }
+  bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn);
   container.appendChild(bar); container.appendChild(tableWrap);
 }
 /* بند 7: إتاحة تغيير حجم جميع أعمدة الجداول (سحب حافة رأس العمود) في كل الجداول ذات الفئة data */
