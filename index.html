@@ -105,8 +105,13 @@
   /* generic tables */
   table.data{ border-collapse:collapse; width:100%; font-size:13.5px; }
   table.data th, table.data td{ border:1px solid #d8d8d8; padding:8px 10px; text-align:right; overflow:hidden; }
-  /* بند 10: عمود "م" (الرقم المسلسل) هو دائمًا العمود الأول، نجعل عرضه مناسبًا لحجم الرقم فقط */
-  table.data th:first-child, table.data td:first-child{ width:34px; min-width:34px; max-width:44px; text-align:center; padding-left:4px; padding-right:4px; white-space:nowrap; }
+  /* بند 5 و8 (تصحيح): كانت هذه القاعدة تُطبَّق سابقًا على "أول عمود في أي جدول" بلا شرط،
+     فكانت تُقيّد أعمدة ليست رقمًا مسلسلًا إطلاقًا (مثل عمود "الطالب" في جدول درجات الطلاب،
+     أو "الفصل الدراسي" في درجاتي وترتيبي، أو "السؤال" في التحديات) بعرض أقصى 44px فتمنعها
+     من التوسّع مهما حاول المستخدم سحبها. الآن تُطبَّق فقط على عمود يحمل صراحةً الصنف
+     col-serial (يُضاف تلقائيًا فقط عندما يكون رأس العمود الأول هو "م" فعلًا)، وبقية
+     الأعمدة تتوسع وتضيق بحرية كاملة حسب سحب المستخدم. */
+  table.data th.col-serial, table.data td.col-serial{ width:34px; min-width:34px; text-align:center; padding-left:4px; padding-right:4px; white-space:nowrap; }
   table.data td .c-pass, table.data td > div{ max-width:100%; }
   table.data th{ background:var(--soft); position:sticky; top:0; }
   .table-wrap{ overflow:auto; border:1px solid #d8d8d8; border-radius:8px; max-height:60vh; }
@@ -661,21 +666,22 @@ function attachRealtimeSync(){
   });
 }
 
+// بند 7: فتح المنصة فورًا دون أي انتظار — نزيل شاشة "جارِ الاتصال بقاعدة
+// البيانات" فورًا ولا ننتظر استجابة Firebase قبل عرض الواجهة. تحميل
+// البيانات (initStorage) يستمر في الخلفية، وعند اكتماله نحدّث فقط
+// القوائم/الشاشات المعروضة حاليًا إن وُجدت، دون أي حجب أو تجميد للصفحة.
+(function removeStorageOverlayImmediately(){
+  const overlay = document.getElementById("storageLoadingOverlay");
+  if(overlay) overlay.remove();
+})();
 initStorage().then(()=>{
   attachRealtimeSync();
-  const overlay = document.getElementById("storageLoadingOverlay");
-  if(overlay) overlay.remove();
+  try{ if(currentRole) refreshUsernameList(); }catch(e){}
   tryRestoreSession();
 }).catch(err=>{
-  // شبكة أمان: أي خطأ غير متوقع أثناء الإقلاع (مثل خطأ إملائي في إعدادات
-  // Firebase) لم يعد يُجمّد الموقع للأبد على شاشة "جارِ الاتصال بقاعدة
-  // البيانات" — بل نستمر بالعمل محليًا فقط ونُبلغ في الـ Console للمطوّر.
   console.error("تعذّر إقلاع طبقة التخزين:", err);
-  const overlay = document.getElementById("storageLoadingOverlay");
-  if(overlay) overlay.remove();
   try{ tryRestoreSession(); }catch(e2){ console.error(e2); }
 });
-setTimeout(()=>{ const o=document.getElementById("storageLoadingOverlay"); if(o) o.remove(); }, 8000);
 let currentRole = null;
 let session = null;
 
@@ -5963,6 +5969,30 @@ function addMiniTableToolbar(table){
 /* بند 8: تضييق كل عمود يحتوي فقط على زر حذف (سلة 🗑) في كل صفوفه، ليصبح بعرض الرمز
    بالضبط، في جميع الجداول وجميع الواجهات؛ لا يمس أي عمود تُشارك فيه أزرار أخرى (مثل
    أعمدة "حذف / إرسال" التي تحوي أكثر من زر). */
+/* بند 5 و8: نضع صنف col-serial فقط على العمود الأول إذا كان رأسه "م" فعلًا (رقم مسلسل حقيقي)،
+   حتى لا يُقيَّد بالعرض الصغير أي عمود آخر (مثل "الطالب" أو "الفصل الدراسي" أو "السؤال").
+   بند 6: عمود "عدد مرات الخطأ" يأخذ عرضًا افتراضيًا يساوي 2سم (~76px) عند أول ظهور له فقط
+   (إن لم يوجد عرض محفوظ مسبقًا من تعديل المستخدم)، ويبقى بعد ذلك قابلًا للتوسيع والتضييق
+   بحرية بالسحب تمامًا كبقية الأعمدة. */
+function applyNamedColumnDefaults(table){
+  const headRow = table.querySelector("thead tr:first-child");
+  if(!headRow) return;
+  const ths = [...headRow.children];
+  const bodyRows = [...table.querySelectorAll("tbody tr")];
+  ths.forEach((th,ci)=>{
+    const label = (th.textContent||"").replace(/\s+/g,"").trim();
+    const isSerial = ci===0 && label==="م";
+    const cells = [th, ...bodyRows.map(tr=>tr.children[ci]).filter(Boolean)];
+    if(isSerial){
+      cells.forEach(c=>c.classList.add("col-serial"));
+    } else {
+      cells.forEach(c=>c.classList.remove("col-serial"));
+      if(label==="عددمراتالخطأ" && !th.style.width && !th.dataset.userResized){
+        th.style.width = "76px"; // ≈ 2 سم، قيمة ابتدائية فقط وقابلة للتغيير بالسحب لاحقًا
+      }
+    }
+  });
+}
 function narrowDangerColumns(table){
   const headRow = table.querySelector("thead tr:first-child");
   if(!headRow) return;
@@ -6114,11 +6144,12 @@ function enableColumnResize(table){
     grip.addEventListener("click", e=>e.stopPropagation());
   });
   narrowDangerColumns(table);
+  applyNamedColumnDefaults(table);
   // بند 8: خلايا العمود تُعاد بناؤها من الصفر عند كل تحديث لمحتوى الجدول (tbody)، فنراقب ذلك
   // ونعيد تطبيق التضييق تلقائيًا في كل مرة حتى لا يفقد العمود تضييقه بعد أول تحديث للبيانات
   const tbodyEl = table.querySelector("tbody");
   if(tbodyEl){
-    new MutationObserver(()=>narrowDangerColumns(table)).observe(tbodyEl, {childList:true, subtree:true});
+    new MutationObserver(()=>{ narrowDangerColumns(table); applyNamedColumnDefaults(table); }).observe(tbodyEl, {childList:true, subtree:true});
   }
 }
 function scanForResizableTables(root){
