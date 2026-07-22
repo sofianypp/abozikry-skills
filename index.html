@@ -4395,7 +4395,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         if(q.type==="match") return s + (q.pairs?q.pairs.length:0);
         if(q.type==="classify") return s + (q.items?q.items.length:0);
         if(q.type==="mindmap") return s + (q.items?q.items.filter(it=>!it.isLabel).length:0);
-        if(q.type==="spellchoice") return s + (q.correct?q.correct.size:0);
+        if(q.type==="spellchoice") return s + (q.correct?(q.correct.size!==undefined?q.correct.size:q.correct.length):0);
         return s + 1;
       }, 0), date:new Date().toLocaleDateString("ar-EG"), details, pendingEssays
     };
