@@ -1688,15 +1688,15 @@ function fillBetweenSame(rows, field){
   });
   saveDB();
 }
-function tableHTML(headers, rows){
-  return `<div class="table-wrap"><table class="data">
+function tableHTML(headers, rows, tableId){
+  return `<div class="table-wrap"><table class="data"${tableId?` id="${tableId}"`:""}>
     <thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${headers.length}" class="empty-note">لا توجد بيانات بعد</td></tr>`}</tbody>
   </table></div>`;
 }
 
 /* جدول قابل للبحث والترشيح لكل عمود — يُستخدم في كل النوافذ عدا واجهة الطالب */
-function renderSearchableTable(container, headers, rows){
+function renderSearchableTable(container, headers, rows, onClearAll){
   // بند 10: كل خلية بحث أعلى الجدول أصبحت قائمة منسدلة قابلة للبحث (input + datalist)
   // تعرض القيم الفريدة الموجودة فعليًا في ذلك العمود، مع إبقاء إمكانية الكتابة الحرة للبحث الجزئي.
   const uniqueColValues = headers.map((h,i)=> [...new Set(rows.map(r=>r[i]).filter(v=>v!==undefined && v!==null && v!==""))]);
@@ -1714,6 +1714,9 @@ function renderSearchableTable(container, headers, rows){
     </table>
     </div>`;
   const tbody = container.querySelector("tbody");
+  // ربط زر حذف جميع بيانات الجدول (سلة 🗑) بمصدر البيانات الفعلي إن زوّدنا المستدعي بدالة onClearAll،
+  // حتى يكون الحذف حذفًا حقيقيًا ودائمًا (DB + saveDB) وليس مجرد تفريغ بصري للصفوف.
+  if(typeof onClearAll === "function") container.querySelector("table")._clearAllHandler = onClearAll;
   const filters = {};
   function draw(){
     const filtered = rows.filter(r=>Object.entries(filters).every(([col,val])=>!val || String(r[col]).toLowerCase().includes(val.toLowerCase())));
@@ -4569,7 +4572,7 @@ function buildTermGradeTable(term, results){
   // لأنها كانت تفترض عرضًا محددًا مسبقًا لا يطابق العرض الفعلي فتتراكب الأعمدة فوق بعضها عند
   // تغيّر العرض؛ الأعمدة الآن أعمدة عادية قابلة للتوسيع/التضييق بحرية كبقية أعمدة الجدول،
   // مع عرض ابتدائي مريح يمنع تزاحم النص.
-  let html = `<div class="table-wrap"><table class="data"><thead><tr>
+  let html = `<div class="table-wrap"><table class="data" id="termGradeTable"><thead><tr>
     <th style="min-width:120px;">الطالب</th><th style="min-width:70px;">الصف</th><th style="min-width:60px;">الفصل</th>${modelNums.map(n=>`<th>نموذج ${n}</th>`).join("")}<th>نماذج لم تحل</th><th>المجموع التحصيلي</th><th>التقدير العام</th></tr></thead><tbody>`;
   html += `<tr style="background:#fdf6e3; font-weight:700;"><td colspan="3">الدرجة الكلية لكل نموذج</td>${modelNums.map(n=>`<td>${modelTotals[n]}</td>`).join("")}<td>—</td><td>${grandTotal}</td><td>—</td></tr>`;
 
@@ -4807,7 +4810,18 @@ function renderAnalysisWindow(view, role){
       results.map(r=>{
         const st = DB.students.find(s=>s.username===r.studentUsername);
         return [r.studentUsername, r.term, r.grade, r.subject||"—", st?(st.cls||"—"):"—", r.modelNumber, r.score, r.total, Math.round(r.score/r.total*100)+"%", r.date];
-      }));
+      }),
+      // حذف حقيقي ودائم: يحذف بالضبط النتائج المعروضة حاليًا (بعد تطبيق كل الترشيحات وصلاحية الدور)
+      // من DB.results نفسها عبر id، ثم saveDB()، ثم إعادة رسم كل عناصر النافذة المعتمدة عليها
+      // (الجدول، الجدول الفصلي، المخططان)، وليس مجرد تفريغ الصفوف من الشاشة.
+      ()=>{
+        if(!results.length){ alert("لا توجد بيانات لحذفها ضمن الترشيح الحالي."); return; }
+        if(!confirm(`سيتم حذف ${results.length} نتيجة نهائيًا من قاعدة البيانات. هل أنت متأكد؟`)) return;
+        const idsToDelete = new Set(results.map(r=>r.id));
+        DB.results = (DB.results||[]).filter(r=>!idsToDelete.has(r.id));
+        saveDB();
+        refreshModelFilterOptions(); redraw(); redrawTermTable(); redrawChart1(); redrawChart2();
+      });
   }
 
   function refreshModelFilterOptions(){
@@ -4822,7 +4836,21 @@ function renderAnalysisWindow(view, role){
   function redrawTermTable(){
     const terms=["الفصل الأول","الفصل الثاني","الفصل الثالث"];
     const activeIdx = ["termTab1","termTab2","termTab3"].findIndex(id=>document.getElementById(id).classList.contains("accent"));
-    document.getElementById("termTableWrap").innerHTML = buildTermGradeTable(terms[activeIdx<0?0:activeIdx], subjectScopedResults());
+    const term = terms[activeIdx<0?0:activeIdx];
+    const scoped = subjectScopedResults();
+    document.getElementById("termTableWrap").innerHTML = buildTermGradeTable(term, scoped);
+    // حذف حقيقي ودائم: يحذف بالضبط نتائج هذا الفصل الدراسي (ضمن نطاق ترشيح المادة الحالي وصلاحية
+    // الدور) من DB.results عبر id، ثم saveDB()، ثم إعادة رسم كل عناصر النافذة المعتمدة عليها.
+    const termTable = document.getElementById("termGradeTable");
+    if(termTable) termTable._clearAllHandler = ()=>{
+      const rows = scoped.filter(r=>r.term===term);
+      if(!rows.length){ alert("لا توجد بيانات لحذفها لهذا الفصل الدراسي."); return; }
+      if(!confirm(`سيتم حذف ${rows.length} نتيجة نهائيًا من قاعدة البيانات. هل أنت متأكد؟`)) return;
+      const idsToDelete = new Set(rows.map(r=>r.id));
+      DB.results = (DB.results||[]).filter(r=>!idsToDelete.has(r.id));
+      saveDB();
+      refreshModelFilterOptions(); redraw(); redrawTermTable(); redrawChart1(); redrawChart2();
+    };
   }
   ["filTerm","filGrade","filSubject"].forEach(id=>document.getElementById(id).addEventListener("change", ()=>{ refreshModelFilterOptions(); redraw(); redrawTermTable(); redrawChart1(); redrawChart2(); }));
   ["filClass","filModel"].forEach(id=>document.getElementById(id).addEventListener("change", redraw));
@@ -4936,6 +4964,7 @@ function renderChallengesWindow(view, role){
     <div id="chTableWrap"></div>
   `;
   let currentRows = [];
+  let currentFilteredResults = [];
   function redraw(){
     const fTerm = document.getElementById("chFilTerm").value;
     const fGrade = document.getElementById("chFilGrade").value;
@@ -4952,6 +4981,7 @@ function renderChallengesWindow(view, role){
       if(fModelId && r.modelId!==fModelId) return false;
       return true;
     });
+    currentFilteredResults = filtered;
     const wrongCount = {};
     const typeOf = {};
     filtered.forEach(r=>r.details.forEach(d=>{
@@ -4962,7 +4992,19 @@ function renderChallengesWindow(view, role){
     }));
     currentRows = Object.entries(wrongCount).sort((a,b)=>b[1]-a[1])
       .map(([q,c],i)=>[i+1, typeOf[q]||"—", q, c]);
-    document.getElementById("chTableWrap").innerHTML = tableHTML(["م","نوع السؤال","السؤال","عدد مرات الخطأ"], currentRows);
+    document.getElementById("chTableWrap").innerHTML = tableHTML(["م","نوع السؤال","السؤال","عدد مرات الخطأ"], currentRows, "chTable");
+    // حذف حقيقي ودائم: يحذف نتائج الطلاب (DB.results) التي بُني منها تحليل التحديات المعروض
+    // حاليًا (ضمن نطاق الترشيح المطبَّق وصلاحية الدور)، ثم saveDB() وإعادة رسم الجدول،
+    // وليس مجرد تفريغ الصفوف بصريًا.
+    const chTable = document.getElementById("chTable");
+    if(chTable) chTable._clearAllHandler = ()=>{
+      if(!currentFilteredResults.length){ alert("لا توجد بيانات لحذفها ضمن الترشيح الحالي."); return; }
+      if(!confirm(`سيتم حذف ${currentFilteredResults.length} نتيجة نهائيًا من قاعدة البيانات (وهي مصدر بيانات هذا التحليل). هل أنت متأكد؟`)) return;
+      const idsToDelete = new Set(currentFilteredResults.map(r=>r.id));
+      DB.results = (DB.results||[]).filter(r=>!idsToDelete.has(r.id));
+      saveDB();
+      redraw();
+    };
   }
   ["chFilTerm","chFilGrade","chFilSubject","chFilClass","chFilStudent","chFilModel"].forEach(id=>{
     document.getElementById(id).addEventListener("change", redraw);
@@ -5312,7 +5354,19 @@ function drawAttachInboxTable(wrap, role){
       <table class="data" id="atkInboxTable"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>
     </div>`;
   const tbody = wrap.querySelector("#atkInboxTable tbody");
-  function mine(){ return (DB.attachTasks||[]).filter(a=>attachMatchesRecipient(a, role, user)); }
+  const atkInboxTableEl = wrap.querySelector("#atkInboxTable");
+  function mine(){ return (DB.attachTasks||[]).filter(a=>attachMatchesRecipient(a, role, user) && !(a.hiddenFor||[]).includes(user.username)); }
+  // حذف حقيقي ودائم من صندوق وارد هذا المستخدم تحديدًا: لا يحذف المرفق من DB نهائيًا (لأنه قد
+  // يكون مُرسلًا لعدة مستلمين كصف/فصل كامل، أو ما زال المرسِل بحاجة لرؤيته في "المرسلة")، بل
+  // يُسجَّل اسم المستخدم في hiddenFor ويُحفظ بـ saveDB()، فلا يعود يظهر له بعد الآن حتى بعد
+  // إعادة التحميل — بخلاف الحذف البصري المؤقت القديم.
+  atkInboxTableEl._clearAllHandler = ()=>{
+    const rows = mine();
+    if(!rows.length){ alert("لا توجد مرفقات لحذفها."); return; }
+    if(!confirm(`سيتم حذف ${rows.length} مرفقًا من صندوق واردك نهائيًا. هل أنت متأكد؟`)) return;
+    rows.forEach(a=>{ a.hiddenFor = a.hiddenFor || []; if(!a.hiddenFor.includes(user.username)) a.hiddenFor.push(user.username); });
+    saveDB(); draw();
+  };
   function draw(){
     const rows = mine();
     tbody.innerHTML = "";
@@ -5527,7 +5581,17 @@ function drawCorrInboxTable(wrap, role){
       <table class="data" id="corkInboxTable"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>
     </div>`;
   const tbody = wrap.querySelector("#corkInboxTable tbody");
-  function mine(){ return (DB.correspondence||[]).filter(c=>corrMatchesRecipient(c, role, user)); }
+  const corkInboxTableEl = wrap.querySelector("#corkInboxTable");
+  function mine(){ return (DB.correspondence||[]).filter(c=>corrMatchesRecipient(c, role, user) && !(c.hiddenFor||[]).includes(user.username)); }
+  // حذف حقيقي ودائم من صندوق وارد هذا المستخدم فقط (لا يمس نسخة المرسِل ولا بقية المستلمين
+  // في حال كانت المراسلة موجّهة لصف/فصل كامل)، عبر hiddenFor + saveDB().
+  corkInboxTableEl._clearAllHandler = ()=>{
+    const rows = mine();
+    if(!rows.length){ alert("لا توجد مراسلات لحذفها."); return; }
+    if(!confirm(`سيتم حذف ${rows.length} مراسلة من صندوق واردك نهائيًا. هل أنت متأكد؟`)) return;
+    rows.forEach(c=>{ c.hiddenFor = c.hiddenFor || []; if(!c.hiddenFor.includes(user.username)) c.hiddenFor.push(user.username); });
+    saveDB(); draw();
+  };
   function draw(){
     const rows = mine();
     tbody.innerHTML = "";
@@ -5702,10 +5766,21 @@ function drawTasksCreateTable(wrap, role){
       <table class="data" id="tkCreateTable"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>
     </div>`;
   const tbody = wrap.querySelector("#tkCreateTable tbody");
+  const tkCreateTableEl = wrap.querySelector("#tkCreateTable");
 
   function myTasks(){
     return (DB.tasks||[]).map((t,i)=>({t,i})).filter(x=>x.t.senderRole===role && x.t.senderName===senderName);
   }
+  // نفس منطق زر "🗑 حذف جميع التكليفات" المخصص أدناه، مرتبط أيضًا بزر السلة العام في شريط
+  // الجدول المصغّر، حذفًا حقيقيًا بالمعرّف id مع saveDB().
+  tkCreateTableEl._clearAllHandler = ()=>{
+    const rows = myTasks();
+    if(!rows.length){ alert("لا توجد تكليفات لحذفها."); return; }
+    if(!confirm(`هل تريد حذف جميع التكليفات (${rows.length}) نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    const idsToDelete = new Set(rows.map(({t})=>t.id));
+    DB.tasks = (DB.tasks||[]).filter(t=>!idsToDelete.has(t.id));
+    saveDB(); draw();
+  };
 
   function draw(){
     const rows = myTasks();
@@ -5858,10 +5933,20 @@ function drawTasksInboxTable(wrap, role){
       <table class="data" id="tkInboxTable"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>
     </div>`;
   const tbody = wrap.querySelector("#tkInboxTable tbody");
+  const tkInboxTableEl = wrap.querySelector("#tkInboxTable");
 
   function myInboxTasks(){
-    return (DB.tasks||[]).map((t,i)=>({t,i})).filter(x=>taskMatchesRecipient(x.t, role, user));
+    return (DB.tasks||[]).map((t,i)=>({t,i})).filter(x=>taskMatchesRecipient(x.t, role, user) && !(x.t.hiddenFor||[]).includes(user.username));
   }
+  // حذف حقيقي ودائم من صندوق وارد هذا المستخدم فقط (لا يمس نسخة المرسِل في "التكليفات الصادرة"
+  // ولا بقية المستلمين إن كانت المهمة موجّهة لصف/فصل كامل)، عبر hiddenFor + saveDB().
+  tkInboxTableEl._clearAllHandler = ()=>{
+    const rows = myInboxTasks();
+    if(!rows.length){ alert("لا توجد تكليفات لحذفها."); return; }
+    if(!confirm(`سيتم حذف ${rows.length} تكليفًا من صندوق واردك نهائيًا. هل أنت متأكد؟`)) return;
+    rows.forEach(({t})=>{ t.hiddenFor = t.hiddenFor || []; if(!t.hiddenFor.includes(user.username)) t.hiddenFor.push(user.username); });
+    saveDB(); draw();
+  };
 
   function draw(){
     const rows = myInboxTasks();
