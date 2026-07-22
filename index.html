@@ -5383,12 +5383,13 @@ function renderStudentAttachmentsWindow(view){
 /* ============================================================
    ===== وحدة "المراسلات الإدارية" (بين المعلم/المنسق/المشرف العام) =====
    ============================================================ */
-const CORR_ROLE_OPTIONS = ["مشرف عام","منسق","معلم"];
-const CORR_ROLE_TO_SESSION_ROLE = {"مشرف عام":"admin","منسق":"coordinator","معلم":"teacher"};
+const CORR_ROLE_OPTIONS = ["مشرف عام","منسق","معلم","منسقين","معلمين"];
+const CORR_ROLE_TO_SESSION_ROLE = {"مشرف عام":"admin","منسق":"coordinator","معلم":"teacher","منسقين":"coordinator","معلمين":"teacher"};
 function optionsForCorrRole(assignedRole){
   if(assignedRole==="مشرف عام") return (DB.admins||[]).map(a=>a.username);
   if(assignedRole==="منسق") return (DB.coordinators||[]).map(c=>c.username);
   if(assignedRole==="معلم") return (DB.teachers||[]).map(t=>t.username);
+  if(assignedRole==="منسقين" || assignedRole==="معلمين") return ALL_GRADES.slice();
   return [];
 }
 /* تحديد ما إذا كان المستخدم الحالي هو المستقبل المقصود لهذه المراسلة */
@@ -5396,6 +5397,12 @@ function corrMatchesRecipient(c, role, user){
   if(!c.sent) return false;
   const targetSessionRole = CORR_ROLE_TO_SESSION_ROLE[c.assignedRole];
   if(targetSessionRole!==role) return false;
+  if(c.assignedRole==="منسقين" || c.assignedRole==="معلمين"){
+    const list = c.assignedRole==="منسقين" ? DB.coordinators : DB.teachers;
+    const fresh = (list||[]).find(x=>x.username===user.username) || user;
+    const grades = fresh.grades || [];
+    return grades.includes(c.assignedName);
+  }
   return c.assignedName===user.username;
 }
 function drawCorrOutgoingTable(wrap, role){
@@ -5584,8 +5591,8 @@ function taskMatchesRecipient(t, role, user){
   if(!t.sent) return false;
   if(role==="student"){
     if(t.assignedRole==="طالب") return t.assignedName===user.username;
-    if(t.assignedRole==="فصل") return user.cls===t.assignedName;
-    if(t.assignedRole==="صف") return user.grade===t.assignedName; // بند 30: كل الفصول في هذا الصف
+    if(t.assignedRole==="فصل") return String(user.cls)===String(t.assignedName);
+    if(t.assignedRole==="صف") return String(user.grade)===String(t.assignedName); // بند 30: كل الفصول في هذا الصف
     return false;
   }
   if(role==="teacher"){
@@ -5594,7 +5601,8 @@ function taskMatchesRecipient(t, role, user){
       const fresh = DB.teachers.find(x=>x.username===user.username) || user;
       const grades = fresh.grades || [];
       if(!grades.includes(t.assignedName)) return false;
-      return !t.subject || t.subject==="كل المواد" || fresh.subject===t.subject || fresh.subject==="كل المواد";
+      const freshSubjects = (fresh.subjects && fresh.subjects.length) ? fresh.subjects : (fresh.subject ? [fresh.subject] : []);
+      return !t.subject || t.subject==="كل المواد" || freshSubjects.includes(t.subject) || freshSubjects.includes("كل المواد");
     }
     return false;
   }
@@ -5604,7 +5612,8 @@ function taskMatchesRecipient(t, role, user){
       const fresh = DB.coordinators.find(x=>x.username===user.username) || user;
       const grades = fresh.grades || [];
       if(!grades.includes(t.assignedName)) return false;
-      return !t.subject || t.subject==="كل المواد" || fresh.subject===t.subject || fresh.subject==="كل المواد";
+      const freshSubjects = (fresh.subjects && fresh.subjects.length) ? fresh.subjects : (fresh.subject ? [fresh.subject] : []);
+      return !t.subject || t.subject==="كل المواد" || freshSubjects.includes(t.subject) || freshSubjects.includes("كل المواد");
     }
     return false;
   }
