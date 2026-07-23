@@ -334,6 +334,7 @@
   .topbar .who{ font-size:14.5px !important; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -351,11 +352,12 @@
     <div class="card">
       <label style="margin-top:0;">اختر صفتك</label>
       <div class="roles" id="roleGroup">
-        <button class="role-btn" data-role="admin">مشرف</button>
-        <button class="role-btn" data-role="coordinator">منسق</button>
-        <button class="role-btn" data-role="teacher">معلم</button>
-        <button class="role-btn" data-role="student">طالب</button>
+        <button class="role-btn" data-role="admin" disabled>مشرف</button>
+        <button class="role-btn" data-role="coordinator" disabled>منسق</button>
+        <button class="role-btn" data-role="teacher" disabled>معلم</button>
+        <button class="role-btn" data-role="student" disabled>طالب</button>
       </div>
+      <div class="msg show" id="storageLoadNote" style="background:#fff8e1; color:#8a6300; border:1px solid #f0d67a;">⏳ جارِ تحميل بياناتك المحفوظة، من فضلك انتظر لحظة قبل تسجيل الدخول...</div>
       <label for="usernameSelect">اسم المستخدم</label>
       <select id="usernameSelect" disabled><option value="">اختر الصفة أولًا</option></select>
       <label for="passwordInput">كلمة المرور</label>
@@ -527,54 +529,81 @@ function sanitizeLoadedModels(){
   (DB.models||[]).forEach(m=>{ m.blocks = []; });
   migrateSubjectsIfNeeded();
 }
+
+// بند 11 — إصلاح جذري لمصيبة "فقدان النماذج والبيانات عند تحديث الصفحة":
+// السبب الحقيقي لم يكن غياب الحفظ نفسه، بل أمران خفيّان معًا:
+//  1) لا يوجد أي تسجيل دخول (Authentication) إلى Firebase في هذا الملف إطلاقًا. قواعد أمان
+//     Firebase الافتراضية لمعظم المشاريع تمنع الكتابة (write) بلا مستخدم مُسجَّل (auth != null)
+//     حتى لو سمحت بالقراءة (read) للجميع. فكانت كل عملية حفظ سحابية تفشل بصمت (catch فقط
+//     console.error، ولا شيء يظهر للمستخدم)، بينما تبقى النسخة المحلية (localStorage) هي فقط
+//     الصحيحة والمحدَّثة على ذلك الجهاز تحديدًا.
+//  2) initStorage() كانت تثق بنسخة Firebase السحابية دائمًا وبلا قيد وشرط بمجرد نجاح قراءتها
+//     (حتى لو كانت فارغة أو قديمة بسبب فشل الكتابة أعلاه)، وتتجاهل النسخة المحلية الأحدث كليًا
+//     (return مبكرة بعد نجاح القراءة السحابية). فكانت كل عملية "تحديث للصفحة" تستبدل عمل
+//     المستخدم الصحيح المحفوظ محليًا بنسخة سحابية قديمة/فارغة — أي "ضياع كل شيء" كما وُصف تمامًا.
+// الإصلاح: (أ) تسجيل دخول مجهول (Anonymous Auth) تلقائيًا قبل أي وصول لقاعدة البيانات، حتى
+// تعمل الكتابة فعليًا مع قواعد الأمان الشائعة. (ب) مقارنة الطابع الزمني (updatedAt) بين النسخة
+// المحلية والنسخة السحابية عند كل تحميل، واعتماد الأحدث منهما فعليًا مهما كان مصدرها — بدل
+// افتراض تفوّق السحابة دومًا. (ج) في حال كانت المحلية هي الأحدث (أي أن آخر حفظة سحابية فشلت)،
+// تُرفع فورًا للسحابة لتصحيح الانحراف تلقائيًا ومنع تكرار المشكلة لاحقًا على أجهزة أخرى.
+async function ensureFirebaseAuth(){
+  try{
+    if(typeof firebase === "undefined" || !firebase.auth) return;
+    if(firebase.auth().currentUser) return;
+    await firebase.auth().signInAnonymously();
+  }catch(e){ console.error("تعذّر تسجيل الدخول المجهول إلى Firebase (قد تفشل الكتابة السحابية بسبب قواعد الأمان):", e); }
+}
+
+function readLocalSnapshotRaw(){
+  try{ return localStorage.getItem("platform-db-local"); }catch(e){ return null; }
+}
+
 async function initStorage(){
+  // نقرأ النسخة المحلية أولًا دائمًا (سريعة ومتزامنة) لنملك مرجعًا للمقارنة، بصرف النظر
+  // عمّا إذا كانت Firebase متاحة أم لا — بدل تجاهلها كليًا كما كان يحدث سابقًا.
+  const localRaw = readLocalSnapshotRaw();
+  let localSaved = null;
+  try{ if(localRaw) localSaved = JSON.parse(localRaw); }catch(e){}
+
+  let cloudSaved = null, cloudRaw = null, cloudSource = null; // cloudSource: "firebase" | "artifact"
+
   // الأولوية 1: Firebase (يعمل من أي مكان: ملف منزّل، استضافة خاصة، أو حتى Artifact)
   if(firebaseConfigured() && typeof firebase !== "undefined"){
     try{
       firebase.initializeApp(FIREBASE_CONFIG);
       firebaseDB = firebase.database();
+      await ensureFirebaseAuth();
       const snap = await firebaseDB.ref("platform-db").get();
-      if(snap.exists()){
-        const saved = snap.val();
-        Object.keys(saved).forEach(k=>{ DB[k]=saved[k]; });
-        lastSavedSnapshot = JSON.stringify(saved);
-      }
-      sanitizeLoadedModels();
-      storageReady = true;
-      return;
+      if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase"; }
     }catch(e){ console.error("تعذّر الاتصال بـ Firebase:", e); }
   }
-  // الأولوية 2 (احتياطي): تخزين الـ Artifact داخل Claude.ai فقط
-  try{
-    if(typeof window.storage !== "undefined"){
-      const res = await window.storage.get("platform-db", true);
-      if(res && res.value){
-        const saved = JSON.parse(res.value);
-        Object.keys(saved).forEach(k=>{ DB[k]=saved[k]; });
-        lastSavedSnapshot = res.value;
+  // الأولوية 2 (احتياطي، فقط إن تعذّرت Firebase تمامًا): تخزين الـ Artifact داخل Claude.ai
+  if(cloudSource===null){
+    try{
+      if(typeof window.storage !== "undefined"){
+        const res = await window.storage.get("platform-db", true);
+        if(res && res.value){ cloudSaved = JSON.parse(res.value); cloudRaw = res.value; cloudSource = "artifact"; }
       }
-      sanitizeLoadedModels();
-      storageReady = true;
-      return;
-    }
-  }catch(e){ /* لا يوجد تخزين Artifact متاح، ننتقل للاحتياطي الأخير */ }
-  // الأولوية 3 (احتياطي أخير): localStorage — يعمل في أي متصفح عادي بلا أي
-  // إعداد مسبق، وهو ما كان مفقودًا تمامًا سابقًا (لا Firebase ولا Artifact
-  // = لا حفظ إطلاقًا). يُحفظ محليًا على هذا الجهاز/المتصفح تحديدًا فقط،
-  // ولا يُشارك تلقائيًا بين أجهزة مختلفة (لذلك يبقى إعداد Firebase هو
-  // الحل الوحيد للمشاركة الفعلية بين المعلم والمشرف والمنسق والطالب من
-  // أجهزة مختلفة).
-  try{
-    const raw = localStorage.getItem("platform-db-local");
-    if(raw){
-      const saved = JSON.parse(raw);
-      Object.keys(saved).forEach(k=>{ DB[k]=saved[k]; });
-      lastSavedSnapshot = raw;
-      lastLocalSnapshot = raw;
-    }
-    sanitizeLoadedModels();
-    storageReady = true;
-  }catch(e){ /* حتى localStorage غير متاح (وضع تصفح خاص جدًا) — سنعمل بذاكرة الجلسة فقط */ }
+    }catch(e){ /* لا يوجد تخزين Artifact متاح */ }
+  }
+
+  // المفاضلة الفعلية: نعتمد النسخة الأحدث زمنيًا (updatedAt) أيًا كان مصدرها، بدل تفضيل
+  // السحابة تلقائيًا حتى لو كانت فارغة أو قديمة بسبب فشل كتابة سابق لم يظهر لأحد.
+  const localTs = (localSaved && localSaved.updatedAt) || 0;
+  const cloudTs = (cloudSaved && cloudSaved.updatedAt) || 0;
+  if(cloudSaved && cloudTs >= localTs){
+    Object.keys(cloudSaved).forEach(k=>{ DB[k]=cloudSaved[k]; });
+    lastSavedSnapshot = cloudRaw;
+    lastLocalSnapshot = ""; // إجبار persistLocalNow على إعادة كتابة النسخة المحلية بأحدث بيانات معتمدة
+  } else if(localSaved){
+    Object.keys(localSaved).forEach(k=>{ DB[k]=localSaved[k]; });
+    lastLocalSnapshot = localRaw;
+    // النسخة المحلية أحدث من السحابة (أو لا توجد سحابة أصلًا) — نرفعها فورًا لتصحيح الانحراف
+    // ومنع تكرار "فقدان البيانات" هذا مستقبلًا على هذا الجهاز أو غيره.
+    if(cloudSource){ lastSavedSnapshot = ""; persistDBNow(); }
+  }
+  sanitizeLoadedModels();
+  storageReady = true;
 }
 
 /* ================================================================
@@ -609,6 +638,16 @@ function persistLocalNow(){
   }catch(e){ console.error("فشل الحفظ المحلي الفوري:", e); return JSON.stringify(DB); }
 }
 
+let syncWarningShown = false;
+function showSyncWarning(){
+  if(syncWarningShown || !session) return; // لا نزعج المستخدم قبل الدخول، ومرة واحدة فقط بالجلسة
+  syncWarningShown = true;
+  const bar = document.createElement("div");
+  bar.textContent = "⚠️ تعذّر رفع آخر تعديلاتك إلى قاعدة البيانات السحابية. بياناتك محفوظة بأمان على هذا الجهاز فقط حاليًا حتى تُستعاد المزامنة.";
+  bar.style.cssText = "position:fixed; top:0; left:0; right:0; z-index:99999; background:#fff3cd; color:#7a5b00; text-align:center; padding:8px 12px; font-size:13px; font-weight:700; border-bottom:2px solid #f0d67a;";
+  document.body.appendChild(bar);
+}
+
 async function persistDBNow(){
   // التنفيذ الفعلي لمزامنة السحابة (Firebase أو تخزين الـ Artifact)؛ النسخة
   // المحلية تُكتب فورًا ومنفصلة عبر persistLocalNow() بلا انتظار هذه الدالة.
@@ -617,12 +656,13 @@ async function persistDBNow(){
   saveInFlight = true;
   try{
     if(firebaseDB){
+      await ensureFirebaseAuth();
       await firebaseDB.ref("platform-db").set(JSON.parse(snapshot));
     } else if(typeof window.storage !== "undefined"){
       await window.storage.set("platform-db", snapshot, true);
     }
     lastSavedSnapshot = snapshot;
-  }catch(e){ console.error("فشل الحفظ السحابي (تم الاحتفاظ بنسخة محلية):", e); }
+  }catch(e){ console.error("فشل الحفظ السحابي (تم الاحتفاظ بنسخة محلية):", e); showSyncWarning(); }
   finally{ saveInFlight = false; }
 }
 
@@ -630,6 +670,9 @@ function saveDB(){
   // الحفظ المحلي فوري دائمًا (بلا أي مخاطرة بالفقدان)، وتبقى مزامنة السحابة
   // فقط مؤجّلة قليلًا لتجميع التعديلات المتتالية السريعة (أثناء الكتابة مثلًا)
   // وتقليل عدد الكتابات السحابية دون أي تأثير على أمان النسخة المحلية.
+  // طابع زمني على كل حفظة فعلية، يُستخدم عند initStorage() للمفاضلة بين النسخة
+  // المحلية والسحابية واعتماد الأحدث منهما فعليًا (بدل افتراض تفوّق السحابة دومًا).
+  DB.updatedAt = Date.now();
   persistLocalNow();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{ saveTimer=null; persistDBNow(); }, 400);
@@ -660,6 +703,7 @@ function attachRealtimeSync(){
     if(saveTimer || saveInFlight) return;
     if(typeof activeModel !== "undefined" && activeModel) return;
     const saved = snap.val();
+    if(((saved && saved.updatedAt) || 0) < (DB.updatedAt||0)) return; // وارد أقدم من نسختنا الحالية — تجاهله
     Object.keys(saved).forEach(k=>{ DB[k]=saved[k]; });
     sanitizeLoadedModels();
     lastSavedSnapshot = incoming;
@@ -676,10 +720,16 @@ function attachRealtimeSync(){
 })();
 initStorage().then(()=>{
   attachRealtimeSync();
+  document.querySelectorAll(".role-btn").forEach(b=>b.disabled=false);
+  const note = document.getElementById("storageLoadNote");
+  if(note) note.remove();
   try{ if(currentRole) refreshUsernameList(); }catch(e){}
   tryRestoreSession();
 }).catch(err=>{
   console.error("تعذّر إقلاع طبقة التخزين:", err);
+  document.querySelectorAll(".role-btn").forEach(b=>b.disabled=false);
+  const note = document.getElementById("storageLoadNote");
+  if(note) note.remove();
   try{ tryRestoreSession(); }catch(e2){ console.error(e2); }
 });
 let currentRole = null;
@@ -722,6 +772,7 @@ roleBtns.forEach(btn=>{
 
 document.getElementById("loginBtn").addEventListener("click", ()=>{
   clearMsg();
+  if(!storageReady){ showMsg("جارِ تحميل بياناتك المحفوظة، من فضلك انتظر لحظة ثم أعد المحاولة.", "err"); return; }
   if(!currentRole){ showMsg("من فضلك اختر صفتك أولًا.", "err"); return; }
   if(currentRole==="admin" && DB.admins.length===0){ openOverlay("setupOverlay"); return; }
   const username = usernameSelect.value, password = passwordInput.value;
