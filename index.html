@@ -254,9 +254,9 @@
   .cf-coldel{ cursor:pointer; color:var(--danger); font-weight:900; margin-right:4px; }
   .cf-rowdel, .gz-rowdel{ cursor:pointer; color:var(--danger); font-weight:900; }
 
-  .match-cols{ display:flex; justify-content:space-between; gap:40px; position:relative; }
-  .match-col{ display:flex; flex-direction:column; gap:10px; width:45%; }
-  .match-card{ border:1.5px solid var(--ink); border-radius:8px; padding:8px 10px; background:#fff; position:relative; font-size:13px; }
+  .match-cols{ display:flex; justify-content:space-between; gap:24px; position:relative; }
+  .match-col{ display:flex; flex-direction:column; gap:10px; width:47%; min-width:0; align-items:flex-start; }
+  .match-card{ border:1.5px solid var(--ink); border-radius:8px; padding:8px 14px; background:#fff; position:relative; font-size:13px; width:fit-content; max-width:100%; box-sizing:border-box; }
   .dot{ width:12px; height:12px; border-radius:50%; background:var(--accent); position:absolute; top:50%; margin-top:-6px; cursor:crosshair; }
   .dot.right{ left:-6px; } .dot.left{ right:-6px; }
   svg.connect-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
@@ -307,8 +307,9 @@
     .workshop{ min-height:70vh; }
     .roles{ grid-template-columns:repeat(2,1fr); }
     .options-grid{ grid-template-columns:1fr; }
-    .match-cols{ flex-direction:column; gap:14px; }
-    .match-col{ width:100%; }
+    .match-cols{ gap:10px; }
+    .match-col{ width:47%; }
+    .match-card{ font-size:12px; padding:6px 9px; }
   }
   @media (max-width: 560px){
     .topbar{ flex-direction:column; align-items:flex-start; gap:6px; }
@@ -352,12 +353,11 @@
     <div class="card">
       <label style="margin-top:0;">اختر صفتك</label>
       <div class="roles" id="roleGroup">
-        <button class="role-btn" data-role="admin" disabled>مشرف</button>
-        <button class="role-btn" data-role="coordinator" disabled>منسق</button>
-        <button class="role-btn" data-role="teacher" disabled>معلم</button>
-        <button class="role-btn" data-role="student" disabled>طالب</button>
+        <button class="role-btn" data-role="admin">مشرف</button>
+        <button class="role-btn" data-role="coordinator">منسق</button>
+        <button class="role-btn" data-role="teacher">معلم</button>
+        <button class="role-btn" data-role="student">طالب</button>
       </div>
-      <div class="msg show" id="storageLoadNote" style="background:#fff8e1; color:#8a6300; border:1px solid #f0d67a;">⏳ جارِ تحميل بياناتك المحفوظة، من فضلك انتظر لحظة قبل تسجيل الدخول...</div>
       <label for="usernameSelect">اسم المستخدم</label>
       <select id="usernameSelect" disabled><option value="">اختر الصفة أولًا</option></select>
       <label for="passwordInput">كلمة المرور</label>
@@ -558,16 +558,27 @@ function readLocalSnapshotRaw(){
   try{ return localStorage.getItem("platform-db-local"); }catch(e){ return null; }
 }
 
-async function initStorage(){
-  // نقرأ النسخة المحلية أولًا دائمًا (سريعة ومتزامنة) لنملك مرجعًا للمقارنة، بصرف النظر
-  // عمّا إذا كانت Firebase متاحة أم لا — بدل تجاهلها كليًا كما كان يحدث سابقًا.
+// بند 1 (هذه الجولة) — إصلاح جذري لبطء الفتح (كان يتجاوز الدقيقة أحيانًا): السبب أن
+// الصفحة كانت تنتظر اكتمال تنزيل قاعدة البيانات كاملة من Firebase (طلب شبكة واحد ضخم
+// يحوي كل النماذج/النتائج/المرفقات) قبل السماح بأي تفاعل. الحل: تطبيق النسخة المحلية
+// (localStorage) فورًا ومتزامنًا (بلا أي انتظار شبكة، جاهزة خلال أجزاء من الثانية)، والسماح
+// بتسجيل الدخول فورًا عليها، بينما تستمر مزامنة Firebase في الخلفية بصمت. إن وصلت نسخة
+// سحابية أحدث لاحقًا (بحسب updatedAt)، تُدمَج تلقائيًا ويُعاد رسم الشاشة الحالية إن لزم،
+// دون أي حجب أو انتظار من المستخدم.
+function applyLocalSnapshotInstantly(){
   const localRaw = readLocalSnapshotRaw();
   let localSaved = null;
   try{ if(localRaw) localSaved = JSON.parse(localRaw); }catch(e){}
+  if(localSaved){
+    Object.keys(localSaved).forEach(k=>{ DB[k]=localSaved[k]; });
+    lastLocalSnapshot = localRaw;
+  }
+  sanitizeLoadedModels();
+  storageReady = true;
+}
 
+async function syncFromCloudInBackground(){
   let cloudSaved = null, cloudRaw = null, cloudSource = null; // cloudSource: "firebase" | "artifact"
-
-  // الأولوية 1: Firebase (يعمل من أي مكان: ملف منزّل، استضافة خاصة، أو حتى Artifact)
   if(firebaseConfigured() && typeof firebase !== "undefined"){
     try{
       firebase.initializeApp(FIREBASE_CONFIG);
@@ -577,7 +588,6 @@ async function initStorage(){
       if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase"; }
     }catch(e){ console.error("تعذّر الاتصال بـ Firebase:", e); }
   }
-  // الأولوية 2 (احتياطي، فقط إن تعذّرت Firebase تمامًا): تخزين الـ Artifact داخل Claude.ai
   if(cloudSource===null){
     try{
       if(typeof window.storage !== "undefined"){
@@ -587,23 +597,21 @@ async function initStorage(){
     }catch(e){ /* لا يوجد تخزين Artifact متاح */ }
   }
 
-  // المفاضلة الفعلية: نعتمد النسخة الأحدث زمنيًا (updatedAt) أيًا كان مصدرها، بدل تفضيل
-  // السحابة تلقائيًا حتى لو كانت فارغة أو قديمة بسبب فشل كتابة سابق لم يظهر لأحد.
-  const localTs = (localSaved && localSaved.updatedAt) || 0;
   const cloudTs = (cloudSaved && cloudSaved.updatedAt) || 0;
-  if(cloudSaved && cloudTs >= localTs){
+  if(cloudSaved && cloudTs > (DB.updatedAt||0) && saveTimer===null && !saveInFlight){
+    // نتجنّب استبدال أي تعديل يجريه المستخدم الآن محليًا ولم يُحفظ بعد (saveTimer/saveInFlight)
     Object.keys(cloudSaved).forEach(k=>{ DB[k]=cloudSaved[k]; });
+    sanitizeLoadedModels();
     lastSavedSnapshot = cloudRaw;
-    lastLocalSnapshot = ""; // إجبار persistLocalNow على إعادة كتابة النسخة المحلية بأحدث بيانات معتمدة
-  } else if(localSaved){
-    Object.keys(localSaved).forEach(k=>{ DB[k]=localSaved[k]; });
-    lastLocalSnapshot = localRaw;
-    // النسخة المحلية أحدث من السحابة (أو لا توجد سحابة أصلًا) — نرفعها فورًا لتصحيح الانحراف
-    // ومنع تكرار "فقدان البيانات" هذا مستقبلًا على هذا الجهاز أو غيره.
-    if(cloudSource){ lastSavedSnapshot = ""; persistDBNow(); }
+    persistLocalNow();
+    // إعادة رسم الشاشة الحالية إن كان المستخدم مسجَّلًا دخوله بالفعل خلال فترة المزامنة
+    try{ if(typeof refreshCurrentScreen === "function") refreshCurrentScreen(); }catch(e){}
+  } else if(!cloudSaved && cloudSource){
+    // لا توجد نسخة سحابية بعد (أول تشغيل) — نرفع نسختنا المحلية الحالية لتأسيسها
+    lastSavedSnapshot = "";
+    persistDBNow();
   }
-  sanitizeLoadedModels();
-  storageReady = true;
+  attachRealtimeSync();
 }
 
 /* ================================================================
@@ -718,19 +726,10 @@ function attachRealtimeSync(){
   const overlay = document.getElementById("storageLoadingOverlay");
   if(overlay) overlay.remove();
 })();
-initStorage().then(()=>{
-  attachRealtimeSync();
-  document.querySelectorAll(".role-btn").forEach(b=>b.disabled=false);
-  const note = document.getElementById("storageLoadNote");
-  if(note) note.remove();
-  try{ if(currentRole) refreshUsernameList(); }catch(e){}
-  tryRestoreSession();
-}).catch(err=>{
-  console.error("تعذّر إقلاع طبقة التخزين:", err);
-  document.querySelectorAll(".role-btn").forEach(b=>b.disabled=false);
-  const note = document.getElementById("storageLoadNote");
-  if(note) note.remove();
-  try{ tryRestoreSession(); }catch(e2){ console.error(e2); }
+Promise.resolve().then(()=>{
+  applyLocalSnapshotInstantly();
+  try{ tryRestoreSession(); }catch(e){ console.error(e); }
+  syncFromCloudInBackground();
 });
 let currentRole = null;
 let session = null;
@@ -1015,7 +1014,6 @@ const NAV = {
   coordinator: [
     ["forms","النماذج التعليمية"],
     ["analysis","تحليل النتائج"],
-    ["essaygrading","تصحيح المقالي"],
     ["challenges","تحليل التحديات"],
     ["attachments","المرفقات"],
     ["tasksSent","التكليفات المرسلة"],
@@ -3315,7 +3313,7 @@ function buildMatchBlock(savedPairs, savedHint){
       <button class="chip-btn mt-delright">➖ حذف بطاقة (يمين)</button>
       <button class="chip-btn mt-addleft">➕ إضافة بطاقة (يسار)</button>
       <button class="chip-btn mt-delleft">➖ حذف بطاقة (يسار)</button>
-      <button class="chip-btn mt-shuffleleft">🔀 خلط بطاقات اليسار</button>
+      <button class="chip-btn mt-autoconnect">🔗 التوصيل الآلي</button>
     </div>
     <div class="match-cols">
       <svg class="connect-svg"></svg>
@@ -3332,7 +3330,7 @@ function buildMatchBlock(savedPairs, savedHint){
   function makeCard(container, side){
     const card = document.createElement("div");
     card.className="match-card"; card.dataset.side=side;
-    card.innerHTML = `<input type="text" placeholder="بطاقة" style="border:none;width:88%;"><span class="dot ${side}"></span>`;
+    card.innerHTML = `<input type="text" placeholder="بطاقة" style="border:none; width:110px; max-width:100%;"><span class="dot ${side}"></span>`;
     const dot = card.querySelector(".dot");
     dot.addEventListener("click", ()=>{
       if(!pending){ pending = {card, side}; dot.style.background="var(--danger)"; }
@@ -3394,19 +3392,23 @@ function buildMatchBlock(savedPairs, savedHint){
   body.querySelector(".mt-addleft").addEventListener("click", ()=>makeCard(left,"left"));
   body.querySelector(".mt-delright").addEventListener("click", ()=>removeLastCard(right));
   body.querySelector(".mt-delleft").addEventListener("click", ()=>removeLastCard(left));
-  // بند 5: خلط بطاقات العمود الأيسر عشوائيًا مع الحفاظ على خطوط التوصيل.
-  // بما أن الوصلات (connections) تُخزَّن كمراجع مباشرة لعناصر DOM (وليس كفهارس)،
-  // فإن مجرد إعادة ترتيب عناصر DOM داخل العمود الأيسر (بدون لمس مصفوفة connections)
-  // يكفي للحفاظ على كل خط متصل بنفس البطاقة، وتُعاد رسم الخطوط تلقائيًا حسب
-  // الموضع الجديد لكل بطاقة عبر drawLines().
-  body.querySelector(".mt-shuffleleft").addEventListener("click", ()=>{
-    const cards = [...left.querySelectorAll(".match-card")];
-    if(cards.length<2) return;
-    for(let i=cards.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [cards[i],cards[j]] = [cards[j],cards[i]];
+  // بند جديد: "التوصيل الآلي" — يوصل كل بطاقة في العمود الأيمن بالبطاقة التي تقابلها
+  // بنفس الترتيب في العمود الأيسر (البطاقة رقم 1 يمين مع رقم 1 يسار، وهكذا)، بدل
+  // اضطرار المعلم للنقر يدويًا على كل نقطتين. لا يمس ترتيب ظهور البطاقات نفسها —
+  // فترتيب المعلم هنا هو فقط "دفتر الإجابة الصحيحة"؛ عند حل الطالب يُعرض العمود
+  // الأيسر مبعثرًا تلقائيًا بالفعل (انظر renderSolveView) بصرف النظر عن هذا الترتيب.
+  body.querySelector(".mt-autoconnect").addEventListener("click", ()=>{
+    const rightCards = [...right.querySelectorAll(".match-card")];
+    const leftCards = [...left.querySelectorAll(".match-card")];
+    connections = [];
+    [...right.querySelectorAll(".dot"), ...left.querySelectorAll(".dot")].forEach(d=>d.style.background="");
+    const n = Math.min(rightCards.length, leftCards.length);
+    for(let i=0;i<n;i++){
+      const rCard = rightCards[i], lCard = leftCards[i];
+      if(!rCard.querySelector("input").value.trim() || !lCard.querySelector("input").value.trim()) continue;
+      connections.push({a:rCard, b:lCard});
     }
-    cards.forEach(c=>left.appendChild(c));
+    if(!connections.length){ alert("اكتب نص البطاقات المتقابلة أولًا (بنفس الترتيب في العمودين) ثم اضغط التوصيل الآلي."); return; }
     drawLines();
   });
   new ResizeObserver(drawLines).observe(body);
@@ -3549,27 +3551,43 @@ function buildMindmapBlock(savedItems, savedConnections){
     // فلا يعود بالإمكان أن يضغط المعلم "لتحريك" الصندوق فيصيب نص البطاقة بالخطأ
     // فيُفرَّغ (لأنه نص افتراضي) وينكمش الصندوق. الأيقونات داخل الشريط (تلميح/لون/حذف)
     // توقف انتشار الحدث بنفسها فلا تبدأ سحبًا أيضًا.
+    // بند جديد: دعم اللمس (Touch) بجانب الفأرة — كانت الصناديق (وبطاقتا التعريف والعنوان
+    // معهما لأنهما من نفس الدالة) غير قابلة للسحب إطلاقًا على الأجهزة اللوحية والهواتف
+    // لأن كل الأحداث كانت مرتبطة بـ mousedown/mousemove/mouseup فقط بلا أي مكافئ لمسي.
     const handle = b.querySelector(".mb-handle");
-    handle.addEventListener("mousedown", e=>{
+    function pointOf(e){
+      if(e.touches && e.touches.length) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+      if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX, y:e.changedTouches[0].clientY};
+      return {x:e.clientX, y:e.clientY};
+    }
+    function dragStart(e){
       if(e.target.closest(".mb-del") || e.target.closest(".bulb") || e.target.closest(".mb-color-slot")) return;
-      isDown=true; ox=e.offsetX; oy=e.offsetY;
-      const bx = b.getBoundingClientRect(), hx = handle.getBoundingClientRect();
-      ox += (hx.left - bx.left); oy += (hx.top - bx.top);
-      // نثبّت العرض والارتفاع الحاليين المعروضين فعليًا قبل بدء السحب حتى لا ينكمش
-      // الصندوق أثناء التحريك (كان يعاد حساب الحجم من الصفر مع كل تحريك).
+      isDown=true;
+      const p = pointOf(e);
+      const hx = handle.getBoundingClientRect();
+      ox = p.x - hx.left; oy = p.y - hx.top;
       const r = b.getBoundingClientRect();
       b.style.width = r.width+"px";
       b.style.height = r.height+"px";
-    });
-    document.addEventListener("mousemove", e=>{
-      if(isDown){
-        const r=area.getBoundingClientRect();
-        b.style.left=(e.clientX-r.left-ox)+"px"; b.style.top=(e.clientY-r.top-oy)+"px";
-        drawLines();
-        updateAreaSize();
-      }
-    });
-    document.addEventListener("mouseup", ()=>isDown=false);
+      if(e.type==="touchstart") e.preventDefault();
+    }
+    function dragMove(e){
+      if(!isDown) return;
+      const p = pointOf(e);
+      const r=area.getBoundingClientRect();
+      b.style.left=(p.x-r.left-ox)+"px"; b.style.top=(p.y-r.top-oy)+"px";
+      drawLines();
+      updateAreaSize();
+      if(e.type==="touchmove") e.preventDefault();
+    }
+    function dragEnd(){ isDown=false; }
+    handle.addEventListener("mousedown", dragStart);
+    handle.addEventListener("touchstart", dragStart, {passive:false});
+    document.addEventListener("mousemove", dragMove);
+    document.addEventListener("touchmove", dragMove, {passive:false});
+    document.addEventListener("mouseup", dragEnd);
+    document.addEventListener("touchend", dragEnd);
+    document.addEventListener("touchcancel", dragEnd);
     b.querySelector(".dot").addEventListener("click",(ev)=>{
       ev.stopPropagation();
       if(!pending){ pending=b; }
@@ -4003,9 +4021,13 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     area.querySelectorAll(".mm-drop, .gr-drop-row, .classify-cell-solve").forEach(el=>el.style.pointerEvents="none");
     document.getElementById("solveSubmit").style.display="none";
     document.getElementById("solveMsg").className="msg show ok";
+    // الأسئلة المقالية لا تُصحَّح آليًا أبدًا؛ إن كانت من ضمن أسئلة هذا النموذج ولم يصحّحها
+    // المعلم بعد، نوضّح للطالب أن درجته الظاهرة الآن مؤقتة (لا تشمل درجة المقالي بعد).
+    const hasPendingEssay = (already.pendingEssays||[]).some(e=>e.points===null);
+    const pendingNote = hasPendingEssay ? ' <span style="color:var(--accent);">(الدرجة مؤقتة — بانتظار تصحيح المعلم للسؤال المقالي)</span>' : '';
     document.getElementById("solveMsg").innerHTML = justSubmitted
-      ? `تم الإرسال بنجاح — درجتك: ${already.score} من ${already.total}. <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`
-      : `سبق أن حللت هذا النموذج — درجتك: ${already.score} من ${already.total}. <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`;
+      ? `تم الإرسال بنجاح — درجتك: ${already.score} من ${already.total}.${pendingNote} <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`
+      : `سبق أن حللت هذا النموذج — درجتك: ${already.score} من ${already.total}.${pendingNote} <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`;
     document.getElementById("solveRetryBtn").addEventListener("click", ()=>renderSolveView(view, model, true));
     return;
   }
@@ -4122,7 +4144,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       function makeCard(container, side, text){
         const card = document.createElement("div");
         card.className="match-card"; card.dataset.side=side;
-        card.innerHTML = `<span style="display:inline-block; min-width:120px;">${text}</span><span class="dot ${side}"></span>`;
+        card.innerHTML = `<span style="display:inline-block;">${text}</span><span class="dot ${side}"></span>`;
         const dot = card.querySelector(".dot");
         dot.addEventListener("click", ()=>{
           if(!pending){ pending = {dot, side, text}; dot.style.background="var(--danger)"; }
@@ -4162,11 +4184,13 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         td.addEventListener("dragover", e=>e.preventDefault());
         td.addEventListener("drop", ()=>{
           if(!dragEl) return;
-          const text = dragEl.textContent.trim();
+          const originalCard = dragEl; // نُثبّت مرجع البطاقة الأصلية في البنك الآن، لأن dragEl متغيّر مشترك
+          // سيتغيّر لاحقًا عند سحب أي بطاقة أخرى، فلا يصلح الاعتماد عليه وقت الضغط للتراجع.
+          const text = originalCard.textContent.trim();
           answers[idx].set(text, Number(td.dataset.col));
-          dragEl.style.pointerEvents="none"; dragEl.style.opacity=".4";
-          const placed = dragEl.cloneNode(true); placed.draggable=false; placed.style.opacity="1"; placed.style.pointerEvents="auto"; placed.style.cursor="pointer";
-          placed.addEventListener("click", ()=>{ placed.remove(); answers[idx].delete(text); dragEl.style.pointerEvents=""; dragEl.style.opacity="1"; checkAllAnswered(); });
+          originalCard.style.pointerEvents="none"; originalCard.style.opacity=".4";
+          const placed = originalCard.cloneNode(true); placed.draggable=false; placed.style.opacity="1"; placed.style.pointerEvents="auto"; placed.style.cursor="pointer";
+          placed.addEventListener("click", ()=>{ placed.remove(); answers[idx].delete(text); originalCard.style.pointerEvents=""; originalCard.style.opacity="1"; checkAllAnswered(); });
           td.appendChild(placed);
           checkAllAnswered();
         });
@@ -4562,7 +4586,7 @@ function visibleResultsFor(role){
     if(!grades.length || !classes.length || !subjects.length) return [];
     // بند 7: نتيجة مرئية فقط إذا كانت ضمن الصف *و* الفصل *و* المادة المسندة معًا،
     // حتى لا يطّلع معلم على نتائج طلابه في مادة أخرى يشترك في تدريس فصلهم فيها زميل له.
-    return DB.results.filter(r=>grades.includes(r.grade) && r.cls!=null && classes.includes(String(r.cls)) && r.subject && subjects.includes(r.subject));
+    return DB.results.filter(r=>grades.includes(r.grade) && r.cls!=null && classes.includes(String(r.cls)) && (!r.subject || subjects.includes(r.subject)));
   }
   return DB.results;
 }
