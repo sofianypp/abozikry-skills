@@ -455,6 +455,45 @@
 </div>
 
 <script>
+// بند 19 (نسخة تلقائية بالكامل) — فحص إصدار ذاتي بدون أي رقم يدوي:
+// بدل الاعتماد على رقم إصدار يُكتب يدويًا مع كل نشر (وسهل نسيان تحديثه)، نحسب
+// "بصمة" (hash) لمحتوى الملف الفعلي المنشور على GitHub Pages (بطلب شبكة حقيقي
+// يتجاوز الكاش تمامًا)، ونقارنها ببصمة آخر نسخة "طبّقناها" فعليًا (محفوظة في
+// localStorage على هذا الجهاز). لو اختلفت البصمتان، فهذا يعني أن هناك نشرة أحدث
+// ظهرت منذ آخر مرة كانت هذه البصمة مطابقة، فنُجبر إعادة تحميل حقيقية. لا حاجة
+// لتذكّر تغيير أي رقم يدويًا مع كل رفعة جديدة على GitHub — كل شيء تلقائي بالكامل.
+(function selfUpdateCheck(){
+  const STORAGE_KEY = "platform-last-known-hash";
+  const PAGE_URL = location.href.split("?")[0].split("#")[0];
+
+  function simpleHash(str){
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for(let i=0;i<str.length;i++){
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1>>>0)).toString(36);
+  }
+
+  fetch(PAGE_URL + "?_cachebust=" + Date.now(), { cache: "no-store" })
+    .then(r => r.text())
+    .then(html => {
+      const remoteHash = simpleHash(html);
+      let lastKnown = null;
+      try{ lastKnown = localStorage.getItem(STORAGE_KEY); }catch(e){}
+      if(lastKnown === remoteHash) return; // مطابق — لا شيء جديد
+      try{ localStorage.setItem(STORAGE_KEY, remoteHash); }catch(e){}
+      if(lastKnown === null) return; // أول تشغيل على هذا الجهاز — فقط نسجّل البصمة، بلا إعادة تحميل
+      location.replace(PAGE_URL + "?v=" + Date.now()); // نسخة أحدث فعليًا — أعد التحميل متجاوزًا الكاش
+    })
+    .catch(()=>{ /* لا يوجد اتصال بالشبكة الآن — نكمل بالنسخة الحالية بصمت */ });
+})();
+</script>
+
+<script>
 const DB = {
   admins: [],
   // تنسيق المواد الدراسية: جدول ديناميكي — أعمدته أسماء المواد، وصفوفه الوظائف (المنسق/المعلم)،
@@ -474,6 +513,7 @@ const DB = {
   ],
   pendingStudents: [],
   attachTasks: [], // مرفقات مُسندة لجهة محددة (بند 10)
+  deletedModelIds: {}, // بند 18: شواهد حذف النماذج {id: وقت الحذف} — تمنع عودة نموذج محذوف عمدًا أثناء الدمج مع السحابة
   correspondence: [], // {id, subject, assignedRole, assignedName, createdDate, createdISO, sent, senderRole, senderName, reply, seenBy}
   models: [
     {
@@ -659,9 +699,45 @@ function showSyncWarning(){
   document.body.appendChild(bar);
 }
 
+// بند 18 — إصلاح جذري لمصيبة "اختفاء النماذج بعد أيام قليلة":
+// السبب: الحفظ كان يكتب DB بالكامل فوق النسخة السحابية (set كامل)، معتمدًا على
+// DB.updatedAt العام الذي يُحدَّث لوقت "الآن" مع أي حفظة تافهة، حتى لو كانت نسخة
+// DB المحلية هذه قديمة وناقصة (مثلًا: جلسة معلّم ظلّت مفتوحة أيامًا، وتجاهلت أثناءها
+// أي تحديثات سحابية واردة من مستخدمين آخرين بسبب شرط "نموذج مفتوح للتحرير").
+// فحين يحفظ هذا المعلّم أي تعديل تافه بعد أيام، DB.updatedAt "الآن" يصبح أحدث من
+// كل شيء أضافه الآخرون في هذه الأثناء، فتُكتب نسخته الناقصة فوق كل شيء ويختفي
+// كل ما أضافه الجميع بصمت.
+// الإصلاح: قبل أي كتابة سحابية، نجلب نسخة "models" الحيّة من فايربيز مباشرة،
+// وندمجها مع نسختنا المحلية بالاعتماد على updatedAt الخاص بكل نموذج على حِدة
+// (وليس DB.updatedAt العام)، فنحتفظ بالأحدث فعليًا لكل نموذج بغض النظر عن مصدره،
+// مع احترام "شواهد الحذف" (DB.deletedModelIds) كي لا يرجع نموذج محذوف عمدًا.
+async function mergeModelsWithCloud(){
+  if(!firebaseDB) return;
+  try{
+    const snap = await firebaseDB.ref("platform-db/models").get();
+    if(!snap.exists()) return;
+    const cloudModels = snap.val() || [];
+    const deleted = DB.deletedModelIds || {};
+    const byId = new Map();
+    (DB.models||[]).forEach(m=>{ byId.set(m.id, m); });
+    cloudModels.forEach(cm=>{
+      if(!cm || !cm.id) return;
+      if(deleted[cm.id]) return; // محذوف عمدًا محليًا — لا نستعيده
+      const local = byId.get(cm.id);
+      const cmTs = cm.updatedAt||0, localTs = (local && local.updatedAt)||0;
+      if(!local || cmTs > localTs) byId.set(cm.id, cm); // الأحدث فعليًا يفوز، أيًا كان مصدره
+    });
+    DB.models = Array.from(byId.values());
+  }catch(e){ console.error("تعذّر دمج النماذج مع النسخة السحابية قبل الحفظ:", e); }
+}
+
 async function persistDBNow(){
   // التنفيذ الفعلي لمزامنة السحابة (Firebase أو تخزين الـ Artifact)؛ النسخة
   // المحلية تُكتب فورًا ومنفصلة عبر persistLocalNow() بلا انتظار هذه الدالة.
+  if(firebaseDB){
+    await ensureFirebaseAuth();
+    await mergeModelsWithCloud(); // ندمج قبل الكتابة كي لا نُطيح بعمل الآخرين
+  }
   const snapshot = persistLocalNow();
   if(snapshot === lastSavedSnapshot && !saveInFlight) return; // لا تغيير حقيقي منذ آخر حفظ سحابي ناجح
   saveInFlight = true;
@@ -1918,7 +1994,7 @@ function renderFormsWindow(view, role){
     if(!checkFormsPermission(grade, subject)) return;
     if(sel==="__new__"){
       const nextNum = matchingModels(term, grade, subject).length + 1;
-      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, blocks:[], data:[] };
+      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, blocks:[], data:[], updatedAt:Date.now() };
       DB.models.push(model);
       openModel(model);
     } else if(sel==="__all__"){
@@ -1937,12 +2013,16 @@ function renderFormsWindow(view, role){
     if(!checkFormsPermission(grade, subject)) return;
     if(!confirm("هل أنت متأكد من الحذف؟")) return;
     flushAutosave();
+    DB.deletedModelIds = DB.deletedModelIds || {};
     if(sel==="__all__"){
       const toDelete = new Set(matchingModels(term, grade, subject).map(m=>m.id));
       DB.models = DB.models.filter(m=>!toDelete.has(m.id));
+      toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
     } else {
       DB.models = DB.models.filter(m=>m.id!==sel);
+      DB.deletedModelIds[sel] = Date.now();
     }
+    saveDB();
     activeModel=null;
     document.getElementById("workshopScroll").innerHTML = '<div class="empty-note">تم الحذف.</div>';
     document.getElementById("workshopTitle").textContent="لم يُفتح أي نموذج";
@@ -1977,6 +2057,7 @@ function renderFormsWindow(view, role){
     let warnings = [];
     try{
       activeModel.data = serializeModel(activeModel, warnings);
+      activeModel.updatedAt = Date.now();
     }catch(err){
       console.error("فشل حفظ النموذج:", err);
       alert("حدث خطأ أثناء الحفظ، ولم يتم حفظ التعديلات. حاول تحديث الصفحة وإعادة المحاولة، وإن استمرت المشكلة أبلغ الدعم الفني.");
@@ -1998,17 +2079,17 @@ function renderFormsWindow(view, role){
     // بيانات النموذج (وبالتالي اختفائه عن واجهة الطالب) عند التنقل السريع
     // بين النماذج قبل انتهاء مهلة الحفظ التلقائي المؤجّل.
     if(autosaveTimer){ clearTimeout(autosaveTimer); autosaveTimer=null; }
-    if(activeModel){ try{ activeModel.data = serializeModel(activeModel); flushSaveDBNow(); }catch(err){ console.error("فشل الحفظ التلقائي:", err); } }
+    if(activeModel){ try{ activeModel.data = serializeModel(activeModel); activeModel.updatedAt = Date.now(); flushSaveDBNow(); }catch(err){ console.error("فشل الحفظ التلقائي:", err); } }
   }
   document.getElementById("workshopScroll").addEventListener("input", ()=>{
     if(!activeModel) return;
     clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(()=>{ try{ activeModel.data = serializeModel(activeModel); saveDB(); }catch(err){ console.error("فشل الحفظ التلقائي:", err); } autosaveTimer=null; }, 1500);
+    autosaveTimer = setTimeout(()=>{ try{ activeModel.data = serializeModel(activeModel); activeModel.updatedAt = Date.now(); saveDB(); }catch(err){ console.error("فشل الحفظ التلقائي:", err); } autosaveTimer=null; }, 1500);
   });
   document.getElementById("workshopScroll").addEventListener("change", ()=>{
     if(!activeModel) return;
     clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(()=>{ try{ activeModel.data = serializeModel(activeModel); saveDB(); }catch(err){ console.error("فشل الحفظ التلقائي:", err); } autosaveTimer=null; }, 800);
+    autosaveTimer = setTimeout(()=>{ try{ activeModel.data = serializeModel(activeModel); activeModel.updatedAt = Date.now(); saveDB(); }catch(err){ console.error("فشل الحفظ التلقائي:", err); } autosaveTimer=null; }, 800);
   });
   window.addEventListener("beforeunload", flushAutosave);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") flushAutosave(); });
