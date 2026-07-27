@@ -75,6 +75,7 @@
     display:flex; align-items:center; justify-content:space-between;
     padding:10px 20px; border-bottom:2px solid var(--ink);
     position:sticky; top:0; z-index:200; background:var(--paper);
+    transition:transform .28s ease;
   }
   .topbar .brand{ font-family:'Amiri', serif; font-weight:700; font-size:19px; }
   .topbar .who{ display:flex; align-items:center; gap:12px; font-size:13px; color:var(--muted); }
@@ -155,8 +156,32 @@
   .model-icon{
     width:56px; height:56px; border:2px solid var(--ink); border-radius:8px; display:flex; align-items:center; justify-content:center;
     font-weight:900; cursor:pointer; background:var(--paper);
+    box-sizing:border-box; padding:6px 4px; overflow:hidden; text-align:center; word-break:break-word; line-height:1.2;
   }
+  .model-icon > div{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .student-model-card{
+    width:118px; min-height:118px; border:2px solid var(--ink); border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; padding:12px 8px; cursor:pointer; background:var(--paper); box-sizing:border-box;
+    text-align:center; transition:background .15s, color .15s, border-color .15s;
+  }
+  .student-model-card:hover{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .student-model-card.test-card{ background:#2563eb; color:#fff; border-color:#2563eb; }
+  .student-model-card.test-card:hover{ background:#1d4ed8; border-color:#1d4ed8; }
+  .student-model-card .smc-num{ font-size:28px; font-weight:900; line-height:1; }
+  .student-model-card .smc-kind{ font-size:12.5px; font-weight:800; }
+  .student-model-card .smc-subject{ font-size:12px; font-weight:600; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.9; }
+  .student-model-card .smc-status{ font-size:11.5px; font-weight:700; margin-top:2px; }
   .model-icon:hover{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .model-icon.test-icon{ background:#2563eb; color:#fff; border-color:#2563eb; }
+  .model-icon.test-icon:hover{ background:#1d4ed8; border-color:#1d4ed8; }
+  .model-icon .sched-badge{ font-size:9px; font-weight:700; }
+  .small-btn.test-active{ background:#2563eb; border-color:#2563eb; color:#fff; }
+  .test-timer{ font-weight:900; font-size:13px; padding:5px 10px; border:2px solid #2563eb; border-radius:7px; color:#2563eb; }
+  .test-toast{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#111; color:#fff; padding:16px 26px; border-radius:10px; font-weight:700; font-size:16px; z-index:400; opacity:1; transition:opacity .4s ease; text-align:center; }
+  .test-toast.hide{ opacity:0; }
+  .test-timeup-overlay{ position:fixed; top:0; left:0; width:100%; height:50vh; background:rgba(180,20,20,.94); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:26px; font-weight:900; z-index:390; text-align:center; padding:20px; gap:10px; }
+  .test-timeup-overlay .countdown30{ font-size:44px; font-weight:900; }
 
   .workshop{ flex:1; display:flex; flex-direction:column; min-width:0; }
   .workshop-topbar{
@@ -319,6 +344,39 @@
     .view{ padding:14px 10px; }
   }
 
+  /* ===================== تعديلات خاصة بعرض الجوال فقط (لا تؤثر على سطح المكتب) ===================== */
+  .gr-pin-btn{ display:none; }
+  @media (max-width: 900px){
+    .gr-pin-btn{ display:inline-flex; }
+    /* 1) إخفاء/إظهار شريط العنوان تلقائيًا حسب اتجاه سحب الشاشة */
+    .topbar.tb-hidden{ transform:translateY(-110%); }
+
+    /* 2) عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي: كل مطلوب (سؤال+إجابة) في صف مستقل لحاله */
+    .req-table{ display:block; width:100%; }
+    .req-table tbody{ display:block; width:100%; }
+    .req-table tr{ display:flex; flex-wrap:wrap; width:100%; }
+    .req-table td.req-q-td{ display:block; flex:1 1 40%; max-width:40%; box-sizing:border-box; }
+    .req-table td.req-a-td{ display:block; flex:1 1 60%; max-width:60%; box-sizing:border-box; }
+
+    /* 3) خلايا الكلمات الموزّعة تتقلّص لتلائم حجم الكلمة (بما فيها الارتفاع)، بزيادة لا تتعدى 1 ملم في كل جهة */
+    .word-chip{
+      display:inline-flex; width:fit-content; max-width:max-content;
+      flex:0 0 auto; padding:1mm !important; box-sizing:border-box;
+      line-height:1.15 !important;
+    }
+
+    /* لا يُسمح لأي حاوية بين القطعة المثبّتة والصفحة بكسر التثبيت (position:sticky) */
+    .view{ overflow:visible !important; }
+
+    /* 4) زر "تثبيت" وسلوك تثبيت القطعة الموزعة أعلى الشاشة */
+    .gr-bank.gr-pinned{
+      position:sticky; top:0; z-index:150; background:var(--paper);
+      border-top:1px dashed #ccc; margin:0 -10px 8px; padding:10px;
+      box-shadow:0 4px 8px -6px rgba(0,0,0,.25);
+    }
+    .gr-pin-btn.on{ background:var(--warn); border-color:var(--warn); color:#fff; }
+  }
+
   /* ===================== بند 8: خط أكبر وأوضح وأثقل في جميع الواجهات ===================== */
   body{ font-size:17px; }
   button, .chip-btn, .small-btn, .tool-btn, .role-btn, .secondary-btn, .primary-btn, .logout-btn, .icon-btn, .link-btn, .model-icon{
@@ -378,7 +436,11 @@
 
 <div class="overlay" id="aboutOverlay"><div class="modal">
   <button class="modal-close" data-close="aboutOverlay">إغلاق ✕</button>
-  <h2>من نحن</h2><p>نحن الأستاذ: أحمد أبوذكري، صنعنا هذا البرنامج</p>
+  <h2>من نحن</h2>
+  <p>نحن الأستاذ/ أحمد أبوذكري، صنعنا هذا البرنامج، ولا نحل استخدامه أو التعديل عليه أو الاستفادة منه ماديًا أو معنويًا دون إذن منا، وهذه بياناتنا للتواصل:</p>
+  <p>الرقم السعودي: +9660564125716</p>
+  <p>الرقم المصري: +201030587285</p>
+  <p>الجيميل: sofianypp@gmail.com</p>
 </div></div>
 
 <div class="overlay" id="registerOverlay"><div class="modal">
@@ -517,7 +579,7 @@ const DB = {
   correspondence: [], // {id, subject, assignedRole, assignedName, createdDate, createdISO, sent, senderRole, senderName, reply, seenBy}
   models: [
     {
-      id:"demo1", term:"الفصل الأول", grade:"الخامس", subject:"", number:1, title:"نموذج 1 (تجريبي)", blocks:[],
+      id:"demo1", term:"الفصل الأول", grade:"الخامس", subject:"", number:1, title:"نموذج 1 (تجريبي)", kind:"model", createdAt:1, scheduledAt:null, testDuration:null, blocks:[],
       data:[
         {type:"mcq", question:"ما جمع كلمة (كتاب)؟", options:["كتب","كاتبون","كتابات",""], correct:0},
         {type:"mcq", question:"أيّ الكلمات اسم؟", options:["يكتب","مدرسة","في",""], correct:1},
@@ -812,6 +874,16 @@ Promise.resolve().then(()=>{
 });
 let currentRole = null;
 let session = null;
+// مؤقّت الاختبار وحاجز "انتهى الوقت" أصبحا على مستوى عام (وليسا محصورين داخل دالة عرض الحل)
+// حتى يمكن إيقافهما فورًا عند تسجيل الخروج، فلا تبقى رسائل/عدادات الاختبار ظاهرة فوق شاشة الدخول.
+let testTimerInterval = null;
+function stopTestTimerAndOverlays(){
+  if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
+  const overlay = document.getElementById("testTimeUpOverlay");
+  if(overlay) overlay.remove();
+  const toast = document.getElementById("testToast5min");
+  if(toast) toast.remove();
+}
 
 const roleBtns = document.querySelectorAll(".role-btn");
 const usernameSelect = document.getElementById("usernameSelect");
@@ -1071,6 +1143,7 @@ document.getElementById("corrBellBtn").addEventListener("click", ()=>{
 });
 document.getElementById("logoutBtn").addEventListener("click", ()=>{
   flushSaveDBNow();
+  stopTestTimerAndOverlays();
   session = null; currentRole = null;
   try{ localStorage.removeItem("platform-session"); }catch(e){}
   document.getElementById("appShell").classList.add("hidden");
@@ -1911,12 +1984,11 @@ function renderFormsWindow(view, role){
           <select id="fSubject"><option value="">اختر</option>
             ${restrictedSubjects.map(sv=>`<option>${sv}</option>`).join("")}
           </select>
-          <label>رقم النموذج</label>
+          <label>رقم النموذج/ الاختبار</label>
           <select id="fNumber"><option value="">اختر الفصل والصف والمادة أولًا</option></select>
           <div class="toolbar" style="margin-top:10px;">
             <button class="chip-btn accent" id="fOpen">فتح</button>
             <button class="chip-btn" id="fDelete">حذف</button>
-            <button class="chip-btn" id="fPreview">معاينة</button>
           </div>
         </div>
         <div class="section" id="toolsSection" style="border-bottom:none;">
@@ -1939,8 +2011,7 @@ function renderFormsWindow(view, role){
           <div class="title" id="workshopTitle">لم يُفتح أي نموذج</div>
           <div class="btns">
             <button class="small-btn" id="wsBack">◀ السابق</button>
-            <button class="small-btn" id="wsUndo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
-            <button class="small-btn" id="wsTestMode">وضع الاختبار</button>
+            <button class="small-btn" id="wsTestMode">إلى اختبار</button>
             <button class="small-btn" id="wsSave">💾 حفظ</button>
           </div>
         </div>
@@ -1961,12 +2032,35 @@ function renderFormsWindow(view, role){
     return DB.models.filter(m=> m.term===term && m.grade===grade &&
       (m.subject===subject || !validSubjects.includes(m.subject||"")) );
   }
+  // يعيد ترقيم وتسمية النماذج والاختبارات كلٍّ ضمن فئته (نموذج/اختبار) بشكل منفصل:
+  // العناصر المنشورة (غير المجدولة أو التي حان وقت نشرها) تُرتَّب أولًا حسب وقت إنشائها،
+  // ثم العناصر المجدولة التي لم يحن وقت نشرها بعد تُلحَق في آخر الترتيب، بحيث يتغيّر رقمها
+  // تلقائيًا كلما أُضيف عنصر منشور جديد قبل حلول موعد نشرها.
+  function recomputeGroupNumbers(term, grade, subject){
+    const list = matchingModels(term, grade, subject);
+    ["model","test"].forEach(kind=>{
+      const group = list.filter(m=>(m.kind||"model")===kind);
+      const isSched = m => !!(m.scheduledAt && m.scheduledAt>Date.now());
+      const published = group.filter(m=>!isSched(m)).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+      const scheduled = group.filter(isSched).sort((a,b)=>(a.scheduledAt||0)-(b.scheduledAt||0));
+      published.concat(scheduled).forEach((m,i)=>{
+        m.number = i+1;
+        m.title = (kind==="test" ? "اختبار " : "نموذج ") + (i+1);
+      });
+    });
+  }
   function refreshNumbers(){
     const term=fTerm.value, grade=fGrade.value, subject=fSubject.value;
     if(!term||!grade||!subject){ fNumber.innerHTML='<option value="">اختر الفصل والصف والمادة أولًا</option>'; return; }
-    const existing = matchingModels(term, grade, subject);
-    let opts = `<option value="">اختر</option><option value="__all__">جميع النماذج</option><option value="__new__">جديد</option>`;
-    existing.forEach(m=>{ opts += `<option value="${m.id}">نموذج رقم ${m.number}${(m.subject && m.subject!==subject) ? " (بلا مادة محددة)" : ""}</option>`; });
+    recomputeGroupNumbers(term, grade, subject);
+    const existing = matchingModels(term, grade, subject)
+      .sort((a,b)=> ((a.kind||"model")===(b.kind||"model")) ? (a.number-b.number) : ((a.kind||"model")==="test" ? 1 : -1) );
+    let opts = `<option value="">اختر</option><option value="__all__">جميع النماذج</option><option value="__alltests__">جميع الاختبارات</option><option value="__everything__">الجميع</option><option value="__new__">جديد</option>`;
+    existing.forEach(m=>{
+      const label = (m.kind==="test" ? "اختبار رقم " : "نموذج رقم ") + m.number;
+      const sched = (m.scheduledAt && m.scheduledAt>Date.now()) ? " (مجدول)" : "";
+      opts += `<option value="${m.id}">${label}${sched}${(m.subject && m.subject!==subject) ? " (بلا مادة محددة)" : ""}</option>`;
+    });
     fNumber.innerHTML = opts;
   }
   fTerm.addEventListener("change", refreshNumbers);
@@ -1993,12 +2087,17 @@ function renderFormsWindow(view, role){
     if(!term||!grade||!subject||!sel){ alert("من فضلك حدد الفصل الدراسي والصف والمادة ورقم النموذج."); return; }
     if(!checkFormsPermission(grade, subject)) return;
     if(sel==="__new__"){
-      const nextNum = matchingModels(term, grade, subject).length + 1;
-      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, blocks:[], data:[], updatedAt:Date.now() };
+      const nextNum = matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="model").length + 1;
+      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, kind:"model", createdAt:Date.now(), scheduledAt:null, testDuration:null, blocks:[], data:[], updatedAt:Date.now() };
       DB.models.push(model);
+      recomputeGroupNumbers(term, grade, subject);
       openModel(model);
     } else if(sel==="__all__"){
-      showAllModelsIcons(term, grade, subject);
+      showAllModelsIcons(term, grade, subject, "model");
+    } else if(sel==="__alltests__"){
+      showAllModelsIcons(term, grade, subject, "test");
+    } else if(sel==="__everything__"){
+      showAllModelsIcons(term, grade, subject, "everything");
     } else {
       const model = DB.models.find(m=>m.id===sel);
       if(model) openModel(model);
@@ -2015,6 +2114,14 @@ function renderFormsWindow(view, role){
     flushAutosave();
     DB.deletedModelIds = DB.deletedModelIds || {};
     if(sel==="__all__"){
+      const toDelete = new Set(matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="model").map(m=>m.id));
+      DB.models = DB.models.filter(m=>!toDelete.has(m.id));
+      toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
+    } else if(sel==="__alltests__"){
+      const toDelete = new Set(matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="test").map(m=>m.id));
+      DB.models = DB.models.filter(m=>!toDelete.has(m.id));
+      toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
+    } else if(sel==="__everything__"){
       const toDelete = new Set(matchingModels(term, grade, subject).map(m=>m.id));
       DB.models = DB.models.filter(m=>!toDelete.has(m.id));
       toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
@@ -2030,30 +2137,47 @@ function renderFormsWindow(view, role){
     updateToolButtonsState();
   });
 
-  document.getElementById("fPreview").addEventListener("click", ()=>{
-    if(!activeModel){ alert("افتح نموذجًا أولًا للمعاينة."); return; }
-    const liveData = serializeModel(activeModel);
-    openPreviewModal(activeModel, liveData);
-  });
-
+  let lastAllModelsMode = "everything";
   document.getElementById("wsBack").addEventListener("click", ()=>{
     flushAutosave();
     const term=fTerm.value, grade=fGrade.value, subject=fSubject.value;
-    if(term&&grade&&subject) showAllModelsIcons(term, grade, subject);
+    if(term&&grade&&subject) showAllModelsIcons(term, grade, subject, lastAllModelsMode);
   });
 
-  document.getElementById("wsUndo").addEventListener("click", ()=>{
-    document.dispatchEvent(new KeyboardEvent("keydown", {key:"z", ctrlKey:true}));
-  });
+  function updateTestModeBtn(){
+    const btn = document.getElementById("wsTestMode");
+    if(!btn) return;
+    const isTest = !!(activeModel && activeModel.kind==="test");
+    btn.textContent = isTest ? "إلى نموذج" : "إلى اختبار";
+    btn.classList.toggle("test-active", isTest);
+  }
 
-  document.getElementById("wsTestMode").addEventListener("click", (e)=>{
-    e.target.classList.toggle("on");
-    if(activeModel) activeModel.testMode = e.target.classList.contains("on");
-    e.target.textContent = (activeModel && activeModel.testMode) ? "✔ وضع الاختبار مفعّل" : "وضع الاختبار";
-  });
-
-  document.getElementById("wsSave").addEventListener("click", ()=>{
+  document.getElementById("wsTestMode").addEventListener("click", ()=>{
     if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
+    const term=activeModel.term, grade=activeModel.grade, subject=activeModel.subject;
+    if(activeModel.kind!=="test"){
+      // تحويل النموذج إلى اختبار: نطلب من المعلم تحديد مدة الاختبار بالدقائق
+      openTestDurationModal((minutes)=>{
+        activeModel.kind = "test";
+        activeModel.testMode = true;
+        activeModel.testDuration = minutes;
+        recomputeGroupNumbers(term, grade, subject);
+        openModel(activeModel);
+        refreshNumbers();
+      });
+    } else {
+      // تحويل الاختبار إلى نموذج عادي
+      activeModel.kind = "model";
+      activeModel.testMode = false;
+      activeModel.testDuration = null;
+      recomputeGroupNumbers(term, grade, subject);
+      openModel(activeModel);
+      refreshNumbers();
+    }
+  });
+
+  function performSave(){
+    if(!activeModel) return null;
     let warnings = [];
     try{
       activeModel.data = serializeModel(activeModel, warnings);
@@ -2061,15 +2185,35 @@ function renderFormsWindow(view, role){
     }catch(err){
       console.error("فشل حفظ النموذج:", err);
       alert("حدث خطأ أثناء الحفظ، ولم يتم حفظ التعديلات. حاول تحديث الصفحة وإعادة المحاولة، وإن استمرت المشكلة أبلغ الدعم الفني.");
-      return;
+      return null;
     }
     const gradable = activeModel.data.length;
     saveDB();
     if(warnings.length){
       alert(`⚠️ تم الحفظ، لكن ${warnings.length} سؤال/أسئلة لم تُحفظ ولن تظهر للطالب لنقص في تحديد الإجابة الصحيحة:\n\n${warnings.map((w,i)=>`${i+1}. ${w}`).join("\n")}\n\nأكمل الخطوة الناقصة في كل سؤال أعلاه ثم اضغط "حفظ" مرة أخرى.`);
     } else {
-      alert(`تم حفظ النموذج «${activeModel.title}» بنجاح.\nعدد الأسئلة المحفوظة: ${gradable}\n(جميع الأسئلة محفوظة وستظهر للطالب؛ الأسئلة المقالية وفهم المقروء تُصحَّح يدويًا من المعلم بينما تُصحَّح بقية الأنواع آليًا).`);
+      const schedNote = (activeModel.scheduledAt && activeModel.scheduledAt>Date.now())
+        ? `\nمجدول للنشر في: ${new Date(activeModel.scheduledAt).toLocaleString("ar")}`
+        : "";
+      alert(`تم حفظ «${activeModel.title}» بنجاح.\nعدد الأسئلة المحفوظة: ${gradable}\n(جميع الأسئلة محفوظة وستظهر للطالب؛ الأسئلة المقالية وفهم المقروء تُصحَّح يدويًا من المعلم بينما تُصحَّح بقية الأنواع آليًا).${schedNote}`);
     }
+    return gradable;
+  }
+
+  document.getElementById("wsSave").addEventListener("click", ()=>{
+    if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
+    openPublishChoiceModal(activeModel, (choice, scheduledAt)=>{
+      if(choice==="now"){
+        activeModel.scheduledAt = null;
+      } else if(choice==="schedule"){
+        activeModel.scheduledAt = scheduledAt;
+      } else {
+        return; // أُلغي
+      }
+      performSave();
+      recomputeGroupNumbers(activeModel.term, activeModel.grade, activeModel.subject);
+      refreshNumbers();
+    });
   });
 
   /* الحفظ التلقائي في واجهة المعلم/المنسق/المشرف (بند 15-17): حفظ صامت من التعديل دون تنبيه */
@@ -2146,25 +2290,37 @@ function renderFormsWindow(view, role){
     } else {
       model.blocks.forEach(b=>scroll.appendChild(b.el));
     }
+    updateTestModeBtn();
   }
 
-  function showAllModelsIcons(term, grade, subject){
+  function showAllModelsIcons(term, grade, subject, mode){
+    mode = mode || "everything";
+    lastAllModelsMode = mode;
     flushAutosave();
     activeModel = null;
-    document.getElementById("workshopTitle").textContent = `جميع نماذج ${grade} — ${term}${subject ? " — "+subject : ""}`;
+    const modeTitles = {model:"جميع نماذج", test:"جميع اختبارات", everything:"جميع نماذج واختبارات"};
+    document.getElementById("workshopTitle").textContent = `${modeTitles[mode]} ${grade} — ${term}${subject ? " — "+subject : ""}`;
+    recomputeGroupNumbers(term, grade, subject);
     const scroll = document.getElementById("workshopScroll");
-    const list = matchingModels(term, grade, subject);
-    if(!list.length){ scroll.innerHTML = '<div class="empty-note">لا توجد نماذج بعد لهذا الصف والفصل الدراسي والمادة.</div>'; return; }
+    let list = matchingModels(term, grade, subject);
+    if(mode==="model") list = list.filter(m=>(m.kind||"model")==="model");
+    else if(mode==="test") list = list.filter(m=>(m.kind||"model")==="test");
+    list = list.sort((a,b)=> ((a.kind||"model")===(b.kind||"model")) ? (a.number-b.number) : ((a.kind||"model")==="test" ? 1 : -1) );
+    if(!list.length){ scroll.innerHTML = '<div class="empty-note">لا توجد نماذج أو اختبارات بعد لهذا الصف والفصل الدراسي والمادة.</div>'; return; }
     scroll.innerHTML = `<div class="models-icons" style="gap:14px;"></div>`;
     const box = scroll.querySelector(".models-icons");
     list.forEach(m=>{
+      const isTest = (m.kind||"model")==="test";
+      const isSched = !!(m.scheduledAt && m.scheduledAt>Date.now());
       const icon = document.createElement("div");
-      icon.className="model-icon"; icon.style.width="76px"; icon.style.height="76px";
-      icon.textContent = m.number;
-      icon.title = m.title;
+      icon.className="model-icon" + (isTest ? " test-icon" : "");
+      icon.style.width="86px"; icon.style.height="86px"; icon.style.flexDirection="column"; icon.style.display="flex"; icon.style.gap="3px";
+      icon.innerHTML = `<div style="font-size:11px; font-weight:700;">${isTest ? "اختبار" : "نموذج"}</div><div style="font-size:24px; font-weight:900; line-height:1;">${m.number}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`;
+      icon.title = `${isTest ? "اختبار" : "نموذج"}${isSched ? " مجدول" : ""} ${m.number}`;
       icon.addEventListener("click", ()=>openModel(m));
       box.appendChild(icon);
     });
+    updateTestModeBtn();
   }
 }
 
@@ -2396,6 +2552,79 @@ function allClassesInUse(){
   if(!set.size) ["1","2","3"].forEach(c=>set.add(c));
   return [...set].sort();
 }
+// مربع حواري لتحديد مدة الاختبار بالدقائق عند تحويل نموذج إلى اختبار
+function openTestDurationModal(onConfirm){
+  let overlay = document.getElementById("testDurationOverlay");
+  if(!overlay){
+    overlay = document.createElement("div"); overlay.id="testDurationOverlay"; overlay.className="overlay";
+    overlay.innerHTML = `<div class="modal">
+        <button class="modal-close" id="testDurClose">إغلاق ✕</button>
+        <h2>تحويل إلى اختبار</h2>
+        <p class="sub">حدد مدة الاختبار بالدقائق. إذا تجاوز الطالب هذه المدة أثناء الحل، سيتوقف زر "إرسال" عن العمل.</p>
+        <label>مدة الاختبار (بالدقائق)</label>
+        <input type="number" id="testDurInput" min="1" value="30" style="width:100%;">
+        <div class="modal-actions"><button class="primary-btn" id="testDurSave" style="flex:1;">تأكيد</button></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#testDurClose").addEventListener("click", ()=>overlay.classList.remove("show"));
+    overlay.addEventListener("click",(e)=>{ if(e.target===overlay) overlay.classList.remove("show"); });
+  }
+  overlay.querySelector("#testDurInput").value = 30;
+  overlay.classList.add("show");
+  overlay.querySelector("#testDurSave").onclick = ()=>{
+    const minutes = Number(overlay.querySelector("#testDurInput").value);
+    if(!minutes || minutes<1){ alert("من فضلك أدخل مدة صحيحة بالدقائق (رقم أكبر من صفر)."); return; }
+    overlay.classList.remove("show");
+    onConfirm(minutes);
+  };
+}
+
+// مربع حواري عند الحفظ: نشر فوري أو نشر مجدول بتاريخ ووقت محددين
+function openPublishChoiceModal(model, onChoice){
+  let overlay = document.getElementById("publishChoiceOverlay");
+  if(!overlay){
+    overlay = document.createElement("div"); overlay.id="publishChoiceOverlay"; overlay.className="overlay";
+    overlay.innerHTML = `<div class="modal">
+        <button class="modal-close" id="pubClose">إغلاق ✕</button>
+        <h2>حفظ ${""}</h2>
+        <p class="sub">اختر طريقة النشر لهذا العنصر.</p>
+        <div class="modal-actions" style="flex-direction:column; gap:10px;">
+          <button class="primary-btn" id="pubNowBtn" style="width:100%;">حفظ ونشر الآن</button>
+          <button class="chip-btn" id="pubSchedBtn" style="width:100%;">حفظ مع النشر المجدول</button>
+        </div>
+        <div id="pubSchedFields" style="display:none; margin-top:14px;">
+          <label>تاريخ النشر</label>
+          <input type="date" id="pubDate" style="width:100%;">
+          <label style="margin-top:8px;">وقت النشر</label>
+          <input type="time" id="pubTime" style="width:100%;">
+          <div class="modal-actions"><button class="primary-btn" id="pubSchedConfirm" style="flex:1;">تأكيد الجدولة</button></div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#pubClose").addEventListener("click", ()=>overlay.classList.remove("show"));
+    overlay.addEventListener("click",(e)=>{ if(e.target===overlay) overlay.classList.remove("show"); });
+  }
+  overlay.querySelector("#pubSchedFields").style.display="none";
+  overlay.classList.add("show");
+  overlay.querySelector("#pubNowBtn").onclick = ()=>{
+    overlay.classList.remove("show");
+    onChoice("now", null);
+  };
+  overlay.querySelector("#pubSchedBtn").onclick = ()=>{
+    overlay.querySelector("#pubSchedFields").style.display="block";
+  };
+  overlay.querySelector("#pubSchedConfirm").onclick = ()=>{
+    const dateVal = overlay.querySelector("#pubDate").value;
+    const timeVal = overlay.querySelector("#pubTime").value;
+    if(!dateVal || !timeVal){ alert("من فضلك حدد تاريخ ووقت النشر."); return; }
+    const scheduledAt = new Date(`${dateVal}T${timeVal}`).getTime();
+    if(!scheduledAt || isNaN(scheduledAt)){ alert("تاريخ أو وقت غير صحيح."); return; }
+    if(scheduledAt <= Date.now()){ alert("يجب أن يكون موعد النشر في المستقبل."); return; }
+    overlay.classList.remove("show");
+    onChoice("schedule", scheduledAt);
+  };
+}
+
 function openPickerModal(title, allOptions, selected, onSave){
   let overlay = document.getElementById("pickerOverlay");
   if(!overlay){
@@ -3890,7 +4119,7 @@ function buildClassifyBlock(savedData){
 /* ================= واجهة الطالب: قوائم النماذج ================= */
 function studentModelsFor(){
   const grade = session.user.grade;
-  return DB.models.filter(m=>m.grade===grade && m.data && m.data.length);
+  return DB.models.filter(m=>m.grade===grade && m.data && m.data.length && !(m.scheduledAt && m.scheduledAt>Date.now()));
 }
 function hasResult(modelId){ return DB.results.some(r=>r.studentUsername===session.user.username && r.modelId===modelId); }
 
@@ -3923,18 +4152,54 @@ function renderStudentModelsList(view, mode){
     const box = document.getElementById("stModelsBox");
     if(!list.length){ box.innerHTML = '<div class="empty-note">لا توجد نماذج مطابقة حاليًا.</div>'; return; }
     box.innerHTML = "";
-    list.forEach(m=>{
-      const icon = document.createElement("div");
-      icon.className="model-icon"; icon.style.width="86px"; icon.style.height="86px"; icon.style.flexDirection="column"; icon.style.display="flex"; icon.style.fontSize="11px"; icon.style.gap="4px";
-      icon.title = m.subject || "";
-      icon.innerHTML = `<div style="font-size:20px;">${m.number}</div><div>${m.subject||"—"}</div><div>${hasResult(m.id)?"✅ محلول":"⬜ لم يُحل"}</div>`;
-      icon.addEventListener("click", ()=>renderSolveView(view, m));
-      box.appendChild(icon);
-    });
+    box.style.gap = "14px";
+    list
+      .sort((a,b)=> ((a.kind||"model")===(b.kind||"model")) ? (a.number-b.number) : ((a.kind||"model")==="test" ? 1 : -1) )
+      .forEach(m=>{
+        const isTest = (m.kind||"model")==="test";
+        const solved = hasResult(m.id);
+        const card = document.createElement("div");
+        card.className = "student-model-card" + (isTest ? " test-card" : "");
+        card.title = m.subject || "";
+        card.innerHTML = `
+          <div class="smc-kind">${isTest ? "اختبار" : "نموذج"}</div>
+          <div class="smc-num">${m.number}</div>
+          <div class="smc-subject">${m.subject || "—"}</div>
+          <div class="smc-status">${solved ? "✅ محلول" : "⬜ لم يُحل"}</div>
+        `;
+        card.addEventListener("click", ()=>renderSolveView(view, m));
+        box.appendChild(card);
+      });
   }
   document.getElementById("stTermFilter").addEventListener("change", draw);
   document.getElementById("stSubjectFilter").addEventListener("change", draw);
   draw();
+}
+
+// تنبيه عابر يظهر في وسط الشاشة لمدة ثانيتين فقط ثم يختفي (تنبيه الاختبار قبل انتهاء الوقت بـ5 دقائق)
+function showTestToast(text){
+  const old = document.getElementById("testToast5min");
+  if(old) old.remove();
+  const el = document.createElement("div");
+  el.id = "testToast5min"; el.className = "test-toast"; el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.classList.add("hide"); setTimeout(()=>el.remove(), 450); }, 2000);
+}
+// حاجز يحجب نصف الشاشة العلوي ولا يختفي حتى يضغط الطالب على زر إرسال، ويعرض عدادًا تنازليًا من 30 إلى صفر
+function showTestTimeUpOverlay(){
+  if(document.getElementById("testTimeUpOverlay")) return;
+  const el = document.createElement("div");
+  el.id = "testTimeUpOverlay"; el.className = "test-timeup-overlay";
+  el.innerHTML = `<div>انتهى وقت الاختبار</div><div class="countdown30" id="testTimeUpCountdown">30</div>`;
+  document.body.appendChild(el);
+}
+function updateTestTimeUpCountdown(seconds){
+  const el = document.getElementById("testTimeUpCountdown");
+  if(el) el.textContent = seconds;
+}
+function removeTestTimeUpOverlay(){
+  const el = document.getElementById("testTimeUpOverlay");
+  if(el) el.remove();
 }
 
 function renderSolveView(view, model, forceRetry, justSubmitted){
@@ -3942,13 +4207,33 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     <button class="chip-btn" id="solveBack">◀ رجوع</button>
     <h2 style="margin-top:10px;">${model.title} — ${model.grade} — ${model.term}${model.subject ? " — "+model.subject : ""}</h2>
     <p class="sub">أجب عن جميع الأسئلة ثم اضغط "إرسال". لن يُحفظ حلّك إلا بعد الإرسال.</p>
+    <div id="testTimerBox"></div>
     <div id="solveArea"></div>
     <button class="primary-btn" id="solveSubmit" style="margin-top:16px; width:auto; padding:12px 30px;">إرسال</button>
     <div class="msg" id="solveMsg"></div>
   `;
-  document.getElementById("solveBack").addEventListener("click", ()=>renderStudentModelsList(view,"all"));
+  document.getElementById("solveBack").addEventListener("click", ()=>{
+    if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
+    removeTestTimeUpOverlay();
+    renderStudentModelsList(view,"all");
+  });
   const area = document.getElementById("solveArea");
   const already = !forceRetry && DB.results.find(r=>r.studentUsername===session.user.username && r.modelId===model.id);
+  // بند: منع دخول/متابعة الاختبار محدد المدة إن كانت مدته قد انتهت فعليًا بالفعل (مثلًا طالب
+  // بدأ الاختبار ثم سجّل خروجًا قبل الإرسال، وعاد بعد انتهاء الوقت المحدد له من المعلم)
+  if(!already && !forceRetry && model.testMode && model.testDuration){
+    const timerKey = `testStart_${session.user.username}_${model.id}`;
+    const prevStart = Number(localStorage.getItem(timerKey));
+    if(prevStart && Date.now() >= prevStart + model.testDuration*60000){
+      view.innerHTML = `
+        <button class="chip-btn" id="solveBack">◀ رجوع</button>
+        <h2 style="margin-top:10px;">${model.title} — ${model.grade} — ${model.term}${model.subject ? " — "+model.subject : ""}</h2>
+        <div class="msg show err" style="margin-top:16px;">انتهت مدة الاختبار المحددة لك من المعلم، ولا يمكنك الدخول إليه الآن.</div>
+      `;
+      document.getElementById("solveBack").addEventListener("click", ()=>renderStudentModelsList(view,"all"));
+      return;
+    }
+  }
   // حارس دفاعي: بعض النماذج القديمة/التجريبية قد لا تملك حقل data إطلاقًا
   // (لم تُحفظ عبر آلية الحفظ الحالية بعد)، فنمنع بذلك انهيار الصفحة أو ظهور
   // درجة/مجموع فارغ عند فتحها، ونعرض بدلًا من ذلك نموذجًا بلا أسئلة بوضوح.
@@ -4007,6 +4292,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           <button class="chip-btn gr-mode" data-mode="passage" style="padding:4px 10px; font-size:12px;">القطعة</button>
           <button class="chip-btn gr-mode" data-mode="eirab" style="padding:4px 10px; font-size:12px;">الإعراب</button>
           <button class="chip-btn gr-mode accent" data-mode="all" style="padding:4px 10px; font-size:12px;">الجميع</button>
+          <button class="chip-btn gr-pin-btn" type="button" style="padding:4px 10px; font-size:12px;">تثبيت</button>
         </div>
         <div class="passage-box gr-bank" style="margin-bottom:8px;"></div>
         <table class="req-table">
@@ -4100,6 +4386,8 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   });
 
   if(already){
+    removeTestTimeUpOverlay();
+    if(model.testMode){ try{ localStorage.removeItem(`testStart_${session.user.username}_${model.id}`); }catch(e){} }
     area.querySelectorAll("input, select, .tf-mark, .sc-mark, .drag-card, .word-chip").forEach(el=>{ el.style.pointerEvents="none"; el.draggable=false; });
     area.querySelectorAll("select, input").forEach(el=>el.disabled=true);
     area.querySelectorAll(".mm-drop, .gr-drop-row, .classify-cell-solve").forEach(el=>el.style.pointerEvents="none");
@@ -4114,6 +4402,54 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       : `سبق أن حللت هذا النموذج — درجتك: ${already.score} من ${already.total}.${pendingNote} <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`;
     document.getElementById("solveRetryBtn").addEventListener("click", ()=>renderSolveView(view, model, true));
     return;
+  }
+
+  // بند: مؤقّت الاختبار — يُفعَّل فقط للنماذج المحوَّلة إلى اختبار وذات مدة محددة،
+  // ولمحاولة حل فعلية (غير محلولة سابقًا). يُخزَّن وقت البدء محليًا لكل طالب/اختبار
+  // كي يستمر العدّ التنازلي بشكل صحيح حتى لو أعاد الطالب تحميل الصفحة.
+  removeTestTimeUpOverlay();
+  if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
+  if(model.testMode && model.testDuration){
+    const timerKey = `testStart_${session.user.username}_${model.id}`;
+    let startTime = Number(localStorage.getItem(timerKey));
+    if(!startTime){
+      startTime = Date.now();
+      try{ localStorage.setItem(timerKey, String(startTime)); }catch(e){}
+    }
+    const endTime = startTime + model.testDuration*60000;
+    // بند: نطلق حاجز "انتهى الوقت" مع عدّاده التنازلي عند بلوغ آخر 30 ثانية بالضبط (وليس قبلها
+    // بدقيقة كاملة)، كي يبدأ الرقم بالتناقص فور ظهور الرسالة مباشرة دون أي توقف أو تجمّد.
+    let warned5 = false, warned30 = false, autoSubmitted = false;
+    const timerBox = document.getElementById("testTimerBox");
+    function fmtRemaining(ms){
+      const s = Math.max(0, Math.floor(ms/1000));
+      const m = Math.floor(s/60), r = s%60;
+      return `${m}:${String(r).padStart(2,"0")}`;
+    }
+    function tick(){
+      const remaining = endTime - Date.now();
+      if(timerBox) timerBox.innerHTML = `<div class="test-timer">⏱ الوقت المتبقي: ${fmtRemaining(remaining)}</div>`;
+      if(!warned5 && remaining<=5*60000 && remaining>30000){
+        warned5 = true;
+        showTestToast("الاختبار سينتهي بعد 5 دقائق");
+      }
+      if(!warned30 && remaining<=30000){
+        warned30 = true;
+        showTestTimeUpOverlay();
+      }
+      if(warned30){
+        const secondsRemaining = Math.max(0, Math.ceil(remaining/1000));
+        updateTestTimeUpCountdown(Math.min(30, secondsRemaining));
+      }
+      // بند: إرسال إجباري تلقائي قبل نهاية مدة الاختبار الفعلية بنصف دقيقة بالضبط، إن لم يكن
+      // الطالب قد ضغط "إرسال" بنفسه حتى تلك اللحظة — فلا يُترك حلّه بلا حفظ إن انتهى الوقت.
+      if(!autoSubmitted && remaining<=30000){
+        autoSubmitted = true;
+        doSubmit(true);
+      }
+    }
+    tick();
+    testTimerInterval = setInterval(tick, 1000);
   }
 
   area.querySelectorAll(".qitem").forEach((box)=>{
@@ -4319,6 +4655,13 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           drawBank(btn.dataset.mode);
         });
       });
+      const pinBtn = box.querySelector(".gr-pin-btn");
+      if(pinBtn){
+        pinBtn.addEventListener("click", ()=>{
+          pinBtn.classList.toggle("on");
+          bank.classList.toggle("gr-pinned", pinBtn.classList.contains("on"));
+        });
+      }
       box.querySelectorAll(".gr-row-hint").forEach(hb=>{
         hb.addEventListener("click", (e)=>{
           e.stopPropagation();
@@ -4438,8 +4781,26 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     // إبقاء الزر مفعّلًا دومًا (بند 20)؛ التحقق الفعلي يتم عند الضغط لإظهار رسالة واضحة بدل تعطيل صامت
   }
 
-  document.getElementById("solveSubmit").addEventListener("click", ()=>{
-    const missing = unansweredLabels();
+  document.getElementById("solveSubmit").addEventListener("click", ()=>doSubmit(false));
+
+  function doSubmit(isAuto){
+    // إذا كان هذا اختبارًا محدد المدة وانتهت مدته فعليًا (ولم يكن هذا هو الإرسال الإجباري
+    // نفسه الذي يشغّله المؤقّت)، يُمنع الإرسال اليدوي المتأخر حتى لو تم النقر
+    if(!isAuto && model.testMode && model.testDuration){
+      const timerKey = `testStart_${session.user.username}_${model.id}`;
+      const startTime = Number(localStorage.getItem(timerKey));
+      if(startTime && Date.now() >= startTime + model.testDuration*60000){
+        const msgEl0 = document.getElementById("solveMsg");
+        msgEl0.className = "msg show err";
+        msgEl0.textContent = "انتهت مدة الاختبار المحددة، لا يمكنك إرسال الحل الآن.";
+        return;
+      }
+    }
+    // النقر على "إرسال" يُخفي رسالة "انتهى وقت الاختبار" الحاجبة إن كانت ظاهرة
+    removeTestTimeUpOverlay();
+    // بند: الإرسال الإجباري التلقائي (قبل نهاية الاختبار بنصف دقيقة) يتجاوز التحقق من
+    // اكتمال الإجابات — فالمطلوب حفظ حل الطالب كما هو عليه فورًا، لا تعطيل إرساله.
+    const missing = isAuto ? [] : unansweredLabels();
     const msgEl = document.getElementById("solveMsg");
     if(missing.length){
       msgEl.className = "msg show err";
@@ -4541,6 +4902,9 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     // بند 22: إن كانت هذه محاولة "إعادة حل" (forceRetry) بعد وجود نتيجة محفوظة بالفعل، فلا تُحفظ هذه
     // المحاولة إطلاقًا ولا تدخل في تحليل النتائج — فقط رسالة إرسال وهمية للتدريب دون إرسال فعلي
     if(forceRetry){
+      if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
+      if(model.testMode){ try{ localStorage.removeItem(`testStart_${session.user.username}_${model.id}`); }catch(e){} }
+      removeTestTimeUpOverlay();
       const msgEl2 = document.getElementById("solveMsg");
       msgEl2.className = "msg show ok";
       msgEl2.textContent = "تم الإرسال بنجاح";
@@ -4564,10 +4928,13 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     if(existing){ Object.assign(existing, newResult); }
     else { DB.results.push(newResult); }
     saveDB();
+    if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
+    if(model.testMode){ try{ localStorage.removeItem(`testStart_${session.user.username}_${model.id}`); }catch(e){} }
+    removeTestTimeUpOverlay();
     // بند 21: منع إعادة تفعيل زر الإرسال بعد إرسال ناجح فعلي، حتى لا تتكرر عملية الإرسال
     document.getElementById("solveSubmit").disabled = true;
     renderSolveView(view, model, false, true);
-  });
+  }
 }
 
 function renderStudentScores(view){
@@ -6427,6 +6794,26 @@ function enableColumnResize(table){
 function scanForResizableTables(root){
   (root.querySelectorAll ? root.querySelectorAll("table.data") : []).forEach(enableColumnResize);
 }
+// بند: إخفاء/إظهار شريط العنوان تلقائيًا عند السحب لأعلى/لأسفل (خاص بعرض الجوال فقط عبر CSS)
+(function(){
+  const lastTop = new WeakMap();
+  function handleScroll(e){
+    const t = (e.target===document) ? document.scrollingElement : e.target;
+    if(!t || typeof t.scrollTop !== "number") return;
+    const topbar = document.querySelector(".topbar");
+    if(!topbar) return;
+    const cur = t.scrollTop;
+    const prev = lastTop.has(t) ? lastTop.get(t) : 0;
+    const delta = cur - prev;
+    if(Math.abs(delta) > 4){
+      if(delta > 0 && cur > 48){ topbar.classList.add("tb-hidden"); }
+      else if(delta < 0){ topbar.classList.remove("tb-hidden"); }
+      lastTop.set(t, cur);
+    }
+    if(cur <= 0){ topbar.classList.remove("tb-hidden"); }
+  }
+  document.addEventListener("scroll", handleScroll, true);
+})();
 document.addEventListener("DOMContentLoaded", ()=>{
   const view = document.getElementById("viewArea");
   if(!view) return;
