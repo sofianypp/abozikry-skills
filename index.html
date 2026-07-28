@@ -877,6 +877,10 @@ let session = null;
 // مؤقّت الاختبار وحاجز "انتهى الوقت" أصبحا على مستوى عام (وليسا محصورين داخل دالة عرض الحل)
 // حتى يمكن إيقافهما فورًا عند تسجيل الخروج، فلا تبقى رسائل/عدادات الاختبار ظاهرة فوق شاشة الدخول.
 let testTimerInterval = null;
+// قفل جدول "بيانات المشرف العام": يجب إعادة إدخال كلمة مرور المشرف العام الحالي نفسه
+// (نفس كلمة مرور تسجيل الدخول) في كل مرة تُفتح فيها نافذة الإسنادات، قبل إظهار أو تعديل
+// اسم المستخدم/كلمة المرور/البريد الإلكتروني الخاصة بأي مشرف عام.
+let adminsTableUnlocked = false;
 function stopTestTimerAndOverlays(){
   if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
   const overlay = document.getElementById("testTimeUpOverlay");
@@ -1021,6 +1025,12 @@ document.querySelectorAll("[data-close]").forEach(el=>el.addEventListener("click
 document.querySelectorAll(".overlay").forEach(ov=>ov.addEventListener("click",(e)=>{ if(e.target===ov) ov.classList.remove("show"); }));
 
 const roleName = {admin:"المشرف العام", coordinator:"المنسق", teacher:"المعلم", student:"الطالب"};
+// كلمة مرور تسجيل الدخول الفعلية للمشرف العام الحالي (لمطابقتها عند طلب فتح قفل جدول بياناته)
+function currentAdminLoginPassword(){
+  if(!session || session.role!=="admin") return null;
+  if(session.user.username===BACKUP_ADMIN.username) return BACKUP_ADMIN.password;
+  return session.user.password || null;
+}
 
 function enterApp(role, user){
   session = {role, user};
@@ -1233,6 +1243,7 @@ function renderView(role,key){
 }
 
 function renderAssignmentsWindow(view){
+  adminsTableUnlocked = false;
   view.innerHTML = `
     <h2>إدارة الإسنادات</h2>
     <p class="sub">أربعة جداول ديناميكية: المشرف العام، المنسقون، المعلمون، الطلاب.</p>
@@ -1290,7 +1301,10 @@ function renderAssignmentsWindow(view){
     renderRelationsLookup();
   };
 
+  function adminsLocked(){ return activeTab==="admins" && !adminsTableUnlocked; }
+
   document.getElementById("addRowBtn").addEventListener("click", ()=>{
+    if(adminsLocked()){ alert("أدخل كلمة مرور المشرف العام أولًا من الجدول لفتح إمكانية التعديل."); return; }
     if(activeTab==="admins") DB.admins.push({username:"مشرف_جديد"+(DB.admins.length+1), password:"1234", email:""});
     if(activeTab==="subjects"){ migrateSubjectsIfNeeded(); DB.subjects.rows.push({role:"المعلم", cells:{}}); }
     if(activeTab==="coords") DB.coordinators.push({username:"منسق_جديد"+(DB.coordinators.length+1), password:"1234", teachers:[], grades:[], classes:[], subjects:[]});
@@ -1300,6 +1314,7 @@ function renderAssignmentsWindow(view){
     drawAssignTable(activeTab);
   });
   document.getElementById("exportBtn").addEventListener("click", ()=>{
+    if(adminsLocked()){ alert("أدخل كلمة مرور المشرف العام أولًا من الجدول قبل تصدير بياناته."); return; }
     const map = {
       admins:[["م","اسم المستخدم","البريد الإلكتروني"], DB.admins.map((r,i)=>[i+1,r.username,r.email||""])],
       subjects:[["م","الوظيفة",...subjectNamesList()], DB.subjects.rows.map((r,i)=>[i+1, r.role||"", ...subjectNamesList().map(c=>(r.cells||{})[c]||"")])],
@@ -1347,6 +1362,7 @@ function renderAssignmentsWindow(view){
   }
 
   document.getElementById("importExcelBtn").addEventListener("click", ()=>{
+    if(adminsLocked()){ alert("أدخل كلمة مرور المشرف العام أولًا من الجدول قبل الاستيراد إليه."); return; }
     document.getElementById("importExcelFile").click();
   });
   document.getElementById("importExcelFile").addEventListener("change", (e)=>{
@@ -1369,6 +1385,7 @@ function renderAssignmentsWindow(view){
   });
 
   document.getElementById("pasteListBtn").addEventListener("click", ()=>{
+    if(adminsLocked()){ alert("أدخل كلمة مرور المشرف العام أولًا من الجدول قبل اللصق إليه."); return; }
     openPasteListModal(importCols[activeTab], (matrix)=>importRowsForTab(activeTab, matrix));
   });
 
@@ -1612,11 +1629,40 @@ function drawAssignTable(key){
 
   // ربط زر (حذف جميع بيانات الجدول 🗑️) بمصفوفة البيانات الفعلية في كل حالة، بحيث يبقى
   // الحذف نافذًا فعليًا بعد إعادة تحميل النافذة، وليس مجرد إخفاء بصري مؤقت.
-  if(key==="admins") t._clearAllHandler = ()=>{ DB.admins = []; saveDB(); drawAssignTable("admins"); };
+  if(key==="admins"){ if(adminsTableUnlocked) t._clearAllHandler = ()=>{ DB.admins = []; saveDB(); drawAssignTable("admins"); }; }
   else if(key==="subjects") t._clearAllHandler = ()=>{ DB.subjects = { columns:[], rows:[{role:"المنسق",cells:{}},{role:"المعلم",cells:{}}] }; saveDB(); drawAssignTable("subjects"); };
   else if(key==="coords") t._clearAllHandler = ()=>{ DB.coordinators = []; saveDB(); drawAssignTable("coords"); };
   else if(key==="teachers") t._clearAllHandler = ()=>{ DB.teachers = []; saveDB(); drawAssignTable("teachers"); };
   else if(key==="students") t._clearAllHandler = ()=>{ DB.students = []; saveDB(); drawAssignTable("students"); };
+
+  // بند: قفل جدول "بيانات المشرف العام" — لا يُعرض اسم المستخدم/كلمة المرور/البريد الإلكتروني
+  // ولا يمكن تعديلها إلا بعد إعادة إدخال نفس كلمة مرور تسجيل الدخول للمشرف العام الحالي.
+  if(key==="admins" && !adminsTableUnlocked){
+    table.remove();
+    const lockBox = document.createElement("div");
+    lockBox.style.cssText = "max-width:420px; padding:16px; border:1.5px solid #ddd; border-radius:10px; margin-top:8px;";
+    lockBox.innerHTML = `
+      <div style="font-weight:700; margin-bottom:10px;">🔒 هذا الجدول محمي — أدخل كلمة مرور تسجيل دخولك (المشرف العام الحالي) لإظهاره وتعديله.</div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="password" id="adminsUnlockPass" placeholder="كلمة المرور" style="flex:1; padding:6px 8px; border:1.5px solid #ccc; border-radius:6px;">
+        <button class="chip-btn accent" id="adminsUnlockBtn">فتح</button>
+      </div>
+      <div class="msg" id="adminsUnlockMsg" style="margin-top:8px;"></div>
+    `;
+    wrap.appendChild(lockBox);
+    const doUnlock = ()=>{
+      const entered = document.getElementById("adminsUnlockPass").value;
+      const real = currentAdminLoginPassword();
+      const msgEl = document.getElementById("adminsUnlockMsg");
+      if(!entered){ msgEl.className="msg show err"; msgEl.textContent="من فضلك أدخل كلمة المرور."; return; }
+      if(real===null || entered!==real){ msgEl.className="msg show err"; msgEl.textContent="كلمة المرور غير صحيحة."; return; }
+      adminsTableUnlocked = true;
+      drawAssignTable("admins");
+    };
+    document.getElementById("adminsUnlockBtn").addEventListener("click", doUnlock);
+    document.getElementById("adminsUnlockPass").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); doUnlock(); } });
+    return;
+  }
 
   if(key==="admins"){
     t.innerHTML = `<thead><tr><th>م</th><th>اسم المستخدم</th><th>كلمة المرور</th><th>البريد الإلكتروني</th><th></th></tr></thead><tbody></tbody>`;
@@ -1976,10 +2022,11 @@ function renderFormsWindow(view, role){
           <h3>بيانات النماذج</h3>
           <label>الفصل الدراسي</label>
           <select id="fTerm"><option value="">اختر</option><option>الفصل الأول</option><option>الفصل الثاني</option><option>الفصل الثالث</option></select>
-          <label>الصف</label>
+          <label>الصف <button type="button" class="chip-btn" id="fGradeAddBtn" title="إضافة صف آخر لنشر نفس النموذج/الاختبار في عدة صفوف دفعة واحدة" style="padding:0 8px; font-size:13px; line-height:1.6; margin-right:6px;">+</button></label>
           <select id="fGrade"><option value="">اختر</option>
             ${restrictedGrades.map(g=>`<option>${g}</option>`).join("")}
           </select>
+          <div id="fGradeExtraBox"></div>
           <label>المادة</label>
           <select id="fSubject"><option value="">اختر</option>
             ${restrictedSubjects.map(sv=>`<option>${sv}</option>`).join("")}
@@ -1989,7 +2036,9 @@ function renderFormsWindow(view, role){
           <div class="toolbar" style="margin-top:10px;">
             <button class="chip-btn accent" id="fOpen">فتح</button>
             <button class="chip-btn" id="fDelete">حذف</button>
+            <button class="chip-btn" id="fCopyTo">نسخ إلى</button>
           </div>
+          <div id="fCopyToBox"></div>
         </div>
         <div class="section" id="toolsSection" style="border-bottom:none;">
           <h3>الأدوات والإضافات</h3>
@@ -2023,6 +2072,21 @@ function renderFormsWindow(view, role){
   `;
 
   const fTerm=document.getElementById("fTerm"), fGrade=document.getElementById("fGrade"), fSubject=document.getElementById("fSubject"), fNumber=document.getElementById("fNumber");
+
+  // بند: خلايا "صف إضافي" — تضاف عبر زر "+" بجوار كلمة "الصف"، وتُستخدم عند إنشاء نموذج/اختبار
+  // جديد لنشره دفعة واحدة في عدة صفوف بدل تكراره يدويًا. كل خلية إضافية قائمة منسدلة مطابقة
+  // تمامًا لقائمة "الصف" الأصلية، وبجوارها زر "×" لإزالتها.
+  const fGradeExtraBox = document.getElementById("fGradeExtraBox");
+  function extraGradeSelects(){ return [...fGradeExtraBox.querySelectorAll("select.fGradeExtra")]; }
+  function addExtraGradeCell(){
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; align-items:center; gap:6px; margin-top:6px;";
+    row.innerHTML = `<select class="fGradeExtra" style="flex:1;"><option value="">اختر صفًا آخر</option>${restrictedGrades.map(g=>`<option>${g}</option>`).join("")}</select>
+      <button type="button" class="chip-btn fGradeExtraRemove" title="إزالة هذا الصف" style="padding:2px 8px;">×</button>`;
+    fGradeExtraBox.appendChild(row);
+    row.querySelector(".fGradeExtraRemove").addEventListener("click", ()=> row.remove());
+  }
+  document.getElementById("fGradeAddBtn").addEventListener("click", (e)=>{ e.preventDefault(); addExtraGradeCell(); });
 
   // مطابقة النماذج لفلتر (الفصل الدراسي/الصف/المادة) الحالي — تشمل أيضًا نماذج قديمة/يتيمة
   // مادتها المخزّنة غير موجودة ضمن قائمة المواد المعتمدة حاليًا (مثل نماذج أُنشئت قبل ضبط جدول
@@ -2089,9 +2153,24 @@ function renderFormsWindow(view, role){
     if(sel==="__new__"){
       const nextNum = matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="model").length + 1;
       const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, kind:"model", createdAt:Date.now(), scheduledAt:null, testDuration:null, blocks:[], data:[], updatedAt:Date.now() };
+      // بند: الصفوف الإضافية المختارة عبر زر "+" — تُنشأ لها نسخ مرتبطة (نفس المادة والفصل
+      // الدراسي) تحمل نفس معرّف المجموعة (linkedGroup)، بحيث يُنشر أي تعديل لاحق يُحفظ في
+      // النموذج الأساسي تلقائيًا إلى كل نسخه في تلك الصفوف دفعة واحدة.
+      const extraGrades = [...new Set(extraGradeSelects().map(s=>s.value).filter(g=>g && g!==grade))];
+      if(extraGrades.length){
+        model.linkedGroup = "lg"+Date.now();
+        extraGrades.forEach((g,i)=>{
+          if(!checkFormsPermission(g, subject)) return;
+          const gNextNum = matchingModels(term, g, subject).filter(m=>(m.kind||"model")==="model").length + 1;
+          const copy = { ...model, id:"m"+(Date.now()+i+1), grade:g, number:gNextNum, title:`نموذج ${gNextNum}`, blocks:[], data:[] };
+          DB.models.push(copy);
+          recomputeGroupNumbers(term, g, subject);
+        });
+      }
       DB.models.push(model);
       recomputeGroupNumbers(term, grade, subject);
       openModel(model);
+      fGradeExtraBox.innerHTML = "";
     } else if(sel==="__all__"){
       showAllModelsIcons(term, grade, subject, "model");
     } else if(sel==="__alltests__"){
@@ -2135,6 +2214,50 @@ function renderFormsWindow(view, role){
     document.getElementById("workshopTitle").textContent="لم يُفتح أي نموذج";
     refreshNumbers();
     updateToolButtonsState();
+  });
+
+  // بند: زر "نسخ إلى" — ينسخ النموذج/الاختبار المحدد حاليًا في خلايا الترشيح (نفس المادة
+  // والفصل الدراسي) إلى صف آخر يختاره المعلم، دون التأثير على النموذج الأصلي، وذلك بدلًا
+  // من إعادة بناء نفس النموذج يدويًا من جديد لكل صف.
+  const fCopyToBox = document.getElementById("fCopyToBox");
+  document.getElementById("fCopyTo").addEventListener("click", ()=>{
+    const term=fTerm.value, grade=fGrade.value, subject=fSubject.value, sel=fNumber.value;
+    if(!term||!grade||!subject){ alert("من فضلك حدد الفصل الدراسي والصف والمادة أولًا."); return; }
+    if(!sel || sel==="__new__" || sel==="__all__" || sel==="__alltests__" || sel==="__everything__"){
+      alert("حدد نموذجًا أو اختبارًا بعينه من القائمة أولًا لنسخه.");
+      return;
+    }
+    if(!checkFormsPermission(grade, subject)) return;
+    // إن كانت الخلية معروضة بالفعل، نكتفي بإعادة التركيز عليها بدل تكرارها
+    if(fCopyToBox.querySelector("select.fCopyToGrade")) return;
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; align-items:center; gap:6px; margin-top:8px;";
+    row.innerHTML = `<select class="fCopyToGrade" style="flex:1;"><option value="">اختر الصف الذي تريد النسخ إليه</option>${restrictedGrades.map(g=>`<option>${g}</option>`).join("")}</select>
+      <button type="button" class="chip-btn fCopyToCancel" title="إلغاء" style="padding:2px 8px;">×</button>`;
+    fCopyToBox.appendChild(row);
+    row.querySelector(".fCopyToCancel").addEventListener("click", ()=> row.remove());
+    row.querySelector("select.fCopyToGrade").addEventListener("change", (e)=>{
+      const targetGrade = e.target.value;
+      if(!targetGrade) return;
+      if(targetGrade===grade){ alert("هذا هو الصف نفسه للنموذج الأصلي، اختر صفًا آخر."); e.target.value=""; return; }
+      if(!checkFormsPermission(targetGrade, subject)){ e.target.value=""; return; }
+      const source = DB.models.find(m=>m.id===sel);
+      if(!source){ alert("تعذّر العثور على النموذج المحدد."); row.remove(); return; }
+      const nextNum = matchingModels(term, targetGrade, subject).filter(m=>(m.kind||"model")===(source.kind||"model")).length + 1;
+      const copy = {
+        ...JSON.parse(JSON.stringify(source)),
+        id: "m"+Date.now(), grade: targetGrade, subject, term, number: nextNum,
+        title: (source.kind==="test" ? "اختبار " : "نموذج ") + nextNum,
+        createdAt: Date.now(), updatedAt: Date.now()
+      };
+      delete copy.linkedGroup; // النسخة عبر "نسخ إلى" مستقلة ولا تتأثر بتعديلات النموذج الأصلي لاحقًا
+      DB.models.push(copy);
+      recomputeGroupNumbers(term, targetGrade, subject);
+      saveDB();
+      alert(`تم نسخ «${source.title}» بنجاح إلى الصف: ${targetGrade}.`);
+      row.remove();
+      refreshNumbers();
+    });
   });
 
   let lastAllModelsMode = "everything";
@@ -2188,6 +2311,16 @@ function renderFormsWindow(view, role){
       return null;
     }
     const gradable = activeModel.data.length;
+    // بند: نشر محتوى النموذج تلقائيًا إلى نسخه المرتبطة في الصفوف الأخرى (التي أُنشئت معه
+    // دفعة واحدة عبر خلايا "الصف" الإضافية)، حتى يبقى محتوى كل النسخ متطابقًا مع كل حفظ.
+    if(activeModel.linkedGroup){
+      DB.models.filter(m=>m.linkedGroup===activeModel.linkedGroup && m.id!==activeModel.id).forEach(sib=>{
+        sib.blocks = JSON.parse(JSON.stringify(activeModel.blocks||[]));
+        sib.data = JSON.parse(JSON.stringify(activeModel.data||[]));
+        sib.kind = activeModel.kind; sib.testMode = activeModel.testMode; sib.testDuration = activeModel.testDuration;
+        sib.scheduledAt = activeModel.scheduledAt; sib.updatedAt = Date.now();
+      });
+    }
     saveDB();
     if(warnings.length){
       alert(`⚠️ تم الحفظ، لكن ${warnings.length} سؤال/أسئلة لم تُحفظ ولن تظهر للطالب لنقص في تحديد الإجابة الصحيحة:\n\n${warnings.map((w,i)=>`${i+1}. ${w}`).join("\n")}\n\nأكمل الخطوة الناقصة في كل سؤال أعلاه ثم اضغط "حفظ" مرة أخرى.`);
