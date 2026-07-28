@@ -23,7 +23,7 @@
     --radius:10px;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0; max-width:100%; overflow-x:hidden;}
   body{
     background:var(--paper);
     color:var(--ink);
@@ -333,6 +333,7 @@
     .forms-layout{ flex-direction:column; height:auto; }
     .forms-sidebar{ width:100%; flex:0 0 auto; resize:none; max-height:320px; }
     .workshop{ min-height:70vh; }
+    .view, .workshop-scroll, #solveArea, .qitem{ max-width:100%; overflow-x:hidden; }
     .roles{ grid-template-columns:repeat(2,1fr); }
     .options-grid{ grid-template-columns:1fr; }
     .match-cols{ gap:10px; }
@@ -351,12 +352,17 @@
     /* 1) إخفاء/إظهار شريط العنوان تلقائيًا حسب اتجاه سحب الشاشة */
     .topbar.tb-hidden{ transform:translateY(-110%); }
 
-    /* 2) عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي: كل مطلوب (سؤال+إجابة) في صف مستقل لحاله */
+    /* 2) عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي: كل مطلوب (سؤال+إجابة) في صف مستقل لحاله.
+       تصحيح: كانت خانة الإجابة (req-a-td) مقيَّدة بعرض 60% إلى جوار خانة السؤال (40%) في نفس السطر،
+       فتضيق خانة الإجابة كثيرًا على الجوال وتضطر كلمات/بطاقات الإجابة للانكسار حرفًا حرفًا بشكل
+       عمودي مشوَّه. الحل: كل خانة (سؤال ثم إجابة) تأخذ العرض الكامل وتُعرض تحت الأخرى بدل جنبها. */
     .req-table{ display:block; width:100%; }
     .req-table tbody{ display:block; width:100%; }
-    .req-table tr{ display:flex; flex-wrap:wrap; width:100%; }
-    .req-table td.req-q-td{ display:block; flex:1 1 40%; max-width:40%; box-sizing:border-box; }
-    .req-table td.req-a-td{ display:block; flex:1 1 60%; max-width:60%; box-sizing:border-box; }
+    .req-table tr{ display:block; width:100%; padding-bottom:8px; margin-bottom:6px; border-bottom:1px dashed #ddd; }
+    .req-table td.req-q-td, .req-table td.req-a-td{ display:block; width:100%; max-width:100%; flex:none; box-sizing:border-box; }
+    .req-table td.req-a-td{ margin-top:4px; }
+    .req-table td.req-a-td .drop-cell{ min-height:38px; flex-wrap:wrap; }
+    .req-table tr > td:last-child{ display:block; width:auto; max-width:none; margin-top:4px; text-align:left; }
 
     /* 3) خلايا الكلمات الموزّعة تتقلّص لتلائم حجم الكلمة (بما فيها الارتفاع)، بزيادة لا تتعدى 1 ملم في كل جهة */
     .word-chip{
