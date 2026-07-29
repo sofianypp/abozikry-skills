@@ -376,7 +376,7 @@
        صندوق تمرير خاص بها، بينما تبقى بطاقات بنك الكلمات العلوية مثبّتة وظاهرة دائمًا فوق الشريط
        العلوي مهما تحركت الخريطة في أي اتجاه. */
     .mm-bank{
-      position:sticky; top:var(--topbar-h, 0px); z-index:120; background:var(--paper);
+      position:sticky; top:0; z-index:120; background:var(--paper);
       padding:8px 0; box-shadow:0 4px 8px -6px rgba(0,0,0,.25);
     }
     .mm-scroll-wrap{
@@ -404,18 +404,24 @@
       line-height:1.15 !important;
     }
 
-    /* لا يُسمح لأي حاوية بين القطعة المثبّتة والصفحة بكسر التثبيت (position:sticky)
-       تصحيح: كانت #solveArea و.qitem أيضًا تحملان overflow-x:hidden من قاعدة سابقة، وهذا
-       يفرض ضمنيًا overflow-y:auto عليهما فتتحوّلان إلى "حاوية تمرير" خاصة بهما، فيُكسر
-       تثبيت (position:sticky) كل من بنك الخريطة الذهنية (mm-bank) وبنك القطعة النحوية
-       المثبّت (gr-bank.gr-pinned)، لأن الالتصاق يُحسب حينها بالنسبة لهذه الحاوية الصغيرة
-       بدل الصفحة نفسها — وهو ما كان يظهر كتراكب/تغطية لصناديق الخريطة بدل التثبيت الصحيح
-       أعلى الشاشة، وما كان يمنع زر "تثبيت" من تثبيت بنك القطعة النحوية فعليًا. */
-    .view, #solveArea, .qitem{ overflow:visible !important; }
+    /* تصحيح جذري: العنصر الذي يمرّر المحتوى فعليًا داخل التطبيق هو .view نفسه
+       (له overflow:auto دائمًا، خارج هذا الاستعلام)، وليس الصفحة/المستند. لذلك يجب أن
+       يبقى #solveArea و.qitem بلا أي overflow خاص بهما حتى لا يتحوّلا إلى حاويتي
+       تمرير صغيرتين مستقلتين تكسران التصاق (position:sticky) العناصر المثبَّتة داخلهما
+       (بنك الخريطة الذهنية mm-bank، وبنك القطعة النحوية gr-bank.gr-pinned)؛ فالتصاقهما
+       يجب أن يُحسب بالنسبة لتمرير .view، لا بالنسبة لصندوقيهما الصغيرين. القاعدة السابقة
+       كانت تمنحهما overflow-x:hidden فقط، وهذا يفرض تلقائيًا overflow-y:auto عليهما
+       (لأن أي محور overflow غير visible يفرض على المحور الآخر أن يصبح auto)، فكانا
+       يكسران التثبيت دون قصد. كذلك يجب ألا يُفرض overflow:visible على .view نفسها هنا،
+       لأنها عنصر flex بلا ارتفاع ثابت (flex:1)؛ جعلها overflow:visible لا يوسّع الصفحة
+       لتُصبح هي من تُمرَّر، بل يُبقي مربّعها بنفس الارتفاع المحسوب من التخطيط المرن مع
+       فيضان المحتوى خارجه بلا أي طريقة فعلية لتمريره — وهو ما كان يجعل زر "تثبيت" يبدو
+       وكأنه يعمل (تتغيّر حالته) دون أي تثبيت حقيقي مرئي. */
+    #solveArea, .qitem{ overflow:visible !important; }
 
     /* 4) زر "تثبيت" وسلوك تثبيت القطعة الموزعة أعلى الشاشة */
     .gr-bank.gr-pinned{
-      position:sticky; top:var(--topbar-h, 0px); z-index:150; background:var(--paper);
+      position:sticky; top:0; z-index:150; background:var(--paper);
       border-top:1px dashed #ccc; margin:0 -10px 8px; padding:10px;
       box-shadow:0 4px 8px -6px rgba(0,0,0,.25);
       flex-wrap:wrap;
