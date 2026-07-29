@@ -404,8 +404,14 @@
       line-height:1.15 !important;
     }
 
-    /* لا يُسمح لأي حاوية بين القطعة المثبّتة والصفحة بكسر التثبيت (position:sticky) */
-    .view{ overflow:visible !important; }
+    /* لا يُسمح لأي حاوية بين القطعة المثبّتة والصفحة بكسر التثبيت (position:sticky)
+       تصحيح: كانت #solveArea و.qitem أيضًا تحملان overflow-x:hidden من قاعدة سابقة، وهذا
+       يفرض ضمنيًا overflow-y:auto عليهما فتتحوّلان إلى "حاوية تمرير" خاصة بهما، فيُكسر
+       تثبيت (position:sticky) كل من بنك الخريطة الذهنية (mm-bank) وبنك القطعة النحوية
+       المثبّت (gr-bank.gr-pinned)، لأن الالتصاق يُحسب حينها بالنسبة لهذه الحاوية الصغيرة
+       بدل الصفحة نفسها — وهو ما كان يظهر كتراكب/تغطية لصناديق الخريطة بدل التثبيت الصحيح
+       أعلى الشاشة، وما كان يمنع زر "تثبيت" من تثبيت بنك القطعة النحوية فعليًا. */
+    .view, #solveArea, .qitem{ overflow:visible !important; }
 
     /* 4) زر "تثبيت" وسلوك تثبيت القطعة الموزعة أعلى الشاشة */
     .gr-bank.gr-pinned{
@@ -3952,7 +3958,7 @@ function buildMindmapBlock(savedItems, savedConnections){
   const el = makeBlockShell("أكمل الخريطة الذهنية");
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `
-    <div class="mindmap-area"><svg class="connect-svg"></svg></div>
+    <div class="mm-scroll-wrap"><div class="mindmap-area"><svg class="connect-svg"></svg></div></div>
     <div class="cards-row" style="margin-top:12px;" id="mm-bank"></div>
     <button class="chip-btn" style="margin-top:8px;" id="mm-addbox">إضافة صندوق</button>
     <button class="chip-btn" style="margin-top:8px;" id="mm-addcard">إضافة بطاقة</button>
