@@ -352,6 +352,39 @@
     /* 1) إخفاء/إظهار شريط العنوان تلقائيًا حسب اتجاه سحب الشاشة */
     .topbar.tb-hidden{ transform:translateY(-110%); }
 
+    /* 0) إعادة تشكيل أزرار الشريط العلوي على الجوال حتى لا يخرج زر "تسجيل الخروج" عن إطار الشاشة:
+       تُصغَّر الأزرار وتُلتف (wrap) على أكثر من سطر بدل الانضغاط في سطر واحد يدفع زر الخروج خارج الشاشة. */
+    .topbar{ flex-wrap:wrap; row-gap:6px; padding:8px 10px; }
+    .topbar .who{ flex-wrap:wrap; row-gap:6px; width:100%; justify-content:flex-start; }
+    .topbar .who .logout-btn{ padding:5px 9px !important; font-size:12px !important; }
+    #taskBellWrap, #attachBellWrap, #corrBellWrap{ margin-left:0 !important; }
+
+    /* 4) الجداول في نافذتي "تحليل النتائج" و"تحليل التحديات": تُعرض بنفس عرض الكمبيوتر (بلا انضغاط
+       أو تشوّه) مع إمكانية التحريك أفقيًا لإظهار بقية الأعمدة، بدل تكديسها بعرض الجوال الضيق. */
+    #analysisTableWrap .table-wrap, #chTableWrap .table-wrap{
+      overflow-x:auto; -webkit-overflow-scrolling:touch;
+    }
+    #analysisTableWrap table.data, #chTableWrap table.data{
+      width:auto; min-width:100%;
+    }
+    #analysisTableWrap table.data th, #analysisTableWrap table.data td,
+    #chTableWrap table.data th, #chTableWrap table.data td{
+      white-space:nowrap;
+    }
+
+    /* 3) الخريطة الذهنية: تُتاح حرية تحريك منطقة الخريطة نفسها يمينًا/شمالًا وأعلى/أسفل داخل
+       صندوق تمرير خاص بها، بينما تبقى بطاقات بنك الكلمات العلوية مثبّتة وظاهرة دائمًا فوق الشريط
+       العلوي مهما تحركت الخريطة في أي اتجاه. */
+    .mm-bank{
+      position:sticky; top:var(--topbar-h, 0px); z-index:120; background:var(--paper);
+      padding:8px 0; box-shadow:0 4px 8px -6px rgba(0,0,0,.25);
+    }
+    .mm-scroll-wrap{
+      overflow:auto; -webkit-overflow-scrolling:touch;
+      max-width:100%; max-height:65vh; border:1px dashed #ccc; border-radius:8px;
+    }
+    .mm-scroll-wrap .mindmap-area{ border:none; border-radius:0; }
+
     /* 2) عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي: كل مطلوب (سؤال+إجابة) في صف مستقل لحاله.
        تصحيح: كانت خانة الإجابة (req-a-td) مقيَّدة بعرض 60% إلى جوار خانة السؤال (40%) في نفس السطر،
        فتضيق خانة الإجابة كثيرًا على الجوال وتضطر كلمات/بطاقات الإجابة للانكسار حرفًا حرفًا بشكل
@@ -376,9 +409,10 @@
 
     /* 4) زر "تثبيت" وسلوك تثبيت القطعة الموزعة أعلى الشاشة */
     .gr-bank.gr-pinned{
-      position:sticky; top:0; z-index:150; background:var(--paper);
+      position:sticky; top:var(--topbar-h, 0px); z-index:150; background:var(--paper);
       border-top:1px dashed #ccc; margin:0 -10px 8px; padding:10px;
       box-shadow:0 4px 8px -6px rgba(0,0,0,.25);
+      flex-wrap:wrap;
     }
     .gr-pin-btn.on{ background:var(--warn); border-color:var(--warn); color:#fff; }
   }
@@ -2590,7 +2624,8 @@ function serializeModel(model, warnings){
         let connections = (typeof el.getMindmapConnections === "function") ? el.getMindmapConnections() : [];
         connections = connections.filter(c=> remap[c.a]!==undefined && remap[c.b]!==undefined)
           .map(c=>({a:remap[c.a], b:remap[c.b]}));
-        data.push({type:"mindmap", items, connections});
+        const bankCards = (typeof el.getMindmapBankCards === "function") ? el.getMindmapBankCards() : [];
+        data.push({type:"mindmap", items, connections, bankCards});
       }
       const missing = allBoxes.filter(x=>!x.answer && !x.isLabel).length;
       if(missing>0) warnings.push(`خريطة ذهنية: ${missing} من صناديقها بلا إجابة محدَّدة (يجب سحب الكلمة الصحيحة من البنك إلى كل صندوق) — هذه الصناديق تحديدًا لن تظهر عند الطالب.`);
@@ -4112,6 +4147,9 @@ function buildMindmapBlock(savedItems, savedConnections){
   el.getMindmapConnections = ()=> connections
     .map(c=>({a: boxes.indexOf(c.a), b: boxes.indexOf(c.b)}))
     .filter(c=>c.a>-1 && c.b>-1);
+  // بطاقات بنك الكلمات (بما فيها البطاقات التمويهية غير المستخدمة في أي صندوق) — تُحفظ الآن
+  // كنص فقط، ليتسنى إظهارها جميعًا لدى الطالب أعلى الخريطة الذهنية حتى لو لم تُستخدم كإجابة.
+  el.getMindmapBankCards = ()=> [...bank.querySelectorAll(".dc-text")].map(t=>t.textContent.trim()).filter(Boolean);
   addBlockQNum(el);
   return el;
 }
@@ -4504,6 +4542,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       const areaH = Math.max(160, ...ys.map(y=>y+70));
       box.innerHTML += `<div style="font-weight:700; margin-bottom:8px;">أكمل الخريطة الذهنية</div>
         <div class="cards-row mm-bank" style="margin-bottom:10px;"></div>
+        <div class="mm-scroll-wrap">
         <div class="mindmap-area mm-area" style="width:100%; min-width:${areaW}px; min-height:${areaH}px;">
           <svg class="connect-svg"></svg>
           ${q.items.map((it,ii)=>it.isLabel ? `<div class="mindbox mm-mindbox mindbox-label${it.isTitle?" mindbox-title":""}" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${it.color?`background:${it.color};`:""}">
@@ -4514,6 +4553,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
             <div class="mm-drop" data-ii="${ii}" style="min-width:80px; min-height:26px; border:1.5px dashed #bbb; border-radius:6px; padding:4px;"></div>
             <div class="mm-hint-text" data-ii="${ii}" style="display:none; font-size:10.5px; color:var(--accent); max-width:110px;"></div>
           </div>`).join("")}
+        </div>
         </div>`;
     } else if(q.type==="essay"){
       box.innerHTML += `<div style="font-weight:700; margin-bottom:8px;">${q.question}</div>
@@ -4857,7 +4897,11 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           showStudentHint(q.items[ii].hint, hb);
         });
       });
-      const shuffled = [...q.items.filter(it=>!it.isLabel).map(it=>it.answer)].sort(()=>Math.random()-.5);
+      // نضيف إلى الكلمات الصحيحة أي بطاقات تمويهية حفظها المعلم في بنك الكلمات ولم يُسندها
+      // لأي صندوق، حتى تظهر جميعها للطالب أعلى الخريطة الذهنية كما طلب.
+      const usedAnswers = q.items.filter(it=>!it.isLabel).map(it=>it.answer);
+      const extraBankCards = (q.bankCards||[]).filter(t=>!usedAnswers.includes(t));
+      const shuffled = [...usedAnswers, ...extraBankCards].sort(()=>Math.random()-.5);
       shuffled.forEach(txt=>{
         const card=document.createElement("div"); card.className="drag-card"; card.textContent=txt; card.draggable=true;
         card.addEventListener("dragstart", e=>e.dataTransfer.setData("text/plain", txt));
@@ -6933,6 +6977,18 @@ function enableColumnResize(table){
 function scanForResizableTables(root){
   (root.querySelectorAll ? root.querySelectorAll("table.data") : []).forEach(enableColumnResize);
 }
+// بند: تتبّع ارتفاع الشريط العلوي (الذي قد يتغيّر بعد إعادة تشكيل أزراره على الجوال) في متغيّر CSS
+// حتى تستطيع العناصر المثبّتة (تثبيت بنك الكلمات، بنك الخريطة الذهنية) الظهور أسفله مباشرة دون تغطية.
+(function(){
+  const topbar = document.querySelector(".topbar");
+  if(!topbar) return;
+  function updateTopbarH(){
+    document.documentElement.style.setProperty("--topbar-h", topbar.offsetHeight+"px");
+  }
+  updateTopbarH();
+  new ResizeObserver(updateTopbarH).observe(topbar);
+  window.addEventListener("resize", updateTopbarH);
+})();
 // بند: إخفاء/إظهار شريط العنوان تلقائيًا عند السحب لأعلى/لأسفل (خاص بعرض الجوال فقط عبر CSS)
 (function(){
   const lastTop = new WeakMap();
