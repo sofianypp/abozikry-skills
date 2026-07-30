@@ -4249,10 +4249,6 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     mmLocked = v;
     area.classList.toggle("mm-locked", mmLocked);
     lockBtn.textContent = mmLocked ? "🔒" : "🔓";
-    lockBtn.classList.toggle("mm-lock-active", mmLocked);
-    lockBtn.style.background = mmLocked ? "#e03131" : "";
-    lockBtn.style.color = mmLocked ? "#fff" : "";
-    lockBtn.style.borderColor = mmLocked ? "#e03131" : "";
     lockBtn.title = mmLocked
       ? "القفل مفعَّل — التحريك فقط متاح، اضغط لإلغاء القفل والعودة لباقي الأزرار"
       : "قفل تحرير عناصر الخريطة الذهنية (لتسهيل السحب فقط)";
@@ -4871,7 +4867,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           </div>` : `<div class="mindbox mm-mindbox" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             ${(it.hint && !model.testMode) ? `<span class="bulb mm-hint-bulb" data-ii="${ii}" style="position:absolute; top:-9px; left:-9px; background:#fff; border-radius:50%; cursor:pointer;">💡</span>` : ""}
             <div style="font-size:11.5px; margin-bottom:4px;">${it.label}</div>
-            <div class="mm-drop" data-ii="${ii}" style="min-width:0; min-height:0; border:none; border-radius:0; padding:0;"></div>
+            <div class="mm-drop" data-ii="${ii}" style="min-width:80px; min-height:26px; border:1.5px dashed #bbb; border-radius:6px; padding:4px;"></div>
             <div class="mm-hint-text" data-ii="${ii}" style="display:none; font-size:10.5px; color:var(--accent); max-width:110px;"></div>
           </div>`;
           }).join("")}
@@ -4891,8 +4887,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     if(model.testMode){ try{ localStorage.removeItem(`testStart_${session.user.username}_${model.id}`); }catch(e){} }
     area.querySelectorAll("input, select, .tf-mark, .sc-mark, .drag-card, .word-chip").forEach(el=>{ el.style.pointerEvents="none"; el.draggable=false; });
     area.querySelectorAll("select, input").forEach(el=>el.disabled=true);
-    area.querySelectorAll(".mm-drop, .mm-mindbox, .gr-drop-row, .classify-cell-solve").forEach(el=>el.style.pointerEvents="none");
-    area.querySelectorAll(".mm-hint-bulb").forEach(el=>el.style.pointerEvents="auto");
+    area.querySelectorAll(".mm-drop, .gr-drop-row, .classify-cell-solve").forEach(el=>el.style.pointerEvents="none");
     document.getElementById("solveSubmit").style.display="none";
     document.getElementById("solveMsg").className="msg show ok";
     // الأسئلة المقالية لا تُصحَّح آليًا أبدًا؛ إن كانت من ضمن أسئلة هذا النموذج ولم يصحّحها
@@ -5230,14 +5225,9 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         card.addEventListener("dragstart", e=>e.dataTransfer.setData("text/plain", txt));
         bank.appendChild(card);
       });
-      // بند: الإفلات أصبح متاحًا في أي نقطة داخل الصندوق كاملًا (وليس فقط داخل مستطيل صغير
-      // بداخله)، والمستطيل الداخلي أصبح بلا حدود مرئية أصلًا — نربط أحداث السحب بالصندوق
-      // الخارجي (.mm-mindbox) نفسه، ونضع البطاقة المُفلَتة داخل عنصر mm-drop الداخلي.
-      box.querySelectorAll(".mm-mindbox").forEach(mindboxEl=>{
-        const drop = mindboxEl.querySelector(".mm-drop");
-        if(!drop) return;
-        mindboxEl.addEventListener("dragover", e=>e.preventDefault());
-        mindboxEl.addEventListener("drop", e=>{
+      box.querySelectorAll(".mm-drop").forEach(drop=>{
+        drop.addEventListener("dragover", e=>e.preventDefault());
+        drop.addEventListener("drop", e=>{
           e.preventDefault();
           const text = e.dataTransfer.getData("text/plain");
           const ii = Number(drop.dataset.ii);
