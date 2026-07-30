@@ -640,6 +640,9 @@ const DB = {
       ]
     }
   ],
+  // بنوك الأسئلة: بنية مطابقة تمامًا لـ models (نفس شكل العناصر)، لكنها منفصلة تمامًا ولا تظهر
+  // للطالب أبدًا؛ الهدف منها تجميع أسئلة خاصة بمادة/صف محددين يمكن استيرادها لاحقًا داخل أي نموذج.
+  banks: [],
   results: [], // {id, studentUsername, modelId, term, grade, subject, score, total, date}
   attachments: [], // {id, type:'file'|'link', name, url, folder}
   folders: ["عام"],
@@ -684,6 +687,7 @@ function sanitizeLoadedModels(){
   // الوهمي ولعدم ظهور النماذج/الأسئلة عند الطالب). البيانات الحقيقية محفوظة في model.data
   // وسيُعاد بناء الكتل التفاعلية منها تلقائيًا عند فتح النموذج (انظر rebuildBlocksFromData).
   (DB.models||[]).forEach(m=>{ m.blocks = []; });
+  (DB.banks||[]).forEach(m=>{ m.blocks = []; });
   migrateSubjectsIfNeeded();
 }
 
@@ -829,19 +833,36 @@ async function mergeModelsWithCloud(){
   if(!firebaseDB) return;
   try{
     const snap = await firebaseDB.ref("platform-db/models").get();
-    if(!snap.exists()) return;
-    const cloudModels = snap.val() || [];
-    const deleted = DB.deletedModelIds || {};
-    const byId = new Map();
-    (DB.models||[]).forEach(m=>{ byId.set(m.id, m); });
-    cloudModels.forEach(cm=>{
-      if(!cm || !cm.id) return;
-      if(deleted[cm.id]) return; // محذوف عمدًا محليًا — لا نستعيده
-      const local = byId.get(cm.id);
-      const cmTs = cm.updatedAt||0, localTs = (local && local.updatedAt)||0;
-      if(!local || cmTs > localTs) byId.set(cm.id, cm); // الأحدث فعليًا يفوز، أيًا كان مصدره
-    });
-    DB.models = Array.from(byId.values());
+    if(snap.exists()){
+      const cloudModels = snap.val() || [];
+      const deleted = DB.deletedModelIds || {};
+      const byId = new Map();
+      (DB.models||[]).forEach(m=>{ byId.set(m.id, m); });
+      cloudModels.forEach(cm=>{
+        if(!cm || !cm.id) return;
+        if(deleted[cm.id]) return; // محذوف عمدًا محليًا — لا نستعيده
+        const local = byId.get(cm.id);
+        const cmTs = cm.updatedAt||0, localTs = (local && local.updatedAt)||0;
+        if(!local || cmTs > localTs) byId.set(cm.id, cm); // الأحدث فعليًا يفوز، أيًا كان مصدره
+      });
+      DB.models = Array.from(byId.values());
+    }
+    // نفس منطق الدمج الآمن يُطبَّق أيضًا على بنوك الأسئلة (DB.banks) لتفادي فقدانها في نفس السيناريو
+    const banksSnap = await firebaseDB.ref("platform-db/banks").get();
+    if(banksSnap.exists()){
+      const cloudBanks = banksSnap.val() || [];
+      const deleted = DB.deletedModelIds || {};
+      const byIdB = new Map();
+      (DB.banks||[]).forEach(m=>{ byIdB.set(m.id, m); });
+      cloudBanks.forEach(cm=>{
+        if(!cm || !cm.id) return;
+        if(deleted[cm.id]) return;
+        const local = byIdB.get(cm.id);
+        const cmTs = cm.updatedAt||0, localTs = (local && local.updatedAt)||0;
+        if(!local || cmTs > localTs) byIdB.set(cm.id, cm);
+      });
+      DB.banks = Array.from(byIdB.values());
+    }
   }catch(e){ console.error("تعذّر دمج النماذج مع النسخة السحابية قبل الحفظ:", e); }
 }
 
@@ -1218,6 +1239,7 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
 const NAV = {
   admin: [
     ["assignments","إدارة الإسنادات"],
+    ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
@@ -1226,6 +1248,7 @@ const NAV = {
     ["correspondence","المراسلات الإدارية"],
   ],
   coordinator: [
+    ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
@@ -1235,6 +1258,7 @@ const NAV = {
     ["correspondence","المراسلات الإدارية"],
   ],
   teacher: [
+    ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
     ["essaygrading","تصحيح المقالي"],
     ["analysis","تحليل النتائج"],
@@ -1278,6 +1302,7 @@ function renderView(role,key){
   const view = document.getElementById("viewArea");
   view.innerHTML = "";
   if(key==="forms"){ renderFormsWindow(view, role); return; }
+  if(key==="banks"){ renderFormsWindow(view, role, true); return; }
   if(key==="assignments"){ renderAssignmentsWindow(view); return; }
   if(key==="analysis"){ renderAnalysisWindow(view, role); return; }
   if(key==="essaygrading"){ renderEssayGradingWindow(view, role); return; }
@@ -2058,23 +2083,34 @@ document.addEventListener("keydown", (e)=>{
   }
 });
 
-function renderFormsWindow(view, role){
+function renderFormsWindow(view, role, bankMode){
+  // بند: نافذة "بنوك الأسئلة" مطابقة تمامًا لنافذة "النماذج التعليمية" من حيث البنية والوظائف،
+  // لكنها تخزّن بياناتها في DB.banks بدل DB.models، والهدف منها إنشاء بنوك أسئلة خاصة بمادة/صف
+  // محددين يمكن استيراد أسئلتها لاحقًا عند إنشاء نموذج أو اختبار بدل كتابة الأسئلة سؤالًا سؤالًا.
+  if(!DB.banks) DB.banks = [];
+  const MKEY = bankMode ? "banks" : "models";
   // بند: تقييد صلاحية إنشاء/عرض/حذف النماذج بالصفوف والمواد المسندة فعليًا للمعلم/المنسق
   // حسب جدولي "بيانات المعلمين" و"بيانات المنسقين" (وليس كل الصفوف وكل المواد كما كان سابقًا).
   const restrictedGrades = role==="admin" ? ALL_GRADES : assignedGradesFor();
-  const restrictedSubjects = role==="admin" ? subjectNamesList() : assignedSubjectsFor();
+  // بند: ترتيب القائمة المنسدلة لخلية "المادة" يجب أن يطابق دائمًا ترتيب رؤوس جدول
+  // "تنسيق المواد الدراسية" بالضبط (وليس ترتيب مصفوفة الإسناد u.subjects العشوائي)،
+  // لذلك نبني القائمة من subjectNamesList() أولًا ثم نُرشّحها بما هو مسند للمعلم/المنسق
+  // بدل الاعتماد مباشرة على ترتيب assignedSubjectsFor().
+  const restrictedSubjects = role==="admin" ? subjectNamesList() : subjectNamesList().filter(s=>assignedSubjectsFor().includes(s));
   const isRestricted = role==="teacher"||role==="coordinator";
   view.innerHTML = `
-    <h2>النماذج التعليمية</h2>
-    <p class="sub">إنشاء النماذج وإدارتها والتحكم الكامل في أنماط الأسئلة. ${(role==="teacher"||role==="coordinator") ? "(مقيّد بالصفوف المسندة إليك)" : ""}</p>
+    <h2>${bankMode ? "بنوك الأسئلة" : "النماذج التعليمية"}</h2>
+    <p class="sub">${bankMode
+      ? "أنشئ بنوك أسئلة خاصة بمادة وصف محددين، لاستيراد أسئلتها لاحقًا عند إنشاء النماذج أو الاختبارات بسرعة."
+      : "إنشاء النماذج وإدارتها والتحكم الكامل في أنماط الأسئلة."} ${(role==="teacher"||role==="coordinator") ? "(مقيّد بالصفوف المسندة إليك)" : ""}</p>
     <div class="forms-layout">
       <div class="forms-sidebar" id="formsSidebar">
         <button class="icon-btn" id="formsSidebarToggle" title="طي/نشر القائمة" style="float:left; margin-bottom:6px;">↔</button>
         <div class="section">
-          <h3>بيانات النماذج</h3>
+          <h3>${bankMode ? "بيانات البنوك" : "بيانات النماذج"}</h3>
           <label>الفصل الدراسي</label>
           <select id="fTerm"><option value="">اختر</option><option>الفصل الأول</option><option>الفصل الثاني</option><option>الفصل الثالث</option></select>
-          <label>الصف <button type="button" class="chip-btn" id="fGradeAddBtn" title="إضافة صف آخر لنشر نفس النموذج/الاختبار في عدة صفوف دفعة واحدة" style="padding:0 8px; font-size:13px; line-height:1.6; margin-right:6px;">+</button></label>
+          <label>الصف ${bankMode ? "" : `<button type="button" class="chip-btn" id="fGradeAddBtn" title="إضافة صف آخر لنشر نفس النموذج/الاختبار في عدة صفوف دفعة واحدة" style="padding:0 8px; font-size:13px; line-height:1.6; margin-right:6px;">+</button>`}</label>
           <select id="fGrade"><option value="">اختر</option>
             ${restrictedGrades.map(g=>`<option>${g}</option>`).join("")}
           </select>
@@ -2083,7 +2119,7 @@ function renderFormsWindow(view, role){
           <select id="fSubject"><option value="">اختر</option>
             ${restrictedSubjects.map(sv=>`<option>${sv}</option>`).join("")}
           </select>
-          <label>رقم النموذج/ الاختبار</label>
+          <label>${bankMode ? "رقم البنك" : "رقم النموذج/ الاختبار"}</label>
           <select id="fNumber"><option value="">اختر الفصل والصف والمادة أولًا</option></select>
           <div class="toolbar" style="margin-top:10px;">
             <button class="chip-btn accent" id="fOpen">فتح</button>
@@ -2111,8 +2147,10 @@ function renderFormsWindow(view, role){
         <div class="workshop-topbar">
           <div class="title" id="workshopTitle">لم يُفتح أي نموذج</div>
           <div class="btns">
+            <button class="small-btn" id="wsTemplate">⬇ القالب</button>
+            <button class="small-btn" id="wsImport">📥 استيراد</button>
             <button class="small-btn" id="wsBack">◀ السابق</button>
-            <button class="small-btn" id="wsTestMode">إلى اختبار</button>
+            ${bankMode ? "" : '<button class="small-btn" id="wsTestMode">إلى اختبار</button>'}
             <button class="small-btn" id="wsSave">💾 حفظ</button>
           </div>
         </div>
@@ -2138,14 +2176,14 @@ function renderFormsWindow(view, role){
     fGradeExtraBox.appendChild(row);
     row.querySelector(".fGradeExtraRemove").addEventListener("click", ()=> row.remove());
   }
-  document.getElementById("fGradeAddBtn").addEventListener("click", (e)=>{ e.preventDefault(); addExtraGradeCell(); });
+  if(document.getElementById("fGradeAddBtn")) document.getElementById("fGradeAddBtn").addEventListener("click", (e)=>{ e.preventDefault(); addExtraGradeCell(); });
 
   // مطابقة النماذج لفلتر (الفصل الدراسي/الصف/المادة) الحالي — تشمل أيضًا نماذج قديمة/يتيمة
   // مادتها المخزّنة غير موجودة ضمن قائمة المواد المعتمدة حاليًا (مثل نماذج أُنشئت قبل ضبط جدول
   // "تنسيق المواد الدراسية")، حتى تبقى قابلة للعرض والحذف من خلايا الترشيح بدل أن تختفي نهائيًا.
   function matchingModels(term, grade, subject){
     const validSubjects = subjectNamesList();
-    return DB.models.filter(m=> m.term===term && m.grade===grade &&
+    return DB[MKEY].filter(m=> m.term===term && m.grade===grade &&
       (m.subject===subject || !validSubjects.includes(m.subject||"")) );
   }
   // يعيد ترقيم وتسمية النماذج والاختبارات كلٍّ ضمن فئته (نموذج/اختبار) بشكل منفصل:
@@ -2161,7 +2199,8 @@ function renderFormsWindow(view, role){
       const scheduled = group.filter(isSched).sort((a,b)=>(a.scheduledAt||0)-(b.scheduledAt||0));
       published.concat(scheduled).forEach((m,i)=>{
         m.number = i+1;
-        m.title = (kind==="test" ? "اختبار " : "نموذج ") + (i+1);
+        if(!bankMode) m.title = (kind==="test" ? "اختبار " : "نموذج ") + (i+1);
+        else if(!m.customTitle) m.title = "بنك " + (i+1);
       });
     });
   }
@@ -2171,9 +2210,11 @@ function renderFormsWindow(view, role){
     recomputeGroupNumbers(term, grade, subject);
     const existing = matchingModels(term, grade, subject)
       .sort((a,b)=> ((a.kind||"model")===(b.kind||"model")) ? (a.number-b.number) : ((a.kind||"model")==="test" ? 1 : -1) );
-    let opts = `<option value="">اختر</option><option value="__all__">جميع النماذج</option><option value="__alltests__">جميع الاختبارات</option><option value="__everything__">الجميع</option><option value="__new__">جديد</option>`;
+    let opts = bankMode
+      ? `<option value="">اختر</option><option value="__all__">جميع البنوك</option><option value="__new__">جديد</option>`
+      : `<option value="">اختر</option><option value="__all__">جميع النماذج</option><option value="__alltests__">جميع الاختبارات</option><option value="__everything__">الجميع</option><option value="__new__">جديد</option>`;
     existing.forEach(m=>{
-      const label = (m.kind==="test" ? "اختبار رقم " : "نموذج رقم ") + m.number;
+      const label = bankMode ? (m.title || ("بنك رقم "+m.number)) : ((m.kind==="test" ? "اختبار رقم " : "نموذج رقم ") + m.number);
       const sched = (m.scheduledAt && m.scheduledAt>Date.now()) ? " (مجدول)" : "";
       opts += `<option value="${m.id}">${label}${sched}${(m.subject && m.subject!==subject) ? " (بلا مادة محددة)" : ""}</option>`;
     });
@@ -2204,7 +2245,12 @@ function renderFormsWindow(view, role){
     if(!checkFormsPermission(grade, subject)) return;
     if(sel==="__new__"){
       const nextNum = matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="model").length + 1;
-      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:`نموذج ${nextNum}`, kind:"model", createdAt:Date.now(), scheduledAt:null, testDuration:null, blocks:[], data:[], updatedAt:Date.now() };
+      const defaultTitle = bankMode ? `بنك ${nextNum}` : `نموذج ${nextNum}`;
+      const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:defaultTitle, kind:"model", createdAt:Date.now(), scheduledAt:null, testDuration:null, blocks:[], data:[], updatedAt:Date.now() };
+      if(bankMode){
+        const newName = prompt("أدخل اسمًا لبنك الأسئلة الجديد:", defaultTitle);
+        if(newName && newName.trim()){ model.title = newName.trim(); model.customTitle = true; }
+      }
       // بند: الصفوف الإضافية المختارة عبر زر "+" — تُنشأ لها نسخ مرتبطة (نفس المادة والفصل
       // الدراسي) تحمل نفس معرّف المجموعة (linkedGroup)، بحيث يُنشر أي تعديل لاحق يُحفظ في
       // النموذج الأساسي تلقائيًا إلى كل نسخه في تلك الصفوف دفعة واحدة.
@@ -2215,11 +2261,11 @@ function renderFormsWindow(view, role){
           if(!checkFormsPermission(g, subject)) return;
           const gNextNum = matchingModels(term, g, subject).filter(m=>(m.kind||"model")==="model").length + 1;
           const copy = { ...model, id:"m"+(Date.now()+i+1), grade:g, number:gNextNum, title:`نموذج ${gNextNum}`, blocks:[], data:[] };
-          DB.models.push(copy);
+          DB[MKEY].push(copy);
           recomputeGroupNumbers(term, g, subject);
         });
       }
-      DB.models.push(model);
+      DB[MKEY].push(model);
       recomputeGroupNumbers(term, grade, subject);
       openModel(model);
       fGradeExtraBox.innerHTML = "";
@@ -2230,7 +2276,7 @@ function renderFormsWindow(view, role){
     } else if(sel==="__everything__"){
       showAllModelsIcons(term, grade, subject, "everything");
     } else {
-      const model = DB.models.find(m=>m.id===sel);
+      const model = DB[MKEY].find(m=>m.id===sel);
       if(model) openModel(model);
     }
     refreshNumbers();
@@ -2246,18 +2292,18 @@ function renderFormsWindow(view, role){
     DB.deletedModelIds = DB.deletedModelIds || {};
     if(sel==="__all__"){
       const toDelete = new Set(matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="model").map(m=>m.id));
-      DB.models = DB.models.filter(m=>!toDelete.has(m.id));
+      DB[MKEY] = DB[MKEY].filter(m=>!toDelete.has(m.id));
       toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
     } else if(sel==="__alltests__"){
       const toDelete = new Set(matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="test").map(m=>m.id));
-      DB.models = DB.models.filter(m=>!toDelete.has(m.id));
+      DB[MKEY] = DB[MKEY].filter(m=>!toDelete.has(m.id));
       toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
     } else if(sel==="__everything__"){
       const toDelete = new Set(matchingModels(term, grade, subject).map(m=>m.id));
-      DB.models = DB.models.filter(m=>!toDelete.has(m.id));
+      DB[MKEY] = DB[MKEY].filter(m=>!toDelete.has(m.id));
       toDelete.forEach(id=>{ DB.deletedModelIds[id] = Date.now(); });
     } else {
-      DB.models = DB.models.filter(m=>m.id!==sel);
+      DB[MKEY] = DB[MKEY].filter(m=>m.id!==sel);
       DB.deletedModelIds[sel] = Date.now();
     }
     saveDB();
@@ -2293,7 +2339,7 @@ function renderFormsWindow(view, role){
       if(!targetGrade) return;
       if(targetGrade===grade){ alert("هذا هو الصف نفسه للنموذج الأصلي، اختر صفًا آخر."); e.target.value=""; return; }
       if(!checkFormsPermission(targetGrade, subject)){ e.target.value=""; return; }
-      const source = DB.models.find(m=>m.id===sel);
+      const source = DB[MKEY].find(m=>m.id===sel);
       if(!source){ alert("تعذّر العثور على النموذج المحدد."); row.remove(); return; }
       const nextNum = matchingModels(term, targetGrade, subject).filter(m=>(m.kind||"model")===(source.kind||"model")).length + 1;
       const copy = {
@@ -2303,7 +2349,7 @@ function renderFormsWindow(view, role){
         createdAt: Date.now(), updatedAt: Date.now()
       };
       delete copy.linkedGroup; // النسخة عبر "نسخ إلى" مستقلة ولا تتأثر بتعديلات النموذج الأصلي لاحقًا
-      DB.models.push(copy);
+      DB[MKEY].push(copy);
       recomputeGroupNumbers(term, targetGrade, subject);
       saveDB();
       alert(`تم نسخ «${source.title}» بنجاح إلى الصف: ${targetGrade}.`);
@@ -2313,6 +2359,83 @@ function renderFormsWindow(view, role){
   });
 
   let lastAllModelsMode = "everything";
+  // بند 4+5: زرا "القالب" و"استيراد" — لتنزيل قالب إكسل يملؤه المعلم بالأسئلة، ثم استيراد
+  // الأسئلة منه دفعة واحدة إلى النموذج/الاختبار أو بنك الأسئلة المفتوح حاليًا، بدلًا من
+  // كتابة كل سؤال يدويًا واحدًا تلو الآخر.
+  const IMPORT_HEADERS = ["نوع السؤال (mcq/tf/essay/spellchoice)","نص السؤال / العبارة","الخيار 1","الخيار 2","الخيار 3","الخيار 4","الإجابة الصحيحة (رقم الخيار للاختياري، صواب/خطأ لسؤال ص/خ، أرقام الخيارات الصحيحة مفصولة بفاصلة لخيارات الإملاء)","تلميح (اختياري)"];
+  document.getElementById("wsTemplate").addEventListener("click", ()=>{
+    const sample = [
+      ["mcq","ما جمع كلمة (كتاب)؟","كتب","كاتبون","كتابات","","1","اجمع الكلمة"],
+      ["tf","الفعل المضارع يدل على حدث في الماضي.","","","","","خطأ",""],
+      ["essay","اشرح الفرق بين الفعل الماضي والمضارع.","","","","","",""],
+      ["spellchoice","","معلّم","معلم","مُعَلِم","","1,2",""]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([IMPORT_HEADERS, ...sample]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "أسئلة");
+    XLSX.writeFile(wb, (bankMode?"قالب_بنك_أسئلة":"قالب_نموذج")+".xlsx");
+  });
+  function importRowsToQuestions(matrix){
+    if(matrix.length && String(matrix[0][0]||"").trim()===IMPORT_HEADERS[0]) matrix = matrix.slice(1);
+    const items = [];
+    let skipped = 0;
+    matrix.forEach(row=>{
+      if(!row || !row.length) return;
+      const type = String(row[0]||"").trim().toLowerCase();
+      const qtext = String(row[1]==null?"":row[1]).trim();
+      const opts = [2,3,4,5].map(i=>String(row[i]==null?"":row[i]).trim());
+      const answer = String(row[6]==null?"":row[6]).trim();
+      const hint = String(row[7]==null?"":row[7]).trim();
+      if(type==="mcq"){
+        const correct = parseInt(answer,10)-1;
+        if(qtext && opts.some(o=>o) && correct>=0) items.push({type:"mcq", question:qtext, options:opts, correct, hint});
+        else skipped++;
+      } else if(type==="tf"){
+        const c = answer==="صواب" ? true : (answer==="خطأ" ? false : null);
+        if(qtext && c!==null) items.push({type:"tf", statement:qtext, correct:c, hint});
+        else skipped++;
+      } else if(type==="essay"){
+        if(qtext) items.push({type:"essay", question:qtext, hint});
+        else skipped++;
+      } else if(type==="spellchoice"){
+        const correctIdx = answer.split(",").map(s=>parseInt(s.trim(),10)-1).filter(n=>n>=0);
+        if(opts.some(o=>o) && correctIdx.length) items.push({type:"spellchoice", options:opts, correct:correctIdx, hint});
+        else skipped++;
+      } else { skipped++; }
+    });
+    if(!items.length){ alert("لم يتم العثور على أي أسئلة صالحة للاستيراد. تأكد من اتباع تنسيق القالب."); return; }
+    activeModel.data = (activeModel.data||[]).concat(items);
+    activeModel.blocks = rebuildBlocksFromData(activeModel.data);
+    openModel(activeModel);
+    saveDB();
+    alert(`تم استيراد ${items.length} سؤال بنجاح.${skipped?` (تم تجاهل ${skipped} صفًا غير صالح)`:""}`);
+  }
+  document.getElementById("wsImport").addEventListener("click", ()=>{
+    if(!activeModel){ alert("افتح نموذجًا (أو أنشئ نموذجًا جديدًا) أولًا قبل الاستيراد."); return; }
+    let inp = document.getElementById("wsImportFile");
+    if(!inp){
+      inp = document.createElement("input");
+      inp.type = "file"; inp.id = "wsImportFile"; inp.accept = ".xlsx,.xls,.csv"; inp.style.display = "none";
+      document.body.appendChild(inp);
+      inp.addEventListener("change", (e)=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev)=>{
+          try{
+            const wb = XLSX.read(ev.target.result, {type:"array"});
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const matrix = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
+            importRowsToQuestions(matrix);
+          }catch(err){ alert("تعذّرت قراءة ملف الإكسل. تأكد من صحة الملف ومطابقته لتنسيق القالب."); }
+          e.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+    inp.click();
+  });
+
   document.getElementById("wsBack").addEventListener("click", ()=>{
     flushAutosave();
     const term=fTerm.value, grade=fGrade.value, subject=fSubject.value;
@@ -2327,7 +2450,7 @@ function renderFormsWindow(view, role){
     btn.classList.toggle("test-active", isTest);
   }
 
-  document.getElementById("wsTestMode").addEventListener("click", ()=>{
+  if(document.getElementById("wsTestMode")) document.getElementById("wsTestMode").addEventListener("click", ()=>{
     if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
     const term=activeModel.term, grade=activeModel.grade, subject=activeModel.subject;
     if(activeModel.kind!=="test"){
@@ -2366,7 +2489,7 @@ function renderFormsWindow(view, role){
     // بند: نشر محتوى النموذج تلقائيًا إلى نسخه المرتبطة في الصفوف الأخرى (التي أُنشئت معه
     // دفعة واحدة عبر خلايا "الصف" الإضافية)، حتى يبقى محتوى كل النسخ متطابقًا مع كل حفظ.
     if(activeModel.linkedGroup){
-      DB.models.filter(m=>m.linkedGroup===activeModel.linkedGroup && m.id!==activeModel.id).forEach(sib=>{
+      DB[MKEY].filter(m=>m.linkedGroup===activeModel.linkedGroup && m.id!==activeModel.id).forEach(sib=>{
         sib.blocks = JSON.parse(JSON.stringify(activeModel.blocks||[]));
         sib.data = JSON.parse(JSON.stringify(activeModel.data||[]));
         sib.kind = activeModel.kind; sib.testMode = activeModel.testMode; sib.testDuration = activeModel.testDuration;
@@ -2483,7 +2606,7 @@ function renderFormsWindow(view, role){
     lastAllModelsMode = mode;
     flushAutosave();
     activeModel = null;
-    const modeTitles = {model:"جميع نماذج", test:"جميع اختبارات", everything:"جميع نماذج واختبارات"};
+    const modeTitles = bankMode ? {model:"جميع البنوك", test:"جميع البنوك", everything:"جميع البنوك"} : {model:"جميع نماذج", test:"جميع اختبارات", everything:"جميع نماذج واختبارات"};
     document.getElementById("workshopTitle").textContent = `${modeTitles[mode]} ${grade} — ${term}${subject ? " — "+subject : ""}`;
     recomputeGroupNumbers(term, grade, subject);
     const scroll = document.getElementById("workshopScroll");
@@ -2491,7 +2614,7 @@ function renderFormsWindow(view, role){
     if(mode==="model") list = list.filter(m=>(m.kind||"model")==="model");
     else if(mode==="test") list = list.filter(m=>(m.kind||"model")==="test");
     list = list.sort((a,b)=> ((a.kind||"model")===(b.kind||"model")) ? (a.number-b.number) : ((a.kind||"model")==="test" ? 1 : -1) );
-    if(!list.length){ scroll.innerHTML = '<div class="empty-note">لا توجد نماذج أو اختبارات بعد لهذا الصف والفصل الدراسي والمادة.</div>'; return; }
+    if(!list.length){ scroll.innerHTML = `<div class="empty-note">لا توجد ${bankMode?"بنوك أسئلة":"نماذج أو اختبارات"} بعد لهذا الصف والفصل الدراسي والمادة.</div>`; return; }
     scroll.innerHTML = `<div class="models-icons" style="gap:14px;"></div>`;
     const box = scroll.querySelector(".models-icons");
     list.forEach(m=>{
@@ -2500,8 +2623,10 @@ function renderFormsWindow(view, role){
       const icon = document.createElement("div");
       icon.className="model-icon" + (isTest ? " test-icon" : "");
       icon.style.width="86px"; icon.style.height="86px"; icon.style.flexDirection="column"; icon.style.display="flex"; icon.style.gap="3px";
-      icon.innerHTML = `<div style="font-size:11px; font-weight:700;">${isTest ? "اختبار" : "نموذج"}</div><div style="font-size:24px; font-weight:900; line-height:1;">${m.number}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`;
-      icon.title = `${isTest ? "اختبار" : "نموذج"}${isSched ? " مجدول" : ""} ${m.number}`;
+      icon.innerHTML = bankMode
+        ? `<div style="font-size:11px; font-weight:700; padding:0 2px; text-align:center;">${(m.title||"بنك")}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`
+        : `<div style="font-size:11px; font-weight:700;">${isTest ? "اختبار" : "نموذج"}</div><div style="font-size:24px; font-weight:900; line-height:1;">${m.number}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`;
+      icon.title = bankMode ? (m.title||"بنك") : `${isTest ? "اختبار" : "نموذج"}${isSched ? " مجدول" : ""} ${m.number}`;
       icon.addEventListener("click", ()=>openModel(m));
       box.appendChild(icon);
     });
@@ -2637,7 +2762,8 @@ function serializeModel(model, warnings){
         connections = connections.filter(c=> remap[c.a]!==undefined && remap[c.b]!==undefined)
           .map(c=>({a:remap[c.a], b:remap[c.b]}));
         const bankCards = (typeof el.getMindmapBankCards === "function") ? el.getMindmapBankCards() : [];
-        data.push({type:"mindmap", items, connections, bankCards});
+        const bg = (typeof el.getMindmapBg === "function") ? el.getMindmapBg() : "";
+        data.push({type:"mindmap", items, connections, bankCards, bg});
       }
       const missing = allBoxes.filter(x=>!x.answer && !x.isLabel).length;
       if(missing>0) warnings.push(`خريطة ذهنية: ${missing} من صناديقها بلا إجابة محدَّدة (يجب سحب الكلمة الصحيحة من البنك إلى كل صندوق) — هذه الصناديق تحديدًا لن تظهر عند الطالب.`);
@@ -3149,7 +3275,7 @@ function buildBlockByTool(tool, savedData){
   else if(tool==="essay") el = buildEssayBlock(savedData);
   else if(tool==="match") el = buildMatchBlock(savedData && savedData.pairs, savedData && savedData.hint);
   else if(tool==="reorder") el = buildReorderBlock(savedData && savedData.correctOrder, savedData && savedData.hint);
-  else if(tool==="mindmap") el = buildMindmapBlock(savedData && savedData.items, savedData && savedData.connections);
+  else if(tool==="mindmap") el = buildMindmapBlock(savedData && savedData.items, savedData && savedData.connections, savedData && savedData.bg);
   else if(tool==="classify") el = buildClassifyBlock(savedData);
   if(el){
     el.dataset.tool = tool;
@@ -3958,7 +4084,7 @@ function buildReorderBlock(savedOrder, savedHint){
   return el;
 }
 
-function buildMindmapBlock(savedItems, savedConnections){
+function buildMindmapBlock(savedItems, savedConnections, savedBg){
   // بند 13: ألوان مختلفة جدًا يختار المعلم منها لتلوين تعبئة صناديق الخريطة الذهنية (أُضيف اللون الأبيض)
   const MM_COLORS = ["#ff6b6b","#4dabf7","#51cf66","#ffd43b","#cc5de8","#ff922f","#20c997"];
   const el = makeBlockShell("أكمل الخريطة الذهنية");
@@ -3970,8 +4096,41 @@ function buildMindmapBlock(savedItems, savedConnections){
     <button class="chip-btn" style="margin-top:8px;" id="mm-addcard">إضافة بطاقة</button>
     <button class="chip-btn" style="margin-top:8px;" id="mm-addlabelbox">إضافة بطاقة تعريف</button>
     <button class="chip-btn" style="margin-top:8px;" id="mm-addtitlebox">إدراج عنوان</button>
+    <button class="chip-btn" style="margin-top:8px;" id="mm-addimage">🖼️ إدراج صورة</button>
+    <button class="chip-btn" style="margin-top:8px; display:none;" id="mm-removeimage">✕ إزالة الصورة</button>
+    <input type="file" id="mm-imagefile" accept="image/*" style="display:none;">
   `;
   const area = body.querySelector(".mindmap-area"), svg = area.querySelector("svg"), bank = body.querySelector("#mm-bank");
+  // بند: خلفية الخريطة الذهنية — صورة تُعرض خلف الصناديق وبطاقات التعريف بحيث يمكن
+  // ترتيبها فوقها (مثل خريطة جغرافية أو مخطط جاهز يضيف المعلم صناديقه فوقه).
+  let mmBgData = "";
+  const mmImgFile = body.querySelector("#mm-imagefile");
+  const mmRemoveBtn = body.querySelector("#mm-removeimage");
+  function applyBg(src){
+    mmBgData = src || "";
+    if(mmBgData){
+      area.style.backgroundImage = `url("${mmBgData}")`;
+      area.style.backgroundSize = "contain";
+      area.style.backgroundRepeat = "no-repeat";
+      area.style.backgroundPosition = "top right";
+      mmRemoveBtn.style.display = "";
+    } else {
+      area.style.backgroundImage = "";
+      mmRemoveBtn.style.display = "none";
+    }
+  }
+  body.querySelector("#mm-addimage").addEventListener("click", ()=> mmImgFile.click());
+  mmImgFile.addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{ applyBg(ev.target.result); updateAreaSize(); };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  });
+  mmRemoveBtn.addEventListener("click", ()=>applyBg(""));
+  if(savedBg) applyBg(savedBg);
+  el.getMindmapBg = ()=> mmBgData;
   wireFreshClear(body);
   let connections = [], pending=null, boxSeq=0, boxes=[];
   /* نضبط الحد الأدنى لعرض/ارتفاع منطقة الخريطة بحسب أقصى امتداد للصناديق الفعلي،
@@ -4555,7 +4714,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       box.innerHTML += `<div style="font-weight:700; margin-bottom:8px;">أكمل الخريطة الذهنية</div>
         <div class="cards-row mm-bank" style="margin-bottom:10px;"></div>
         <div class="mm-scroll-wrap">
-        <div class="mindmap-area mm-area" style="width:100%; min-width:${areaW}px; min-height:${areaH}px;">
+        <div class="mindmap-area mm-area" style="width:100%; min-width:${areaW}px; min-height:${areaH}px; ${q.bg?`background-image:url('${q.bg}'); background-size:contain; background-repeat:no-repeat; background-position:top right;`:""}">
           <svg class="connect-svg"></svg>
           ${q.items.map((it,ii)=>it.isLabel ? `<div class="mindbox mm-mindbox mindbox-label${it.isTitle?" mindbox-title":""}" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${it.color?`background:${it.color};`:""}">
             <div style="font-size:11.5px;">${it.label}</div>
