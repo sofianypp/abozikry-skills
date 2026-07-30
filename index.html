@@ -4294,6 +4294,12 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     if(isTitle) b.dataset.isTitle = "1";
     if(saved && typeof saved.x === "number") b.style.left = saved.x+"px";
     if(saved && typeof saved.y === "number") b.style.top = saved.y+"px";
+    // بند: نحتفظ بآخر حجم محفوظ فعليًا (w/h) كذاكرة احتياطية على الصندوق نفسه. لو تم استدعاء
+    // الحفظ بينما هذا القسم مطويًا/غير ظاهر على الشاشة، يقرأ المتصفح offsetWidth/offsetHeight
+    // كصفر فيُكتب هذا الصفر خطأً فوق الحجم الصحيح — هذه الذاكرة الاحتياطية تمنع ضياعه، فتُستخدم
+    // بدل الصفر عند الحفظ في مثل هذه الحالة.
+    if(saved && saved.w) b.dataset.savedW = saved.w;
+    if(saved && saved.h) b.dataset.savedH = saved.h;
     // بند: الصناديق وبطاقات التعريف وبطاقة العنوان تُنشأ فارغة تمامًا من الكتابة (بلا نص افتراضي
     // مثل "صندوق 1" أو "بطاقة تعريف")، فيكتب المعلم فيها ما يريد مباشرة دون الحاجة لحذف نص سابق.
     const labelText = saved && saved.label ? saved.label : "";
@@ -4450,23 +4456,31 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   for(let i=1;i<=12;i++){
     bank.appendChild(makeMmBankCard("بطاقة "+i, true));
   }
-  el.getMindmapData = ()=> boxes.map(b=>({
-    label: b.querySelector(".mb-label").textContent.trim(),
-    answer: b.dataset.answer || "",
-    isLabel: !!b.dataset.isLabel,
-    isTitle: !!b.dataset.isTitle,
-    color: b.mbColorValue || "",
-    hint: (b.querySelector(".bulb").dataset.hint || ""),
-    x: parseFloat(b.style.left) || 0,
-    y: parseFloat(b.style.top) || 0,
-    // بند: نحفظ الحجم الفعلي (عرض/ارتفاع) الذي استقر عليه الصندوق عند المعلم، ونطبّقه حرفيًا
-    // في واجهة الطالب بدل ترك الصندوق يُحسب حجمه تلقائيًا هناك من جديد. فحساب الحجم تلقائيًا
-    // في كل واجهة على حدة قد ينتج حجمًا مختلفًا قليلًا (بسبب اختلاف العناصر المعروضة، مثل غياب
-    // نص "الإجابة" أو أيقونة اللمبة عند الطالب)، فيتغيّر موضع/امتداد الصندوق فعليًا ويكشف أجزاءً
-    // من صورة الخلفية كان المعلم يقصد حجبها خلف الصندوق تحديدًا.
-    w: b.offsetWidth || 0,
-    h: b.offsetHeight || 0
-  }));
+  el.getMindmapData = ()=> boxes.map(b=>{
+    // بند: إن كان الصندوق ظاهرًا فعليًا نقيس حجمه الحقيقي ونحدّث الذاكرة الاحتياطية به،
+    // وإن كان مخفيًا وقت الحفظ (offsetWidth=0) نستخدم آخر حجم صحيح محفوظ بدل الصفر.
+    const liveW = b.offsetWidth, liveH = b.offsetHeight;
+    const w = liveW > 0 ? liveW : (parseFloat(b.dataset.savedW) || 0);
+    const h = liveH > 0 ? liveH : (parseFloat(b.dataset.savedH) || 0);
+    if(liveW > 0) b.dataset.savedW = liveW;
+    if(liveH > 0) b.dataset.savedH = liveH;
+    return {
+      label: b.querySelector(".mb-label").textContent.trim(),
+      answer: b.dataset.answer || "",
+      isLabel: !!b.dataset.isLabel,
+      isTitle: !!b.dataset.isTitle,
+      color: b.mbColorValue || "",
+      hint: (b.querySelector(".bulb").dataset.hint || ""),
+      x: parseFloat(b.style.left) || 0,
+      y: parseFloat(b.style.top) || 0,
+      // بند: نحفظ الحجم الفعلي (عرض/ارتفاع) الذي استقر عليه الصندوق عند المعلم، ونطبّقه حرفيًا
+      // في واجهة الطالب بدل ترك الصندوق يُحسب حجمه تلقائيًا هناك من جديد. فحساب الحجم تلقائيًا
+      // في كل واجهة على حدة قد ينتج حجمًا مختلفًا قليلًا (بسبب اختلاف العناصر المعروضة، مثل غياب
+      // نص "الإجابة" أو أيقونة اللمبة عند الطالب)، فيتغيّر موضع/امتداد الصندوق فعليًا ويكشف أجزاءً
+      // من صورة الخلفية كان المعلم يقصد حجبها خلف الصندوق تحديدًا.
+      w, h
+    };
+  });
   el.getMindmapConnections = ()=> connections
     .map(c=>({a: boxes.indexOf(c.a), b: boxes.indexOf(c.b)}))
     .filter(c=>c.a>-1 && c.b>-1);
