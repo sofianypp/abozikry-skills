@@ -300,6 +300,16 @@
   .classify-cell-solve{ height:40px; }
 
   .mindmap-area{ position:relative; min-height:260px; border:1px dashed #ccc; border-radius:8px; background:#fff; padding:22px; box-sizing:border-box; }
+  /* بند: عند تفعيل قفل الخريطة الذهنية، نعطّل كل الأزرار الفرعية والتحرير النصي داخل
+     الصناديق وبطاقات التعريف والعنوان، بحيث لا يبقى شيء يلتقط الضغط سوى تحريك الصندوق نفسه. */
+  .mindmap-area.mm-locked .mindbox .mb-handle .bulb,
+  .mindmap-area.mm-locked .mindbox .mb-handle .mb-color-slot,
+  .mindmap-area.mm-locked .mindbox .mb-handle .mb-del,
+  .mindmap-area.mm-locked .mindbox .mb-label,
+  .mindmap-area.mm-locked .mindbox .dot,
+  .mindmap-area.mm-locked .mindbox .mb-answer-del{ pointer-events:none; opacity:.55; }
+  .mindmap-area.mm-locked .mm-bg-handle{ pointer-events:none; opacity:.4; }
+  .mindmap-area.mm-locked .mindbox{ cursor:move; }
   /* بند: صورة خلفية الخريطة الذهنية أصبحت عنصر <img> بحجم وموضع ثابتين بالبكسل (وليست
      CSS background-size:contain) حتى لا يتغيّر حجمها الظاهري تلقائيًا كلما تحرّك المعلم
      صندوقًا أو بطاقة تعريف أو عنوانًا فيكبر امتداد منطقة الخريطة (mindmap-area). */
@@ -4103,6 +4113,18 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   // بند 13: ألوان مختلفة جدًا يختار المعلم منها لتلوين تعبئة صناديق الخريطة الذهنية (أُضيف اللون الأبيض)
   const MM_COLORS = ["#ff6b6b","#4dabf7","#51cf66","#ffd43b","#cc5de8","#ff922f","#20c997"];
   const el = makeBlockShell("أكمل الخريطة الذهنية");
+  // بند: زر قفل التحرير — يُضاف في شريط أزرار القسم قبل زر "تكرار" مباشرة. عند تفعيله
+  // تُعطَّل كل الأزرار الفرعية داخل صناديق/بطاقات/عنوان الخريطة الذهنية (اللمبة، اللون،
+  // الحذف، التحرير النصي) ويصبح الصندوق بأكمله قابلًا للسحب من أي نقطة فيه، بدل الاقتصار
+  // على شريط المقبض الضيق أعلى الصندوق الذي كان يصعب الإمساك به بدقة.
+  const lockBtn = document.createElement("button");
+  lockBtn.className = "icon-btn mm-lock-btn";
+  lockBtn.type = "button";
+  lockBtn.title = "قفل تحرير عناصر الخريطة الذهنية (لتسهيل السحب فقط)";
+  lockBtn.textContent = "🔓";
+  const actionsBar = el.querySelector(".qblock-actions");
+  const dupBtnRef = el.querySelector(".dup");
+  if(actionsBar && dupBtnRef) actionsBar.insertBefore(lockBtn, dupBtnRef);
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `
     <div class="mm-scroll-wrap"><div class="mindmap-area"><div class="mm-bg-frame" style="display:none;"><img class="mm-bg-img" alt=""><div class="mm-bg-handle" data-dir="nw"></div><div class="mm-bg-handle" data-dir="n"></div><div class="mm-bg-handle" data-dir="ne"></div><div class="mm-bg-handle" data-dir="e"></div><div class="mm-bg-handle" data-dir="se"></div><div class="mm-bg-handle" data-dir="s"></div><div class="mm-bg-handle" data-dir="sw"></div><div class="mm-bg-handle" data-dir="w"></div></div><svg class="connect-svg"></svg></div></div>
@@ -4222,6 +4244,16 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   document.addEventListener("touchcancel", mmResizeEnd);
   wireFreshClear(body);
   let connections = [], pending=null, boxSeq=0, boxes=[];
+  let mmLocked = false;
+  function setMmLocked(v){
+    mmLocked = v;
+    area.classList.toggle("mm-locked", mmLocked);
+    lockBtn.textContent = mmLocked ? "🔒" : "🔓";
+    lockBtn.title = mmLocked
+      ? "القفل مفعَّل — التحريك فقط متاح، اضغط لإلغاء القفل والعودة لباقي الأزرار"
+      : "قفل تحرير عناصر الخريطة الذهنية (لتسهيل السحب فقط)";
+  }
+  lockBtn.addEventListener("click", ()=> setMmLocked(!mmLocked));
   /* نضبط الحد الأدنى لعرض/ارتفاع منطقة الخريطة بحسب أقصى امتداد للصناديق الفعلي،
      حتى تُحفظ نفس المسافات بالبكسل التي رتّبها المعلم عند عرضها لدى الطالب لاحقًا،
      بدلًا من ترك عرض المنطقة يتحدد تلقائيًا (100%) فيضغط الصناديق على بعضها. */
@@ -4248,7 +4280,9 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     if(isTitle) b.dataset.isTitle = "1";
     if(saved && typeof saved.x === "number") b.style.left = saved.x+"px";
     if(saved && typeof saved.y === "number") b.style.top = saved.y+"px";
-    const labelText = saved && saved.label ? saved.label : (isTitle ? "عنوان الخريطة الذهنية" : (isLabel ? "بطاقة تعريف" : "صندوق "+boxSeq));
+    // بند: الصناديق وبطاقات التعريف وبطاقة العنوان تُنشأ فارغة تمامًا من الكتابة (بلا نص افتراضي
+    // مثل "صندوق 1" أو "بطاقة تعريف")، فيكتب المعلم فيها ما يريد مباشرة دون الحاجة لحذف نص سابق.
+    const labelText = saved && saved.label ? saved.label : "";
     // بند 1+3: شريط مقبض (mb-handle) منفصل تمامًا عن نص البطاقة، يحمل التلميح والحذف ولون التعبئة،
     // فلا يتداخل أي منها مع منطقة التحرير، وهو المكان الوحيد الذي يبدأ منه السحب.
     b.innerHTML = `<div class="mb-handle" title="اسحب من هنا لتحريك الصندوق">
@@ -4333,6 +4367,11 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     function dragEnd(){ isDown=false; }
     handle.addEventListener("mousedown", dragStart);
     handle.addEventListener("touchstart", dragStart, {passive:false});
+    // بند: عند تفعيل القفل، يصبح الصندوق بأكمله (وليس شريط المقبض الضيق فقط) نقطة سحب،
+    // لأن باقي الأزرار الفرعية (اللمبة/اللون/الحذف) والتحرير النصي معطَّلة أثناء القفل
+    // عبر pointer-events في CSS، فلا خطر من التقاط ضغطة كانت ستُصيب أحدها بالخطأ.
+    b.addEventListener("mousedown", (e)=>{ if(mmLocked) dragStart(e); });
+    b.addEventListener("touchstart", (e)=>{ if(mmLocked) dragStart(e); }, {passive:false});
     document.addEventListener("mousemove", dragMove);
     document.addEventListener("touchmove", dragMove, {passive:false});
     document.addEventListener("mouseup", dragEnd);
@@ -4405,7 +4444,14 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     color: b.mbColorValue || "",
     hint: (b.querySelector(".bulb").dataset.hint || ""),
     x: parseFloat(b.style.left) || 0,
-    y: parseFloat(b.style.top) || 0
+    y: parseFloat(b.style.top) || 0,
+    // بند: نحفظ الحجم الفعلي (عرض/ارتفاع) الذي استقر عليه الصندوق عند المعلم، ونطبّقه حرفيًا
+    // في واجهة الطالب بدل ترك الصندوق يُحسب حجمه تلقائيًا هناك من جديد. فحساب الحجم تلقائيًا
+    // في كل واجهة على حدة قد ينتج حجمًا مختلفًا قليلًا (بسبب اختلاف العناصر المعروضة، مثل غياب
+    // نص "الإجابة" أو أيقونة اللمبة عند الطالب)، فيتغيّر موضع/امتداد الصندوق فعليًا ويكشف أجزاءً
+    // من صورة الخلفية كان المعلم يقصد حجبها خلف الصندوق تحديدًا.
+    w: b.offsetWidth || 0,
+    h: b.offsetHeight || 0
   }));
   el.getMindmapConnections = ()=> connections
     .map(c=>({a: boxes.indexOf(c.a), b: boxes.indexOf(c.b)}))
@@ -4812,14 +4858,19 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
               : `<div class="mm-bg-frame" style="left:${q.bg.x||0}px; top:${q.bg.y||0}px; width:${q.bg.w||240}px; height:${q.bg.h||160}px;"><img class="mm-bg-img" src="${q.bg.src}" alt=""></div>`)
             : ""}
           <svg class="connect-svg"></svg>
-          ${q.items.map((it,ii)=>it.isLabel ? `<div class="mindbox mm-mindbox mindbox-label${it.isTitle?" mindbox-title":""}" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${it.color?`background:${it.color};`:""}">
+          ${q.items.map((it,ii)=>{
+            // بند: نطبّق الحجم المحفوظ من واجهة المعلم حرفيًا (إن وُجد) حتى لا يتغيّر امتداد
+            // الصندوق تلقائيًا عند الطالب فيكشف أجزاءً من صورة الخلفية كانت مقصودة الحجب.
+            const sizeStyle = (it.w && it.h) ? `width:${it.w}px; height:${it.h}px; box-sizing:border-box;` : "";
+            return it.isLabel ? `<div class="mindbox mm-mindbox mindbox-label${it.isTitle?" mindbox-title":""}" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             <div style="font-size:11.5px;">${it.label}</div>
-          </div>` : `<div class="mindbox mm-mindbox" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${it.color?`background:${it.color};`:""}">
+          </div>` : `<div class="mindbox mm-mindbox" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             ${(it.hint && !model.testMode) ? `<span class="bulb mm-hint-bulb" data-ii="${ii}" style="position:absolute; top:-9px; left:-9px; background:#fff; border-radius:50%; cursor:pointer;">💡</span>` : ""}
             <div style="font-size:11.5px; margin-bottom:4px;">${it.label}</div>
             <div class="mm-drop" data-ii="${ii}" style="min-width:80px; min-height:26px; border:1.5px dashed #bbb; border-radius:6px; padding:4px;"></div>
             <div class="mm-hint-text" data-ii="${ii}" style="display:none; font-size:10.5px; color:var(--accent); max-width:110px;"></div>
-          </div>`).join("")}
+          </div>`;
+          }).join("")}
         </div>
         </div>`;
     } else if(q.type==="essay"){
