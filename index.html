@@ -60,7 +60,7 @@
   .msg.err{ background:#fbeae7; color:var(--danger); border:1.5px solid var(--danger);}
   .about-btn{ position:fixed; left:16px; bottom:16px; background:var(--paper); border:2px solid var(--ink); color:var(--ink); font-weight:700; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; z-index:40;}
   .about-btn:hover{ background:var(--ink); color:var(--paper); }
-  .overlay{ position:fixed; inset:0; background:rgba(17,17,17,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:100; }
+  .overlay{ position:fixed; inset:0; background:rgba(17,17,17,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:3500; }
   .overlay.show{ display:flex; }
   .modal{ width:100%; max-width:420px; background:var(--paper); border:2px solid var(--ink); border-radius:var(--radius); padding:24px; max-height:90vh; overflow-y:auto; }
   .modal.wide{ max-width:640px; }
@@ -147,6 +147,9 @@
   .forms-sidebar label{ font-size:12px; margin:8px 0 4px; }
   .forms-sidebar.collapsed{ width:44px !important; flex:0 0 44px !important; overflow:hidden; padding:14px 6px; resize:none; }
   .forms-sidebar.collapsed .section{ display:none; }
+  /* بند: تمييز قائمة "إدارة بنوك الأسئلة" بلون مختلف عن قائمة "إدارة النماذج التعليمية" */
+  .forms-sidebar.bank-sidebar{ background:#dbeafe; border-left-color:#93c5fd; }
+  .forms-sidebar.bank-sidebar h3{ color:#1d4ed8; }
   .tool-btn{
     display:block; width:100%; text-align:right; background:var(--paper); border:1.5px solid var(--ink);
     border-radius:7px; padding:8px 10px; font-size:12.5px; font-weight:700; cursor:pointer; margin-bottom:6px;
@@ -296,7 +299,22 @@
   .classify-cell{ height:40px; }
   .classify-cell-solve{ height:40px; }
 
-  .mindmap-area{ position:relative; min-height:260px; border:1px dashed #ccc; border-radius:8px; background:#fff; }
+  .mindmap-area{ position:relative; min-height:260px; border:1px dashed #ccc; border-radius:8px; background:#fff; padding:22px; box-sizing:border-box; }
+  /* بند: صورة خلفية الخريطة الذهنية أصبحت عنصر <img> بحجم وموضع ثابتين بالبكسل (وليست
+     CSS background-size:contain) حتى لا يتغيّر حجمها الظاهري تلقائيًا كلما تحرّك المعلم
+     صندوقًا أو بطاقة تعريف أو عنوانًا فيكبر امتداد منطقة الخريطة (mindmap-area). */
+  .mm-bg-frame{ position:absolute; top:0; left:0; z-index:0; }
+  .mm-bg-frame img{ width:100%; height:100%; display:block; pointer-events:none; user-select:none; -webkit-user-drag:none; }
+  .mm-bg-handle{ position:absolute; width:12px; height:12px; background:var(--accent); border:2px solid #fff; border-radius:50%; z-index:2; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .mm-bg-handle[data-dir="nw"]{ top:-6px; left:-6px; cursor:nwse-resize; }
+  .mm-bg-handle[data-dir="n"]{ top:-6px; left:calc(50% - 6px); cursor:ns-resize; }
+  .mm-bg-handle[data-dir="ne"]{ top:-6px; right:-6px; cursor:nesw-resize; }
+  .mm-bg-handle[data-dir="e"]{ top:calc(50% - 6px); right:-6px; cursor:ew-resize; }
+  .mm-bg-handle[data-dir="se"]{ bottom:-6px; right:-6px; cursor:nwse-resize; }
+  .mm-bg-handle[data-dir="s"]{ bottom:-6px; left:calc(50% - 6px); cursor:ns-resize; }
+  .mm-bg-handle[data-dir="sw"]{ bottom:-6px; left:-6px; cursor:nesw-resize; }
+  .mm-bg-handle[data-dir="w"]{ top:calc(50% - 6px); left:-6px; cursor:ew-resize; }
+  .mindbox{ z-index:1; }
   .mindbox{ position:absolute; border:1.5px solid var(--ink); border-radius:8px; padding:0 10px 6px; background:#fff; cursor:default; font-size:12.5px; min-width:90px; text-align:center; box-sizing:border-box;}
   .mindbox-label{ border-style:dashed; background:#fffbe8; }
   /* بند 1+3: شريط مقبض مخصّص أعلى الصندوق يحمل أيقونات التلميح/الحذف/اللون،
@@ -1239,28 +1257,28 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
 const NAV = {
   admin: [
     ["assignments","إدارة الإسنادات"],
-    ["banks","بنوك الأسئلة"],
-    ["forms","النماذج التعليمية"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
     ["attachments","المرفقات"],
     ["tasks","التكليفات الإدارية"],
     ["correspondence","المراسلات الإدارية"],
-  ],
-  coordinator: [
     ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
+  ],
+  coordinator: [
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
     ["attachments","المرفقات"],
     ["tasksSent","التكليفات المرسلة"],
     ["tasksInbox","التكليفات الواردة"],
     ["correspondence","المراسلات الإدارية"],
+    ["forms","النماذج التعليمية"],
+    ["banks","بنوك الأسئلة"],
   ],
   teacher: [
-    ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
     ["essaygrading","تصحيح المقالي"],
+    ["banks","بنوك الأسئلة"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
     ["attachments","المرفقات"],
@@ -2100,11 +2118,8 @@ function renderFormsWindow(view, role, bankMode){
   const isRestricted = role==="teacher"||role==="coordinator";
   view.innerHTML = `
     <h2>${bankMode ? "بنوك الأسئلة" : "النماذج التعليمية"}</h2>
-    <p class="sub">${bankMode
-      ? "أنشئ بنوك أسئلة خاصة بمادة وصف محددين، لاستيراد أسئلتها لاحقًا عند إنشاء النماذج أو الاختبارات بسرعة."
-      : "إنشاء النماذج وإدارتها والتحكم الكامل في أنماط الأسئلة."} ${(role==="teacher"||role==="coordinator") ? "(مقيّد بالصفوف المسندة إليك)" : ""}</p>
     <div class="forms-layout">
-      <div class="forms-sidebar" id="formsSidebar">
+      <div class="forms-sidebar${bankMode ? " bank-sidebar" : ""}" id="formsSidebar">
         <button class="icon-btn" id="formsSidebarToggle" title="طي/نشر القائمة" style="float:left; margin-bottom:6px;">↔</button>
         <div class="section">
           <h3>${bankMode ? "بيانات البنوك" : "بيانات النماذج"}</h3>
@@ -4090,7 +4105,7 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   const el = makeBlockShell("أكمل الخريطة الذهنية");
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `
-    <div class="mm-scroll-wrap"><div class="mindmap-area"><svg class="connect-svg"></svg></div></div>
+    <div class="mm-scroll-wrap"><div class="mindmap-area"><div class="mm-bg-frame" style="display:none;"><img class="mm-bg-img" alt=""><div class="mm-bg-handle" data-dir="nw"></div><div class="mm-bg-handle" data-dir="n"></div><div class="mm-bg-handle" data-dir="ne"></div><div class="mm-bg-handle" data-dir="e"></div><div class="mm-bg-handle" data-dir="se"></div><div class="mm-bg-handle" data-dir="s"></div><div class="mm-bg-handle" data-dir="sw"></div><div class="mm-bg-handle" data-dir="w"></div></div><svg class="connect-svg"></svg></div></div>
     <div class="cards-row" style="margin-top:12px;" id="mm-bank"></div>
     <button class="chip-btn" style="margin-top:8px;" id="mm-addbox">إضافة صندوق</button>
     <button class="chip-btn" style="margin-top:8px;" id="mm-addcard">إضافة بطاقة</button>
@@ -4103,34 +4118,108 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   const area = body.querySelector(".mindmap-area"), svg = area.querySelector("svg"), bank = body.querySelector("#mm-bank");
   // بند: خلفية الخريطة الذهنية — صورة تُعرض خلف الصناديق وبطاقات التعريف بحيث يمكن
   // ترتيبها فوقها (مثل خريطة جغرافية أو مخطط جاهز يضيف المعلم صناديقه فوقه).
-  let mmBgData = "";
+  // بند جديد: الصورة الآن عنصر <img> حقيقي داخل إطار (mm-bg-frame) له عرض وارتفاع وموضع
+  // ثابتون بالبكسل (مخزَّنون في mmBg)، بدل خلفية CSS بمقياس "contain" كانت تتغيّر تلقائيًا
+  // بمجرد نمو منطقة الخريطة عند تحريك أي صندوق أو بطاقة تعريف أو عنوان بعيدًا. هذا الفصل
+  // التام بين حجم الصورة وحجم منطقة الخريطة هو ما يمنع تغيّر حجمها الظاهري عرضيًا.
+  let mmBg = null; // {src, x, y, w, h}
   const mmImgFile = body.querySelector("#mm-imagefile");
   const mmRemoveBtn = body.querySelector("#mm-removeimage");
-  function applyBg(src){
-    mmBgData = src || "";
-    if(mmBgData){
-      area.style.backgroundImage = `url("${mmBgData}")`;
-      area.style.backgroundSize = "contain";
-      area.style.backgroundRepeat = "no-repeat";
-      area.style.backgroundPosition = "top right";
-      mmRemoveBtn.style.display = "";
-    } else {
-      area.style.backgroundImage = "";
+  const mmFrame = body.querySelector(".mm-bg-frame");
+  const mmImgEl = mmFrame.querySelector(".mm-bg-img");
+  function positionFrame(){
+    mmFrame.style.left = (mmBg.x||0)+"px";
+    mmFrame.style.top = (mmBg.y||0)+"px";
+    mmFrame.style.width = (mmBg.w||240)+"px";
+    mmFrame.style.height = (mmBg.h||160)+"px";
+  }
+  function applyBg(src, x, y, w, h){
+    if(!src){
+      mmBg = null;
+      mmFrame.style.display = "none";
+      mmImgEl.src = "";
       mmRemoveBtn.style.display = "none";
+      return;
     }
+    mmBg = { src, x: x||0, y: y||0, w: w||240, h: h||160 };
+    mmImgEl.src = mmBg.src;
+    mmFrame.style.display = "";
+    positionFrame();
+    mmRemoveBtn.style.display = "";
   }
   body.querySelector("#mm-addimage").addEventListener("click", ()=> mmImgFile.click());
   mmImgFile.addEventListener("change", (e)=>{
     const file = e.target.files[0];
     if(!file) return;
     const reader = new FileReader();
-    reader.onload = (ev)=>{ applyBg(ev.target.result); updateAreaSize(); };
+    reader.onload = (ev)=>{
+      // نضبط الحجم الابتدائي وفق أبعاد الصورة الحقيقية (بحد أقصى معقول) للحفاظ على تناسقها
+      const tmp = new Image();
+      tmp.onload = ()=>{
+        const maxW = 320;
+        const ratio = tmp.naturalWidth ? Math.min(1, maxW/tmp.naturalWidth) : 1;
+        const w = Math.round((tmp.naturalWidth||240)*ratio), h = Math.round((tmp.naturalHeight||160)*ratio);
+        // بند: الصورة تُدرَج افتراضيًا عند الجانب الأيمن من منطقة الخريطة (بدل أقصى اليسار)
+        // بما يناسب اتجاه الكتابة من اليمين لليسار، مع هامش كافٍ من كل الجهات كي تبقى
+        // جميع مقابض التكبير/التصغير الثمانية ظاهرة وقابلة للسحب من أول لحظة.
+        const areaW = area.clientWidth || 360;
+        const x = Math.max(10, areaW - w - 10), y = 10;
+        applyBg(ev.target.result, x, y, w, h);
+        updateAreaSize();
+      };
+      tmp.src = ev.target.result;
+    };
     reader.readAsDataURL(file);
     e.target.value = "";
   });
   mmRemoveBtn.addEventListener("click", ()=>applyBg(""));
-  if(savedBg) applyBg(savedBg);
-  el.getMindmapBg = ()=> mmBgData;
+  if(savedBg){
+    // توافق مع الصيغة القديمة حيث كانت البيانات المحفوظة نصًا (رابط الصورة فقط) بلا أبعاد
+    if(typeof savedBg === "string") applyBg(savedBg, 0, 0, 240, 160);
+    else applyBg(savedBg.src, savedBg.x, savedBg.y, savedBg.w, savedBg.h);
+  }
+  el.getMindmapBg = ()=> mmBg;
+  // بند: مقابض تكبير/تصغير الصورة — 8 مقابض (تعطي 3 نقاط ظاهرة على كل جانب من جوانب
+  // الصورة: زاويتان + منتصف) يبدأ السحب منها فقط، فلا يتأثر حجم الصورة إطلاقًا بتحريك
+  // الصناديق أو بطاقات التعريف أو العنوان لأن أحداث تحريكها منفصلة تمامًا عن هذه المقابض.
+  let mmResizeDir = null, mmStart = null;
+  function mmPointOf(e){
+    if(e.touches && e.touches.length) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX, y:e.changedTouches[0].clientY};
+    return {x:e.clientX, y:e.clientY};
+  }
+  mmFrame.querySelectorAll(".mm-bg-handle").forEach(h=>{
+    function start(e){
+      if(!mmBg) return;
+      mmResizeDir = h.dataset.dir;
+      const p = mmPointOf(e);
+      mmStart = { px:p.x, py:p.y, x:mmBg.x, y:mmBg.y, w:mmBg.w, h:mmBg.h };
+      e.preventDefault(); e.stopPropagation();
+    }
+    h.addEventListener("mousedown", start);
+    h.addEventListener("touchstart", start, {passive:false});
+  });
+  function mmResizeMove(e){
+    if(!mmResizeDir || !mmBg) return;
+    const p = mmPointOf(e);
+    const dx = p.x - mmStart.px, dy = p.y - mmStart.py;
+    let {x,y,w,h} = mmStart;
+    const MIN = 30;
+    if(mmResizeDir.includes("e")) w = Math.max(MIN, mmStart.w + dx);
+    if(mmResizeDir.includes("s")) h = Math.max(MIN, mmStart.h + dy);
+    if(mmResizeDir.includes("w")){ w = Math.max(MIN, mmStart.w - dx); x = mmStart.x + (mmStart.w - w); }
+    if(mmResizeDir.includes("n")){ h = Math.max(MIN, mmStart.h - dy); y = mmStart.y + (mmStart.h - h); }
+    mmBg.x=x; mmBg.y=y; mmBg.w=w; mmBg.h=h;
+    positionFrame();
+    updateAreaSize();
+    if(e.type==="touchmove") e.preventDefault();
+  }
+  function mmResizeEnd(){ mmResizeDir = null; mmStart = null; }
+  document.addEventListener("mousemove", mmResizeMove);
+  document.addEventListener("touchmove", mmResizeMove, {passive:false});
+  document.addEventListener("mouseup", mmResizeEnd);
+  document.addEventListener("touchend", mmResizeEnd);
+  document.addEventListener("touchcancel", mmResizeEnd);
   wireFreshClear(body);
   let connections = [], pending=null, boxSeq=0, boxes=[];
   /* نضبط الحد الأدنى لعرض/ارتفاع منطقة الخريطة بحسب أقصى امتداد للصناديق الفعلي،
@@ -4144,6 +4233,9 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
       maxX = Math.max(maxX, bx+bw+30);
       maxY = Math.max(maxY, by+bh+30);
     });
+    // بند: نوسّع منطقة الخريطة لتشمل امتداد الصورة أيضًا (بلا أي أثر على حجم الصورة نفسها،
+    // فحجمها ثابت بالبكسل عبر mmBg ولا علاقة له بهذا الحساب إطلاقًا).
+    if(mmBg){ maxX = Math.max(maxX, (mmBg.x||0)+(mmBg.w||0)+30); maxY = Math.max(maxY, (mmBg.y||0)+(mmBg.h||0)+30); }
     area.style.minWidth = maxX+"px";
     area.style.minHeight = maxY+"px";
   }
@@ -4714,7 +4806,11 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       box.innerHTML += `<div style="font-weight:700; margin-bottom:8px;">أكمل الخريطة الذهنية</div>
         <div class="cards-row mm-bank" style="margin-bottom:10px;"></div>
         <div class="mm-scroll-wrap">
-        <div class="mindmap-area mm-area" style="width:100%; min-width:${areaW}px; min-height:${areaH}px; ${q.bg?`background-image:url('${q.bg}'); background-size:contain; background-repeat:no-repeat; background-position:top right;`:""}">
+        <div class="mindmap-area mm-area" style="width:100%; min-width:${Math.max(areaW, q.bg?((q.bg.x||0)+(q.bg.w||0)+30):0)}px; min-height:${Math.max(areaH, q.bg?((q.bg.y||0)+(q.bg.h||0)+30):0)}px;">
+          ${q.bg ? (typeof q.bg === "string"
+              ? `<div class="mm-bg-frame" style="left:0; top:0; width:240px; height:160px;"><img class="mm-bg-img" src="${q.bg}" alt=""></div>`
+              : `<div class="mm-bg-frame" style="left:${q.bg.x||0}px; top:${q.bg.y||0}px; width:${q.bg.w||240}px; height:${q.bg.h||160}px;"><img class="mm-bg-img" src="${q.bg.src}" alt=""></div>`)
+            : ""}
           <svg class="connect-svg"></svg>
           ${q.items.map((it,ii)=>it.isLabel ? `<div class="mindbox mm-mindbox mindbox-label${it.isTitle?" mindbox-title":""}" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${it.color?`background:${it.color};`:""}">
             <div style="font-size:11.5px;">${it.label}</div>
@@ -6950,9 +7046,12 @@ function addMiniTableToolbar(table){
       if(!confirm("تحذير: سيتم حذف جميع البيانات الموجودة داخل هذا الجدول نهائيًا. هل أنت متأكد من المتابعة؟")) return;
       table._clearAllHandler();
     });
-    bar.appendChild(clearBtn);
+    // بند: زر الحذف يُضاف الآن آخر زر في الشريط (بعد زر تصدير الإكسل مباشرة)
+    // في جميع الجداول وجميع النوافذ والواجهات، بدل أن يكون أول زر كما كان سابقًا.
+    bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn); bar.appendChild(clearBtn);
+  } else {
+    bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn);
   }
-  bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn);
   container.appendChild(bar); container.appendChild(tableWrap);
 }
 /* بند 7: إتاحة تغيير حجم جميع أعمدة الجداول (سحب حافة رأس العمود) في كل الجداول ذات الفئة data */
