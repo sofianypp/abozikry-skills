@@ -4121,7 +4121,15 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   lockBtn.className = "icon-btn mm-lock-btn";
   lockBtn.type = "button";
   lockBtn.title = "قفل تحرير عناصر الخريطة الذهنية (لتسهيل السحب فقط)";
-  lockBtn.textContent = "🔓";
+  // بند: أيقونة القفل الآن SVG بلون موحّد (currentColor) بدل الإيموجي 🔒/🔓، لأن رموز
+  // الإيموجي تحمل ألوانها الخاصة (تظهر بلون أسود/داكن دومًا) ولا يمكن التحكم بلونها عبر CSS،
+  // فتعذّر جعلها بيضاء بوضوح فوق خلفية القفل الملوَّنة عند التفعيل.
+  const MM_LOCK_ICON_OPEN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 7.5-2"></path></svg>';
+  const MM_LOCK_ICON_CLOSED = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>';
+  lockBtn.innerHTML = MM_LOCK_ICON_OPEN;
+  lockBtn.style.display = "inline-flex";
+  lockBtn.style.alignItems = "center";
+  lockBtn.style.justifyContent = "center";
   const actionsBar = el.querySelector(".qblock-actions");
   const dupBtnRef = el.querySelector(".dup");
   if(actionsBar && dupBtnRef) actionsBar.insertBefore(lockBtn, dupBtnRef);
@@ -4248,10 +4256,12 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   function setMmLocked(v){
     mmLocked = v;
     area.classList.toggle("mm-locked", mmLocked);
-    lockBtn.textContent = mmLocked ? "🔒" : "🔓";
+    lockBtn.innerHTML = mmLocked ? MM_LOCK_ICON_CLOSED : MM_LOCK_ICON_OPEN;
     lockBtn.classList.toggle("mm-lock-active", mmLocked);
+    // بند: عند التفعيل، خلفية واضحة بلون مميّز والأيقونة نفسها بيضاء صريحة (عبر currentColor)
+    // بدل بقائها بلونها الداكن الافتراضي، فتكون دلالة التفعيل واضحة تمامًا.
     lockBtn.style.background = mmLocked ? "#e03131" : "";
-    lockBtn.style.color = mmLocked ? "#fff" : "";
+    lockBtn.style.color = mmLocked ? "#ffffff" : "";
     lockBtn.style.borderColor = mmLocked ? "#e03131" : "";
     lockBtn.title = mmLocked
       ? "القفل مفعَّل — التحريك فقط متاح، اضغط لإلغاء القفل والعودة لباقي الأزرار"
@@ -4863,15 +4873,17 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
             : ""}
           <svg class="connect-svg"></svg>
           ${q.items.map((it,ii)=>{
-            // بند: نطبّق الحجم المحفوظ من واجهة المعلم حرفيًا (إن وُجد) حتى لا يتغيّر امتداد
-            // الصندوق تلقائيًا عند الطالب فيكشف أجزاءً من صورة الخلفية كانت مقصودة الحجب.
-            const sizeStyle = (it.w && it.h) ? `width:${it.w}px; height:${it.h}px; box-sizing:border-box;` : "";
+            // بند: نستخدم الحجم المحفوظ كحدّ أدنى (min-width/min-height) لا كحجم ثابت جامد،
+            // فلا ينهار الصندوق مطلقًا إلى الحجم الافتراضي الصغير عند تحديث الصفحة أو دخول
+            // الطالب من جديد ووجود بطاقة إجابة مُفلَتة مسبقًا (أو غيابها)، بينما يبقى بإمكانه
+            // التمدد فقط إن احتاج محتوى أطول من الحجم المحفوظ دون أن يتقلّص عنه أبدًا.
+            const sizeStyle = (it.w && it.h) ? `min-width:${it.w}px; min-height:${it.h}px; box-sizing:border-box;` : "";
             return it.isLabel ? `<div class="mindbox mm-mindbox mindbox-label${it.isTitle?" mindbox-title":""}" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             <div style="font-size:11.5px;">${it.label}</div>
           </div>` : `<div class="mindbox mm-mindbox" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             ${(it.hint && !model.testMode) ? `<span class="bulb mm-hint-bulb" data-ii="${ii}" style="position:absolute; top:-9px; left:-9px; background:#fff; border-radius:50%; cursor:pointer;">💡</span>` : ""}
             <div style="font-size:11.5px; margin-bottom:4px;">${it.label}</div>
-            <div class="mm-drop" data-ii="${ii}" style="min-width:0; min-height:0; border:none; border-radius:0; padding:0;"></div>
+            <div class="mm-drop" data-ii="${ii}" style="min-width:20px; min-height:16px; border:none; border-radius:0; padding:0; background:transparent;"></div>
             <div class="mm-hint-text" data-ii="${ii}" style="display:none; font-size:10.5px; color:var(--accent); max-width:110px;"></div>
           </div>`;
           }).join("")}
