@@ -137,7 +137,7 @@
   .chip-btn.danger:hover{ background:var(--danger); color:#fff; }
 
   /* ===================== FORMS WINDOW ===================== */
-  .forms-layout{ display:flex; gap:0; height:calc(100vh - 130px); border:1px solid #ddd; border-radius:10px; overflow:hidden; }
+  .forms-layout{ display:flex; gap:0; height:calc(100vh - 80px); border:1px solid #ddd; border-radius:10px; overflow:hidden; }
   .forms-sidebar{
     width:280px; flex:0 0 280px; border-left:1px solid #ddd; background:var(--soft);
     padding:14px; overflow-y:auto; resize:horizontal;
@@ -300,6 +300,26 @@
   .classify-cell-solve{ height:40px; }
 
   .mindmap-area{ position:relative; min-height:260px; border:1px dashed #ccc; border-radius:8px; background:#fff; padding:22px; box-sizing:border-box; }
+  /* بند: زر "توسيع" الخريطة الذهنية في واجهة المعلم — يجعل منطقة الخريطة (مع بنك البطاقات
+     وأزرار الإضافة) تشغل الصفحة كاملة، مع إبقاء بنك البطاقات ظاهرًا دومًا أعلى المنطقة
+     لإمكانية السحب والإفلات منه أثناء التوسيع. */
+  .mm-fs-container{ position:relative; }
+  .mm-fs-bar{ display:none; }
+  .mm-fs-container.mm-fullscreen{
+    position:fixed; inset:0; z-index:3000; background:var(--paper,#fff);
+    padding:14px; box-sizing:border-box; display:flex; flex-direction:column; overflow:auto;
+  }
+  .mm-fs-container.mm-fullscreen .mm-fs-bar{
+    display:flex; justify-content:flex-end; margin-bottom:8px; flex:0 0 auto;
+  }
+  .mm-fs-container.mm-fullscreen #mm-bank{
+    position:sticky; top:0; z-index:10; background:var(--paper,#fff); flex:0 0 auto;
+    padding:6px 0; box-shadow:0 4px 8px -6px rgba(0,0,0,.2);
+  }
+  .mm-fs-container.mm-fullscreen .mm-scroll-wrap{
+    flex:1 1 auto; max-height:none !important; height:auto;
+  }
+  .mm-fs-container.mm-fullscreen .mm-toolbar{ flex:0 0 auto; }
   /* بند: عند تفعيل قفل الخريطة الذهنية، نعطّل كل الأزرار الفرعية والتحرير النصي داخل
      الصناديق وبطاقات التعريف والعنوان، بحيث لا يبقى شيء يلتقط الضغط سوى تحريك الصندوق نفسه. */
   .mindmap-area.mm-locked .mindbox .mb-handle .bulb,
@@ -308,6 +328,10 @@
   .mindmap-area.mm-locked .mindbox .mb-label,
   .mindmap-area.mm-locked .mindbox .dot,
   .mindmap-area.mm-locked .mindbox .mb-answer-del{ pointer-events:none; opacity:.55; }
+  /* بند: مع تفعيل القفل، الشريط العلوي (التلميح/اللون/الحذف) لا يظهر إطلاقًا حتى عند التمرير
+     فوق الصندوق، بينما يبقى مقبض التحجيم (تكبير/تصغير) متاحًا دومًا سواء فُعِّل القفل أو لا. */
+  .mindmap-area.mm-locked .mindbox .mb-handle{ display:none !important; }
+  .mm-bg-handle{ pointer-events:auto; }
   .mindmap-area.mm-locked .mm-bg-handle{ pointer-events:none; opacity:.4; }
   .mindmap-area.mm-locked .mindbox{ cursor:move; }
   /* بند: صورة خلفية الخريطة الذهنية أصبحت عنصر <img> بحجم وموضع ثابتين بالبكسل (وليست
@@ -325,13 +349,24 @@
   .mm-bg-handle[data-dir="sw"]{ bottom:-6px; left:-6px; cursor:nesw-resize; }
   .mm-bg-handle[data-dir="w"]{ top:calc(50% - 6px); left:-6px; cursor:ew-resize; }
   .mindbox{ z-index:1; }
-  .mindbox{ position:absolute; border:1.5px solid var(--ink); border-radius:8px; padding:0 10px 6px; background:#fff; cursor:default; font-size:12.5px; min-width:90px; text-align:center; box-sizing:border-box;}
+  .mindbox{ position:absolute; border:1.5px solid var(--ink); border-radius:8px; padding:8px 10px 6px; background:#fff; cursor:default; font-size:12.5px; min-width:90px; text-align:center; box-sizing:border-box;}
   .mindbox-label{ border-style:dashed; background:#fffbe8; }
   /* بند 1+3: شريط مقبض مخصّص أعلى الصندوق يحمل أيقونات التلميح/الحذف/اللون،
      بحيث لا تتداخل هذه الأيقونات إطلاقًا مع منطقة النص القابلة للتحرير أسفلها،
      ويكون هو المكان الوحيد المخصص للسحب — فينتفي احتمال أن يضغط المعلم
-     على بطاقة التعريف عن طريق الخطأ فتُفرَّغ من نصّها وينكمش الصندوق. */
-  .mindbox .mb-handle{ display:flex; align-items:center; justify-content:space-between; gap:4px; margin:0 -10px 4px; padding:3px 5px; cursor:move; border-bottom:1px dashed #ddd; min-height:18px; box-sizing:border-box; border-radius:8px 8px 0 0; background:rgba(0,0,0,.02); }
+     على بطاقة التعريف عن طريق الخطأ فتُفرَّغ من نصّها وينكمش الصندوق.
+     بند جديد: الشريط أصبح خارج تدفّق الصندوق تمامًا (position:absolute فوق حافته العلوية)
+     فلا يدخل ضمن حجم الصندوق إطلاقًا، ولا يظهر إلا عند تمرير المؤشر فوق الصندوق نفسه. */
+  .mindbox .mb-handle{
+    display:flex; align-items:center; justify-content:space-between; gap:4px;
+    position:absolute; left:-1.5px; right:-1.5px; top:-24px; margin:0; padding:3px 5px; cursor:move;
+    border:1.5px solid var(--ink); border-bottom:none; min-height:18px; box-sizing:border-box;
+    border-radius:8px 8px 0 0; background:#fff; z-index:6;
+    opacity:0; pointer-events:none; transition:opacity .12s ease;
+  }
+  .mindbox:hover .mb-handle, .mindbox:focus-within .mb-handle, .mindbox.mm-toolbar-open .mb-handle{
+    opacity:1; pointer-events:auto;
+  }
   .mindbox .mb-handle-grip{ flex:1 1 auto; text-align:center; color:#bbb; font-size:10px; letter-spacing:2px; pointer-events:none; user-select:none; }
   .mindbox .bulb{ position:static; background:none; cursor:pointer; flex:0 0 auto; line-height:1; }
   .mindbox .mb-del{ position:static; flex:0 0 auto; }
@@ -341,6 +376,15 @@
   .swatch-option{ width:16px; height:16px; border-radius:3px; border:1px solid #999; cursor:pointer; box-sizing:border-box; }
   /* عرض الطالب (للقراءة فقط) لا يملك شريط المقبض، فنعيد له الحشو الأصلي */
   .mindbox.mm-mindbox{ padding:6px 10px; cursor:default; }
+  /* بند: مقبض تغيير حجم الصندوق يدويًا (تكبير/تصغير) — دائرة صغيرة أسفل الزاوية، تظهر فقط
+     عند التمرير فوق الصندوق مثل شريط الأدوات العلوي تمامًا. */
+  .mindbox .mb-resize{
+    position:absolute; width:13px; height:13px; left:-7px; bottom:-7px;
+    background:var(--accent); border:2px solid #fff; border-radius:50%; cursor:nwse-resize; z-index:6;
+    box-shadow:0 1px 3px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:opacity .12s ease;
+  }
+  .mindbox:hover .mb-resize, .mindbox.mm-toolbar-open .mb-resize{ opacity:1; pointer-events:auto; }
+  .mindbox.mm-mindbox .mb-resize{ display:none; }
 
   .audio-row{ display:flex; gap:6px; margin-bottom:8px; }
   .audio-row button{ border:1.5px solid var(--ink); background:#fff; border-radius:6px; width:32px; height:32px; cursor:pointer; }
@@ -371,6 +415,17 @@
   @media (max-width: 560px){
     .topbar{ flex-direction:column; align-items:flex-start; gap:6px; }
     .view{ padding:14px 10px; }
+
+    /* عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي على الجوال فقط: كل مطلوب (سؤال+إجابة)
+       في صف مستقل لحاله. هذا مقصور على عرض الجوال الضيق حتى لا يظهر التاب (900-561px) بنفس
+       الشكل الرأسي المشوَّه، بل يبقى أفقيًا متجاورًا كما يظهر على اللاب. */
+    .req-table{ display:block; width:100%; }
+    .req-table tbody{ display:block; width:100%; }
+    .req-table tr{ display:block; width:100%; padding-bottom:8px; margin-bottom:6px; border-bottom:1px dashed #ddd; }
+    .req-table td.req-q-td, .req-table td.req-a-td{ display:block; width:100%; max-width:100%; flex:none; box-sizing:border-box; }
+    .req-table td.req-a-td{ margin-top:4px; }
+    .req-table td.req-a-td .drop-cell{ min-height:38px; flex-wrap:wrap; }
+    .req-table tr > td:last-child{ display:block; width:auto; max-width:none; margin-top:4px; text-align:left; }
   }
 
   /* ===================== تعديلات خاصة بعرض الجوال فقط (لا تؤثر على سطح المكتب) ===================== */
@@ -412,18 +467,6 @@
       max-width:100%; max-height:65vh; border:1px dashed #ccc; border-radius:8px;
     }
     .mm-scroll-wrap .mindmap-area{ border:none; border-radius:0; }
-
-    /* 2) عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي: كل مطلوب (سؤال+إجابة) في صف مستقل لحاله.
-       تصحيح: كانت خانة الإجابة (req-a-td) مقيَّدة بعرض 60% إلى جوار خانة السؤال (40%) في نفس السطر،
-       فتضيق خانة الإجابة كثيرًا على الجوال وتضطر كلمات/بطاقات الإجابة للانكسار حرفًا حرفًا بشكل
-       عمودي مشوَّه. الحل: كل خانة (سؤال ثم إجابة) تأخذ العرض الكامل وتُعرض تحت الأخرى بدل جنبها. */
-    .req-table{ display:block; width:100%; }
-    .req-table tbody{ display:block; width:100%; }
-    .req-table tr{ display:block; width:100%; padding-bottom:8px; margin-bottom:6px; border-bottom:1px dashed #ddd; }
-    .req-table td.req-q-td, .req-table td.req-a-td{ display:block; width:100%; max-width:100%; flex:none; box-sizing:border-box; }
-    .req-table td.req-a-td{ margin-top:4px; }
-    .req-table td.req-a-td .drop-cell{ min-height:38px; flex-wrap:wrap; }
-    .req-table tr > td:last-child{ display:block; width:auto; max-width:none; margin-top:4px; text-align:left; }
 
     /* 3) خلايا الكلمات الموزّعة تتقلّص لتلائم حجم الكلمة (بما فيها الارتفاع)، بزيادة لا تتعدى 1 ملم في كل جهة */
     .word-chip{
@@ -2127,9 +2170,9 @@ function renderFormsWindow(view, role, bankMode){
   const restrictedSubjects = role==="admin" ? subjectNamesList() : subjectNamesList().filter(s=>assignedSubjectsFor().includes(s));
   const isRestricted = role==="teacher"||role==="coordinator";
   view.innerHTML = `
-    <h2>${bankMode ? "بنوك الأسئلة" : "النماذج التعليمية"}</h2>
     <div class="forms-layout">
       <div class="forms-sidebar${bankMode ? " bank-sidebar" : ""}" id="formsSidebar">
+        <h2 style="font-size:15px; margin:0 0 8px;">${bankMode ? "بنوك الأسئلة" : "النماذج التعليمية"}</h2>
         <button class="icon-btn" id="formsSidebarToggle" title="طي/نشر القائمة" style="float:left; margin-bottom:6px;">↔</button>
         <div class="section">
           <h3>${bankMode ? "بيانات البنوك" : "بيانات النماذج"}</h3>
@@ -2185,6 +2228,20 @@ function renderFormsWindow(view, role, bankMode){
       </div>
     </div>
   `;
+
+  // بند: داخل نافذتي "النماذج التعليمية" و"بنوك الأسئلة" تحديدًا، أي ضغط على زر أو أي تغيير
+  // في قائمة منسدلة يطوي القائمة الجانبية الرئيسية (أسماء النوافذ) تلقائيًا، ولا تعود للظهور
+  // إلا بالضغط اليدوي على زر الطي/العرض (☰) في الشريط العلوي — بما يفسح أقصى مساحة ممكنة
+  // لمساحة العمل أثناء تحرير النماذج/البنوك.
+  const mainSidenav = document.getElementById("sidenav");
+  if(mainSidenav){
+    view.addEventListener("click", (e)=>{
+      if(e.target.closest("button")) mainSidenav.classList.add("collapsed");
+    });
+    view.addEventListener("change", (e)=>{
+      if(e.target.closest("select")) mainSidenav.classList.add("collapsed");
+    });
+  }
 
   const fTerm=document.getElementById("fTerm"), fGrade=document.getElementById("fGrade"), fSubject=document.getElementById("fSubject"), fNumber=document.getElementById("fNumber");
 
@@ -4130,21 +4187,62 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   lockBtn.style.display = "inline-flex";
   lockBtn.style.alignItems = "center";
   lockBtn.style.justifyContent = "center";
+  // بند: زر "توسيع" الخريطة الذهنية — يجعلها تشغل الصفحة كاملة (مع بقاء بنك البطاقات
+  // وأزرار الإضافة ظاهرة) لتسهيل ترتيب صناديق كثيرة، وزر آخر داخل المنطقة الموسَّعة نفسها
+  // لإنهاء التوسيع والعودة للحجم الطبيعي.
+  const expandBtn = document.createElement("button");
+  expandBtn.className = "icon-btn mm-expand-btn";
+  expandBtn.type = "button";
+  expandBtn.title = "توسيع الخريطة الذهنية لتشغل الصفحة كاملة";
+  expandBtn.innerHTML = "⤢";
+  expandBtn.style.display = "inline-flex";
+  expandBtn.style.alignItems = "center";
+  expandBtn.style.justifyContent = "center";
   const actionsBar = el.querySelector(".qblock-actions");
   const dupBtnRef = el.querySelector(".dup");
   if(actionsBar && dupBtnRef) actionsBar.insertBefore(lockBtn, dupBtnRef);
+  if(actionsBar && dupBtnRef) actionsBar.insertBefore(expandBtn, dupBtnRef);
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `
-    <div class="mm-scroll-wrap"><div class="mindmap-area"><div class="mm-bg-frame" style="display:none;"><img class="mm-bg-img" alt=""><div class="mm-bg-handle" data-dir="nw"></div><div class="mm-bg-handle" data-dir="n"></div><div class="mm-bg-handle" data-dir="ne"></div><div class="mm-bg-handle" data-dir="e"></div><div class="mm-bg-handle" data-dir="se"></div><div class="mm-bg-handle" data-dir="s"></div><div class="mm-bg-handle" data-dir="sw"></div><div class="mm-bg-handle" data-dir="w"></div></div><svg class="connect-svg"></svg></div></div>
-    <div class="cards-row" style="margin-top:12px;" id="mm-bank"></div>
-    <button class="chip-btn" style="margin-top:8px;" id="mm-addbox">إضافة صندوق</button>
-    <button class="chip-btn" style="margin-top:8px;" id="mm-addcard">إضافة بطاقة</button>
-    <button class="chip-btn" style="margin-top:8px;" id="mm-addlabelbox">إضافة بطاقة تعريف</button>
-    <button class="chip-btn" style="margin-top:8px;" id="mm-addtitlebox">إدراج عنوان</button>
-    <button class="chip-btn" style="margin-top:8px;" id="mm-addimage">🖼️ إدراج صورة</button>
-    <button class="chip-btn" style="margin-top:8px; display:none;" id="mm-removeimage">✕ إزالة الصورة</button>
-    <input type="file" id="mm-imagefile" accept="image/*" style="display:none;">
+    <div class="mm-fs-container">
+      <div class="mm-fs-bar"><button type="button" class="chip-btn" id="mm-fs-exit">✕ إنهاء التوسيع</button></div>
+      <div class="mm-scroll-wrap"><div class="mindmap-area"><div class="mm-bg-frame" style="display:none;"><img class="mm-bg-img" alt=""><div class="mm-bg-handle" data-dir="nw"></div><div class="mm-bg-handle" data-dir="n"></div><div class="mm-bg-handle" data-dir="ne"></div><div class="mm-bg-handle" data-dir="e"></div><div class="mm-bg-handle" data-dir="se"></div><div class="mm-bg-handle" data-dir="s"></div><div class="mm-bg-handle" data-dir="sw"></div><div class="mm-bg-handle" data-dir="w"></div></div><svg class="connect-svg"></svg></div></div>
+      <div class="cards-row" style="margin-top:12px;" id="mm-bank"></div>
+      <div class="mm-toolbar" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:8px;">
+        <button class="chip-btn" id="mm-addbox">إضافة صندوق</button>
+        <button class="chip-btn" id="mm-addcard">إضافة بطاقة</button>
+        <button class="chip-btn" id="mm-addlabelbox">إضافة بطاقة تعريف</button>
+        <button class="chip-btn" id="mm-addtitlebox">إدراج عنوان</button>
+        <button class="chip-btn" id="mm-addimage">🖼️ إدراج صورة</button>
+        <button class="chip-btn" style="display:none;" id="mm-removeimage">✕ إزالة الصورة</button>
+        <input type="file" id="mm-imagefile" accept="image/*" style="display:none;">
+      </div>
+    </div>
   `;
+  const fsContainer = body.querySelector(".mm-fs-container");
+  const mmFsBar = body.querySelector(".mm-fs-bar");
+  const mmFsExitBtn = body.querySelector("#mm-fs-exit");
+  function setMmFullscreen(v){
+    fsContainer.classList.toggle("mm-fullscreen", v);
+    expandBtn.innerHTML = v ? "⤡" : "⤢";
+    expandBtn.title = v ? "إنهاء التوسيع" : "توسيع الخريطة الذهنية لتشغل الصفحة كاملة";
+    expandBtn.classList.toggle("mm-lock-active", v);
+    // بند: أزرار الخريطة (وأهمها القفل) كانت موجودة فقط في شريط رأس السؤال (خارج الطبقة
+    // الثابتة عند التوسيع)، فتختفي عمليًا عن المعلم بمجرد التوسيع رغم الحاجة إليها هناك
+    // تحديدًا. ننقل زر القفل نفسه (بكل حالته وأحداثه) إلى شريط التوسيع، ونعيده لموضعه
+    // الأصلي عند إنهاء التوسيع.
+    if(v){ mmFsBar.insertBefore(lockBtn, mmFsExitBtn); }
+    else if(actionsBar && dupBtnRef){ actionsBar.insertBefore(lockBtn, dupBtnRef); }
+    if(!v){
+      // بند: عند إنهاء التوسيع تختفي الطبقة الثابتة (position:fixed) فجأة فيبقى التمرير عند
+      // نفس النقطة التي كان عندها المستخدم داخل الطبقة الموسَّعة، فينزل بذلك سؤال الخريطة
+      // الذهنية عمليًا بعيدًا عن مجال الرؤية ضمن الصفحة العادية. نعيد التمرير فورًا لموضع
+      // السؤال نفسه حتى لا يحتاج المعلم لتحريك شريط التمرير يدويًا للعثور عليه من جديد.
+      requestAnimationFrame(()=> el.scrollIntoView({behavior:"auto", block:"start"}));
+    }
+  }
+  expandBtn.addEventListener("click", ()=> setMmFullscreen(!fsContainer.classList.contains("mm-fullscreen")));
+  body.querySelector("#mm-fs-exit").addEventListener("click", ()=> setMmFullscreen(false));
   const area = body.querySelector(".mindmap-area"), svg = area.querySelector("svg"), bank = body.querySelector("#mm-bank");
   // بند: خلفية الخريطة الذهنية — صورة تُعرض خلف الصناديق وبطاقات التعريف بحيث يمكن
   // ترتيبها فوقها (مثل خريطة جغرافية أو مخطط جاهز يضيف المعلم صناديقه فوقه).
@@ -4313,7 +4411,8 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
       </div>
       <span contenteditable="true" class="mb-label">${labelText}</span>
       <span class="mb-answer-wrap" style="display:${(!isLabel && saved && saved.answer) ? "flex":"none"}; align-items:center; justify-content:center; gap:4px; margin-top:2px;"><span class="mb-answer" style="font-size:11px; color:var(--accent); font-weight:700;"></span><span class="mb-answer-del" title="حذف الإجابة من هذا الصندوق" style="cursor:pointer; color:var(--danger); font-size:12px; font-weight:900;">✕</span></span>
-      <span class="dot right" style="position:absolute;left:-6px;top:50%;"></span>`;
+      <span class="dot right" style="position:absolute;left:-6px;top:50%;"></span>
+      <span class="mb-resize" title="اسحب لتكبير/تصغير حجم الصندوق"></span>`;
     if(!saved || !saved.label){ b.querySelector(".mb-label").dataset.fresh = "1"; }
     if(!isLabel && saved && saved.answer){ b.dataset.answer = saved.answer; b.querySelector(".mb-answer").textContent = "◀ "+saved.answer; }
     let currentColorValue = (saved && saved.color) || (isTitle ? "#ff6b6b" : "");
@@ -4368,7 +4467,13 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
       if(e.target.closest(".mb-del") || e.target.closest(".bulb") || e.target.closest(".mb-color-slot")) return;
       isDown=true;
       const p = pointOf(e);
-      const hx = handle.getBoundingClientRect();
+      // بند: عند تفعيل القفل يكون شريط المقبض (mb-handle) نفسه display:none، فكان طلب حدوده
+      // عبر handle.getBoundingClientRect() يُعيد صفرًا لكل القيم (لأن العنصر غير معروض)، فتصبح
+      // إزاحة السحب (ox/oy) مساوية لموضع الفأرة نفسه بدل الإزاحة الحقيقية داخل الصندوق. النتيجة:
+      // أول حركة بسيطة للفأرة يُحسب فيها "left/top" الجديدة بقيمة سالبة كبيرة فيقفز الصندوق بعيدًا
+      // خارج مجال الرؤية، فيظهر للمعلم وكأنه اختفى/حُذف رغم بقائه فعليًا. الحل: نعتمد حدود
+      // الصندوق نفسه (الظاهر دائمًا) كمرجع أثناء القفل بدل حدود المقبض المخفي حينها.
+      const hx = (mmLocked ? b : handle).getBoundingClientRect();
       ox = p.x - hx.left; oy = p.y - hx.top;
       const r = b.getBoundingClientRect();
       b.style.width = r.width+"px";
@@ -4409,7 +4514,44 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
       const text = e.dataTransfer.getData("text/plain");
       if(text){ b.dataset.answer = text; b.querySelector(".mb-answer").textContent = "◀ "+text; b.querySelector(".mb-answer-wrap").style.display="flex"; b.style.width=""; b.style.height=""; }
     });
-    b.querySelector(".mb-label").addEventListener("input", ()=>{ b.style.width=""; b.style.height=""; drawLines(); updateAreaSize(); });
+    b.querySelector(".mb-label").addEventListener("input", ()=>{
+      // بند: إن كان المعلم قد كبَّر/صغَّر الصندوق يدويًا عبر مقبض التحجيم، لا نعيد ضبط
+      // الحجم تلقائيًا كلما كتب حرفًا جديدًا، حفاظًا على الحجم الذي اختاره بنفسه.
+      if(!b.dataset.manualSize){ b.style.width=""; b.style.height=""; }
+      drawLines(); updateAreaSize();
+    });
+    // بند 4: مقبض تحجيم يدوي — يسمح للمعلم بتكبير أو تصغير حجم أي صندوق بحرية بالسحب من
+    // الزاوية، بمعزل تام عن مقبض تحريك الصندوق (mb-handle) حتى لا يتعارض السحبان.
+    const resizeHandle = b.querySelector(".mb-resize");
+    let isResizing=false, rStartX=0, rStartY=0, rStartW=0, rStartH=0;
+    function resizeStart(e){
+      isResizing = true;
+      const p = pointOf(e);
+      rStartX = p.x; rStartY = p.y;
+      const r = b.getBoundingClientRect();
+      rStartW = r.width; rStartH = r.height;
+      e.preventDefault(); e.stopPropagation();
+    }
+    function resizeMove(e){
+      if(!isResizing) return;
+      const p = pointOf(e);
+      // العنصر بلغة عربية (RTL) والمقبض في الزاوية السفلية اليسرى، فالسحب نحو اليسار يكبّر العرض.
+      const dw = rStartX - p.x, dh = p.y - rStartY;
+      const MIN = 60;
+      b.style.width = Math.max(MIN, rStartW + dw) + "px";
+      b.style.height = Math.max(MIN, rStartH + dh) + "px";
+      b.dataset.manualSize = "1";
+      drawLines(); updateAreaSize();
+      if(e.type==="touchmove") e.preventDefault();
+    }
+    function resizeEnd(){ isResizing = false; }
+    resizeHandle.addEventListener("mousedown", resizeStart);
+    resizeHandle.addEventListener("touchstart", resizeStart, {passive:false});
+    document.addEventListener("mousemove", resizeMove);
+    document.addEventListener("touchmove", resizeMove, {passive:false});
+    document.addEventListener("mouseup", resizeEnd);
+    document.addEventListener("touchend", resizeEnd);
+    document.addEventListener("touchcancel", resizeEnd);
     area.appendChild(b);
     boxes.push(b);
     updateAreaSize();
@@ -4912,13 +5054,15 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     area.appendChild(box);
   });
 
+  // بند 6: سابقًا كانت الدالة تتوقف هنا (return) فور اكتشاف أن الطالب سبق أن حلّ النموذج،
+  // فلا تُنفَّذ أبدًا حلقة الربط أسفل هذا الشرط — وهي الحلقة المسؤولة عن تعبئة بنك الكلمات/
+  // القطعة الموزَّعة (mm-bank وgr-bank) بمحتواها الفعلي. لذلك كان الطالب يجد عند المراجعة أو
+  // إعادة الحل جدول المطلوبات فارغًا من بنك الكلمات تمامًا. الحل: لا نتوقف هنا، بل نكمل تنفيذ
+  // الدالة كاملة (فتُعبَّأ كل البنوك كالمعتاد) ونؤجل تعطيل التفاعل (قراءة فقط) إلى ما بعد
+  // انتهاء حلقة الربط بأكملها، بدل تعطيله قبل أن يبدأ.
   if(already){
     removeTestTimeUpOverlay();
     if(model.testMode){ try{ localStorage.removeItem(`testStart_${session.user.username}_${model.id}`); }catch(e){} }
-    area.querySelectorAll("input, select, .tf-mark, .sc-mark, .drag-card, .word-chip").forEach(el=>{ el.style.pointerEvents="none"; el.draggable=false; });
-    area.querySelectorAll("select, input").forEach(el=>el.disabled=true);
-    area.querySelectorAll(".mm-drop, .mm-mindbox, .gr-drop-row, .classify-cell-solve").forEach(el=>el.style.pointerEvents="none");
-    area.querySelectorAll(".mm-hint-bulb").forEach(el=>el.style.pointerEvents="auto");
     document.getElementById("solveSubmit").style.display="none";
     document.getElementById("solveMsg").className="msg show ok";
     // الأسئلة المقالية لا تُصحَّح آليًا أبدًا؛ إن كانت من ضمن أسئلة هذا النموذج ولم يصحّحها
@@ -4929,15 +5073,14 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       ? `تم الإرسال بنجاح — درجتك: ${already.score} من ${already.total}.${pendingNote} <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`
       : `سبق أن حللت هذا النموذج — درجتك: ${already.score} من ${already.total}.${pendingNote} <button class="chip-btn" id="solveRetryBtn" style="margin-right:10px;">إعادة الحل</button>`;
     document.getElementById("solveRetryBtn").addEventListener("click", ()=>renderSolveView(view, model, true));
-    return;
   }
 
   // بند: مؤقّت الاختبار — يُفعَّل فقط للنماذج المحوَّلة إلى اختبار وذات مدة محددة،
-  // ولمحاولة حل فعلية (غير محلولة سابقًا). يُخزَّن وقت البدء محليًا لكل طالب/اختبار
-  // كي يستمر العدّ التنازلي بشكل صحيح حتى لو أعاد الطالب تحميل الصفحة.
+  // ولمحاولة حل فعلية (غير محلولة سابقًا، أي ليست مراجعة لنموذج سبق حلّه). يُخزَّن وقت البدء
+  // محليًا لكل طالب/اختبار كي يستمر العدّ التنازلي بشكل صحيح حتى لو أعاد الطالب تحميل الصفحة.
   removeTestTimeUpOverlay();
   if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
-  if(model.testMode && model.testDuration){
+  if(!already && model.testMode && model.testDuration){
     const timerKey = `testStart_${session.user.username}_${model.id}`;
     let startTime = Number(localStorage.getItem(timerKey));
     if(!startTime){
@@ -5249,7 +5392,9 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       // نضيف إلى الكلمات الصحيحة أي بطاقات تمويهية حفظها المعلم في بنك الكلمات ولم يُسندها
       // لأي صندوق، حتى تظهر جميعها للطالب أعلى الخريطة الذهنية كما طلب.
       const usedAnswers = q.items.filter(it=>!it.isLabel).map(it=>it.answer);
-      const extraBankCards = (q.bankCards||[]).filter(t=>!usedAnswers.includes(t));
+      // بند 5: أي بطاقة بنك لم يعدّل المعلم نصها الافتراضي (لا تزال تحمل كلمة "بطاقة" ولم
+      // تُستخدم كإجابة فعلية لأي صندوق) لا تُعرض للطالب — فهي بطاقة فارغة نُسيت دون تعبئة.
+      const extraBankCards = (q.bankCards||[]).filter(t=>!usedAnswers.includes(t) && !t.includes("بطاقة"));
       const shuffled = [...usedAnswers, ...extraBankCards].sort(()=>Math.random()-.5);
       shuffled.forEach(txt=>{
         const card=document.createElement("div"); card.className="drag-card"; card.textContent=txt; card.draggable=true;
@@ -5319,6 +5464,47 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   }
 
   document.getElementById("solveSubmit").addEventListener("click", ()=>doSubmit(false));
+
+  // بند: عند المراجعة أو إعادة فتح نموذج سبق حلّه، نعيد وضع كل كلمة كان الطالب قد أفلتها
+  // فعليًا في مكانها بالضبط (بدل ترك الخانات فارغة رغم امتلاء بنك الكلمات فوقها).
+  if(already && already.rawAnswers){
+    Object.keys(already.rawAnswers).forEach(giStr=>{
+      const gi = Number(giStr);
+      const q = model.data[gi];
+      if(!q) return;
+      const savedWords = already.rawAnswers[giStr] || [];
+      if(q.type==="grammarreq"){
+        const drop = area.querySelector(`.gr-drop-row[data-gidx="${gi}"]`);
+        if(drop) savedWords.forEach(text=>{
+          if(!text) return;
+          const chip=document.createElement("span"); chip.className="word-chip"; chip.textContent=text;
+          drop.appendChild(chip);
+        });
+      } else if(q.type==="mindmap"){
+        const qbox = area.querySelector(`.qitem[data-qidx="${gi}"]`);
+        if(!qbox) return;
+        savedWords.forEach((text,ii)=>{
+          if(!text) return;
+          const drop = qbox.querySelector(`.mm-drop[data-ii="${ii}"]`);
+          if(drop){
+            const chip=document.createElement("span"); chip.className="word-chip"; chip.textContent=text;
+            drop.appendChild(chip);
+          }
+        });
+      }
+    });
+  }
+
+  // بند 6: تعطيل التفاعل (وضع القراءة فقط) يتم الآن هنا، بعد أن أكملت حلقة الربط أعلاه تعبئة
+  // كل بنوك الكلمات/القطع الموزَّعة وربط أزرارها، فتبقى جميعها ظاهرة للطالب عند المراجعة أو
+  // إعادة الحل بدل اختفائها كما كان يحدث سابقًا.
+  if(already){
+    area.querySelectorAll("input, select, .tf-mark, .sc-mark, .drag-card, .word-chip").forEach(el=>{ el.style.pointerEvents="none"; el.draggable=false; });
+    area.querySelectorAll("select, input").forEach(el=>el.disabled=true);
+    area.querySelectorAll(".mm-drop, .mm-mindbox, .gr-drop-row, .classify-cell-solve").forEach(el=>el.style.pointerEvents="none");
+    area.querySelectorAll(".mm-hint-bulb").forEach(el=>el.style.pointerEvents="auto");
+    document.getElementById("solveSubmit").style.display="none";
+  }
 
   function doSubmit(isAuto){
     // إذا كان هذا اختبارًا محدد المدة وانتهت مدته فعليًا (ولم يكن هذا هو الإرسال الإجباري
@@ -5450,10 +5636,20 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
 
     const studentRow = DB.students.find(s=>s.username===session.user.username);
     const existing = DB.results.find(r=>r.studentUsername===session.user.username && r.modelId===model.id);
+    // بند: نحفظ الإجابات الفعلية (الكلمات التي أفلتها الطالب) لأسئلة النموذج النحوي والخريطة
+    // الذهنية تحديدًا (وهي أسئلة السحب والإفلات)، لنتمكن من إعادة عرضها بالضبط كما كانت عند
+    // مراجعة النموذج أو إعادة فتحه بعد الإرسال، بدل ظهور الخانات فارغة.
+    const rawAnswers = {};
+    model.data.forEach((q,idx)=>{
+      if((q.type==="grammarreq" || q.type==="mindmap") && Array.isArray(answers[idx])){
+        rawAnswers[idx] = answers[idx];
+      }
+    });
     const newResult = {
       id: existing ? existing.id : "r"+Date.now(), studentUsername:session.user.username, studentGrade:model.grade,
       modelId:model.id, modelNumber:model.number, term:model.term, grade:model.grade, subject: model.subject||"",
       cls: studentRow ? String(studentRow.cls) : null,
+      rawAnswers,
       score, total: model.data.filter(q=>q.type!=="reading").reduce((s,q)=>{
         if(q.type==="match") return s + (q.pairs?q.pairs.length:0);
         if(q.type==="classify") return s + (q.items?q.items.length:0);
