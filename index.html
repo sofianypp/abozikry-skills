@@ -1059,7 +1059,7 @@ function showSyncWarning(){
   syncWarningShown = true;
   const bar = document.createElement("div");
   bar.textContent = "⚠️ تعذّر رفع آخر تعديلاتك إلى قاعدة البيانات السحابية. بياناتك محفوظة بأمان على هذا الجهاز فقط حاليًا حتى تُستعاد المزامنة.";
-  bar.style.cssText = "position:fixed; top:0; left:0; right:0; z-index:99999; background:#fff3cd; color:#7a5b00; text-align:center; padding:8px 12px; font-size:13px; font-weight:700; border-bottom:2px solid #f0d67a;";
+  bar.style.cssText = "position:fixed; top:0; left:0; right:0; z-index:99999; background:rgba(255,243,205,0.55); backdrop-filter:blur(1.5px); color:#7a5b00; text-align:center; padding:8px 12px; font-size:13px; font-weight:700; border-bottom:2px solid rgba(240,214,122,0.65);";
   document.body.appendChild(bar);
 }
 
@@ -5325,6 +5325,51 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     area.appendChild(box);
   });
 
+  // بند جديد: تخطيط خيارات السؤال الاختياري — صف أفقي واحد إن اتسعت المساحة لكل
+  // الخيارات معًا، وإلا شكل أ ب / ج د (عمودان)، وإن كان نص الخيارات طويلًا بحيث لا
+  // يسع حتى عمودين بوضوح فعمود رأسي واحد. يُقاس الحجم الفعلي المطلوب بعد الإدراج
+  // في الصفحة (وليس تخمينًا) لضمان دقة القرار على كل مقاس شاشة.
+  function layoutOptionsGrid(grid){
+    if(!grid) return;
+    const labels = [...grid.children].filter(c=>c.classList.contains("qrow"));
+    if(labels.length < 2) return;
+    const parent = grid.parentElement;
+    const avail = (parent ? parent.clientWidth : grid.clientWidth) || grid.clientWidth;
+    if(!avail) return;
+    grid.style.display = "flex";
+    grid.style.flexWrap = "nowrap";
+    grid.style.gridTemplateColumns = "";
+    const needed = grid.scrollWidth;
+    const maxLabelW = Math.max(...labels.map(l=>l.scrollWidth));
+    grid.style.display = "grid";
+    if(needed <= avail){
+      grid.style.gridTemplateColumns = `repeat(${labels.length}, 1fr)`;
+    } else if((maxLabelW*2 + 8) <= avail){
+      grid.style.gridTemplateColumns = "repeat(2, 1fr)";
+    } else {
+      grid.style.gridTemplateColumns = "1fr";
+    }
+  }
+  function layoutAllOptionsGrids(){
+    area.querySelectorAll(".options-grid").forEach(layoutOptionsGrid);
+  }
+  requestAnimationFrame(layoutAllOptionsGrids);
+  if(!window._mcqLayoutResizeBound){
+    window._mcqLayoutResizeBound = true;
+    let mcqResizeTimer = null;
+    window.addEventListener("resize", ()=>{
+      clearTimeout(mcqResizeTimer);
+      mcqResizeTimer = setTimeout(()=>{
+        document.querySelectorAll(".options-grid").forEach(layoutOptionsGrid);
+      }, 150);
+    });
+  }
+  // إعادة القياس أيضًا عند فتح صندوق سؤال في "وضع الصناديق" (mcq-box-open) لأن أبعاده
+  // تكون صفرًا قبل الفتح فيتعذّر القياس الصحيح حينها.
+  area.querySelectorAll(".mcq-box-closed").forEach(closedBox=>{
+    closedBox.addEventListener("click", ()=> requestAnimationFrame(layoutAllOptionsGrids), {once:false});
+  });
+
   // بند 6: سابقًا كانت الدالة تتوقف هنا (return) فور اكتشاف أن الطالب سبق أن حلّ النموذج،
   // فلا تُنفَّذ أبدًا حلقة الربط أسفل هذا الشرط — وهي الحلقة المسؤولة عن تعبئة بنك الكلمات/
   // القطعة الموزَّعة (mm-bank وgr-bank) بمحتواها الفعلي. لذلك كان الطالب يجد عند المراجعة أو
@@ -5475,8 +5520,9 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       const rightTexts = (q.rightAll && q.rightAll.length) ? q.rightAll : q.pairs.map(p=>p.right);
       const leftTexts = (q.leftAll && q.leftAll.length) ? q.leftAll : q.pairs.map(p=>p.left);
       const shuffledLeft = [...leftTexts].sort(()=>Math.random()-.5);
-      let connections = []; // {rightText, leftText, rightDot, leftDot}
+      let connections = []; // {rightText, leftText, rightDot, leftDot, rightCard, leftCard}
       let pending = null;
+      let tempLine = null; // خط معاينة حي أثناء السحب باللمس/الماوس
       answers[idx] = [];
       function syncAnswers(){
         answers[idx] = q.pairs.map(p=>{
@@ -5495,35 +5541,129 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           const line=document.createElementNS("http://www.w3.org/2000/svg","line");
           line.setAttribute("x1",x1); line.setAttribute("y1",y1); line.setAttribute("x2",x2); line.setAttribute("y2",y2);
           line.setAttribute("stroke","var(--accent)"); line.setAttribute("stroke-width","2"); line.style.pointerEvents="stroke"; line.style.cursor="pointer";
-          line.addEventListener("click", ()=>{
-            connections = connections.filter(x=>x!==c);
-            c.rightDot.style.background=""; c.leftDot.style.background="";
-            drawLines(); syncAnswers();
-          });
+          line.addEventListener("click", ()=> removeConnection(c));
           svg.appendChild(line);
         });
+      }
+      function removeConnection(c){
+        connections = connections.filter(x=>x!==c);
+        c.rightDot.style.background=""; c.leftDot.style.background="";
+        drawLines(); syncAnswers();
+      }
+      // بند جديد: حذف خط التوصيل عند الضغط على أيّ من البطاقتين المرتبطتين به مباشرة،
+      // وليس فقط عند الضغط على الخط نفسه (الذي يصعب إصابته بدقة على شاشة اللمس).
+      function connectionOfCard(card){
+        return connections.find(c=>c.rightCard===card || c.leftCard===card);
+      }
+      function pointFromEvent(e){
+        if(e.touches && e.touches.length) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+        if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX, y:e.changedTouches[0].clientY};
+        return {x:e.clientX, y:e.clientY};
+      }
+      function clearTempLine(){
+        if(tempLine && tempLine.parentNode) tempLine.parentNode.removeChild(tempLine);
+        tempLine = null;
+      }
+      function drawTempLineTo(fromDot, x, y){
+        const rect = colsWrap.getBoundingClientRect();
+        const r1 = fromDot.getBoundingClientRect();
+        const x1 = r1.left-rect.left+r1.width/2, y1 = r1.top-rect.top+r1.height/2;
+        const x2 = x-rect.left, y2 = y-rect.top;
+        if(!tempLine){
+          tempLine = document.createElementNS("http://www.w3.org/2000/svg","line");
+          tempLine.setAttribute("stroke","var(--danger)"); tempLine.setAttribute("stroke-width","2"); tempLine.setAttribute("stroke-dasharray","5,4");
+          tempLine.style.pointerEvents="none";
+          svg.appendChild(tempLine);
+        }
+        tempLine.setAttribute("x1",x1); tempLine.setAttribute("y1",y1); tempLine.setAttribute("x2",x2); tempLine.setAttribute("y2",y2);
+      }
+      function connectDots(rightPart, leftPart){
+        connections = connections.filter(c=>c.rightDot!==rightPart.dot && c.leftDot!==leftPart.dot);
+        connections.push({rightText:rightPart.text, leftText:leftPart.text, rightDot:rightPart.dot, leftDot:leftPart.dot, rightCard:rightPart.card, leftCard:leftPart.card});
+        rightPart.dot.style.background="var(--accent)"; leftPart.dot.style.background="var(--accent)";
+        drawLines(); syncAnswers();
       }
       function makeCard(container, side, text){
         const card = document.createElement("div");
         card.className="match-card"; card.dataset.side=side;
         card.innerHTML = `<span style="display:inline-block;">${text}</span><span class="dot ${side}"></span>`;
         const dot = card.querySelector(".dot");
-        dot.addEventListener("click", ()=>{
-          if(!pending){ pending = {dot, side, text}; dot.style.background="var(--danger)"; }
-          else if(pending.side !== side){
-            const rightPart = side==="right" ? {dot, text} : pending;
-            const leftPart = side==="left" ? {dot, text} : pending;
-            connections = connections.filter(c=>c.rightDot!==rightPart.dot && c.leftDot!==leftPart.dot);
-            connections.push({rightText:rightPart.text, leftText:leftPart.text, rightDot:rightPart.dot, leftDot:leftPart.dot});
-            pending.dot.style.background="var(--accent)"; dot.style.background="var(--accent)";
-            pending=null; drawLines(); syncAnswers();
-          } else { pending.dot.style.background=""; pending=null; }
+        const self = {dot, side, text, card};
+        function finishSelection(other){
+          const rightPart = side==="right" ? self : other;
+          const leftPart = side==="left" ? self : other;
+          connectDots(rightPart, leftPart);
+          pending = null;
+        }
+        // النقر على النقطة: يبقي على أسلوب "اضغط ثم اضغط" التقليدي (يعمل بيقين على كل الأجهزة)
+        dot.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          if(!pending){ pending = self; dot.style.background="var(--danger)"; }
+          else if(pending.side !== side){ finishSelection(pending); }
+          else { pending.dot.style.background=""; pending=null; }
+        });
+        // بند جديد: سحب خط توصيل حيّ من نقطة إلى بطاقة العمود الآخر (لمس أو ماوس) بدل
+        // الاقتصار على نقرتين منفصلتين — خط وهمي متقطع يتبع الإصبع أثناء السحب.
+        function dragStart(e){
+          e.preventDefault(); e.stopPropagation();
+          pending = self; dot.style.background="var(--danger)";
+          const p = pointFromEvent(e);
+          drawTempLineTo(dot, p.x, p.y);
+          document.addEventListener("mousemove", dragMove);
+          document.addEventListener("touchmove", dragMove, {passive:false});
+          document.addEventListener("mouseup", dragEnd);
+          document.addEventListener("touchend", dragEnd);
+        }
+        function dragMove(e){
+          if(!pending || pending!==self) return;
+          if(e.type==="touchmove") e.preventDefault();
+          const p = pointFromEvent(e);
+          drawTempLineTo(dot, p.x, p.y);
+        }
+        function dragEnd(e){
+          document.removeEventListener("mousemove", dragMove);
+          document.removeEventListener("touchmove", dragMove);
+          document.removeEventListener("mouseup", dragEnd);
+          document.removeEventListener("touchend", dragEnd);
+          clearTempLine();
+          if(!pending || pending!==self) return;
+          const p = pointFromEvent(e);
+          const under = document.elementFromPoint(p.x, p.y);
+          const targetCard = under && under.closest(".match-card");
+          if(targetCard && targetCard.dataset.side && targetCard.dataset.side !== side){
+            const targetDot = targetCard.querySelector(".dot");
+            const other = {dot: targetDot, side: targetCard.dataset.side, text: targetCard.querySelector("span").textContent, card: targetCard};
+            finishSelection(other);
+          } else {
+            dot.style.background = connectionOfCard(card) ? "var(--accent)" : "";
+            pending = null;
+          }
+        }
+        dot.addEventListener("mousedown", dragStart);
+        dot.addEventListener("touchstart", dragStart, {passive:false});
+        // بند جديد: الضغط على جسم البطاقة نفسها (خارج النقطة) يحذف خط التوصيل الحالي لها إن وُجد
+        card.addEventListener("click", (e)=>{
+          if(e.target === dot) return;
+          const c = connectionOfCard(card);
+          if(c) removeConnection(c);
         });
         container.appendChild(card);
+        return card;
       }
       rightTexts.forEach(rt=>makeCard(rightCol, "right", rt));
       shuffledLeft.forEach(lt=>makeCard(leftCol, "left", lt));
-      new ResizeObserver(drawLines).observe(colsWrap);
+      // بند جديد: تناسق حجم البطاقات داخل العمود الواحد — كل بطاقات نفس العمود تأخذ
+      // نفس العرض والارتفاع (بحسب أكبر بطاقة فيه)، بدل أن يتحدد حجم كل بطاقة بنص محتواها فقط.
+      function equalizeColumn(container){
+        const cards = [...container.querySelectorAll(".match-card")];
+        if(!cards.length) return;
+        cards.forEach(c=>{ c.style.width=""; c.style.minHeight=""; });
+        let maxW=0, maxH=0;
+        cards.forEach(c=>{ const r=c.getBoundingClientRect(); if(r.width>maxW) maxW=r.width; if(r.height>maxH) maxH=r.height; });
+        cards.forEach(c=>{ c.style.width=maxW+"px"; c.style.minHeight=maxH+"px"; c.style.display="flex"; c.style.alignItems="center"; });
+      }
+      requestAnimationFrame(()=>{ equalizeColumn(rightCol); equalizeColumn(leftCol); drawLines(); });
+      new ResizeObserver(()=>{ drawLines(); }).observe(colsWrap);
       window.addEventListener("scroll", drawLines, true);
     } else if(q.type==="classify"){
       const bank = box.querySelector(".classify-bank");
