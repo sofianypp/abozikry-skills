@@ -76,9 +76,13 @@
     padding:10px 20px; border-bottom:2px solid var(--ink);
     position:sticky; top:0; z-index:200; background:var(--paper);
     transition:transform .28s ease;
+    flex-wrap:wrap; row-gap:6px; max-width:100%; box-sizing:border-box;
   }
   .topbar .brand{ font-family:'Amiri', serif; font-weight:700; font-size:19px; }
-  .topbar .who{ display:flex; align-items:center; gap:12px; font-size:13px; color:var(--muted); }
+  /* بند: نلتف (wrap) دومًا لا فقط على الجوال، حتى لا يخرج زر "تسجيل الخروج" (آخر عنصر في
+     هذه المجموعة، وبالتالي الأقرب لأقصى يسار الشاشة في تخطيط RTL) عن حدود الشاشة على
+     الشاشات المتوسطة (تابلت/لابتوب صغير) فيحتاج المستخدم لتحريك الشاشة أفقيًا لرؤيته. */
+  .topbar .who{ display:flex; align-items:center; gap:12px; font-size:13px; color:var(--muted); flex-wrap:wrap; row-gap:6px; justify-content:flex-start; }
   .topbar .who b{ color:var(--ink); }
   .logout-btn{ background:none; border:2px solid var(--ink); border-radius:8px; padding:6px 14px; font-weight:700; font-size:13px; cursor:pointer; }
   .logout-btn:hover{ background:var(--ink); color:var(--paper); }
@@ -234,7 +238,13 @@
   .qitem input[type=text], .qitem textarea{ border:1.5px solid #ccc; border-radius:6px; padding:7px 9px; font-size:13.5px; }
   .qrow{ display:flex; align-items:center; gap:8px; }
 
-  .options-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:8px; }
+  /* بند جديد: تخطيط تلقائي لخيارات السؤال الاختياري — أفقي (صف واحد) إن اتسعت
+     المساحة لكل الخيارات معًا، وإلا فشكل أ/ب ج/د (عمودان)، وإن كان نص الخيارات
+     طويلًا بحيث لا يسع حتى عمودين بوضوح فينهار تلقائيًا لعمود رأسي واحد — كل ذلك
+     عبر auto-fit/minmax دون الحاجة لقياس النص يدويًا بجافاسكربت. */
+  .options-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:8px; margin-top:8px; }
+  .options-grid label.qrow{ min-width:0; }
+  .options-grid label.qrow span{ overflow-wrap:anywhere; }
   .tf-choice{ display:flex; gap:14px; margin-top:8px; }
   .tf-mark{ border:1.5px solid #ccc; border-radius:6px; width:34px; height:34px; text-align:center; font-weight:900; cursor:pointer; background:#fff;}
   .tf-mark.selT{ background:#e9f5f0; border-color:var(--accent); color:var(--accent); }
@@ -250,9 +260,19 @@
   .word-chip.grp-alamat{ background:#e9f9ee; border-color:#2f9e58; }
   .word-chip.selected-anchor{ box-shadow:0 0 0 2px var(--accent); }
   .passage-box{ border:1px dashed #ccc; border-radius:8px; padding:10px; min-height:60px; line-height:2.2; }
+  .rp-img-wrap{ max-width:100%; }
+  .rp-img-handle{ position:absolute; width:12px; height:12px; background:var(--accent); border:2px solid #fff; border-radius:50%; z-index:2; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .rp-img-handle[data-dir="nw"]{ top:-6px; left:-6px; cursor:nwse-resize; }
+  .rp-img-handle[data-dir="n"]{ top:-6px; left:calc(50% - 6px); cursor:ns-resize; }
+  .rp-img-handle[data-dir="ne"]{ top:-6px; right:-6px; cursor:nesw-resize; }
+  .rp-img-handle[data-dir="e"]{ top:calc(50% - 6px); right:-6px; cursor:ew-resize; }
+  .rp-img-handle[data-dir="se"]{ bottom:-6px; right:-6px; cursor:nwse-resize; }
+  .rp-img-handle[data-dir="s"]{ bottom:-6px; left:calc(50% - 6px); cursor:ns-resize; }
+  .rp-img-handle[data-dir="sw"]{ bottom:-6px; left:-6px; cursor:nesw-resize; }
+  .rp-img-handle[data-dir="w"]{ top:calc(50% - 6px); left:-6px; cursor:ew-resize; }
   /* بند 4: جدول متطلبات السؤال النحوي بعرض ثابت 100% من محيط القطعة الموزعة، مع خلايا أسئلة/إجابات
      متساوية العرض فيما بينها (table-layout:fixed) بدل الاعتماد على عرض المحتوى (كان يسبب تفاوتًا). */
-  .req-table{ width:100%; max-width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto; }
+  .req-table{ width:100%; max-width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
   .req-table td{ border:1px solid #eee; padding:6px; vertical-align:middle; box-sizing:border-box; }
   /* عرض الأعمدة يتحدد الآن عبر colgroup داخل كل جدول (أعمدة متساوية تمامًا)؛ هذان السطران احتياطيان فقط. */
   .req-table td.req-q-td{ width:auto; }
@@ -560,10 +580,12 @@
 <div class="overlay" id="aboutOverlay"><div class="modal">
   <button class="modal-close" data-close="aboutOverlay">إغلاق ✕</button>
   <h2>من نحن</h2>
-  <p>نحن الأستاذ/ أحمد أبوذكري، صنعنا هذا البرنامج، ولا نحل استخدامه أو التعديل عليه أو الاستفادة منه ماديًا أو معنويًا دون إذن منا، وهذه بياناتنا للتواصل:</p>
-  <p>الرقم السعودي: +9660564125716</p>
-  <p>الرقم المصري: +201030587285</p>
-  <p>الجيميل: sofianypp@gmail.com</p>
+  <div id="aboutTextBox">
+    <p>نحن الأستاذ/ أحمد أبوذكري، صنعنا هذا البرنامج، ولا نحل استخدامه أو التعديل عليه أو الاستفادة منه ماديًا أو معنويًا دون إذن منا، وهذه بياناتنا للتواصل:</p>
+    <p>الرقم السعودي: +9660564125716</p>
+    <p>الرقم المصري: +201030587285</p>
+    <p>الجيميل: sofianypp@gmail.com</p>
+  </div>
 </div></div>
 
 <div class="overlay" id="registerOverlay"><div class="modal">
@@ -679,6 +701,151 @@
 </script>
 
 <script>
+/* =====================================================================
+   بند جديد: مُحاكي سحب وإفلات باللمس (Touch Drag & Drop Polyfill)
+   -----------------------------------------------------------------
+   المشكلة: كل أكواد السحب/الإفلات في الملف مبنية على واجهة HTML5 الأصلية
+   (draggable + dragstart/dragover/drop) وهذه الواجهة مصمَّمة للماوس فقط؛
+   أغلب متصفحات الجوال (خصوصًا Safari على iOS، والمتصفحات المدمجة داخل
+   تطبيقات مثل واتساب) لا تُطلق هذه الأحداث إطلاقًا عند اللمس، لذا كانت
+   الميزة تعمل بشكل عشوائي بين جهاز وآخر أو تاب وآخر.
+   الحل: بدل إعادة كتابة كل معالِج drop على حدة (خطر على الوظائف القائمة)،
+   نعترض حركة اللمس على أي عنصر draggable، ثم "نُصنّع" نفس تتابع أحداث
+   HTML5 الأصلية (dragstart → dragover → drop → dragend) ونُطلقها يدويًا
+   على العناصر تحت الإصبع، مع كائن dataTransfer وهمي يوفّر setData/getData.
+   بما أن كل المعالِجات الحالية مسجَّلة عبر addEventListener("dragstart"|
+   "dragover"|"drop"...) فإنها تُنفَّذ تلقائيًا سواء أتت الأحداث من الماوس
+   الحقيقي أو من محاكاتنا هذه، دون أي تعديل على منطقها الداخلي.
+   مدة "الوقوف" قبل بدء السحب قصيرة جدًا (110ms) أو فور تحرك الإصبع أكثر
+   من 6px، أيهما أسبق — لتفادي سحب فوري غير مقصود أثناء محاولة التمرير
+   العادية، مع بقاء الاستجابة سريعة جدًا كما طُلب.
+===================================================================== */
+(function(){
+  const PRESS_MS = 110;      // مدة الوقوف القصيرة قبل تفعيل السحب
+  const MOVE_PX  = 6;        // أو إن تحرك الإصبع أكثر من هذا المقدار
+  let touchState = null;     // {el, startX, startY, timer, dragging, dt, ghost, lastTarget}
+
+  function isDraggableTarget(el){
+    return el && el.closest ? el.closest('[draggable="true"]') : null;
+  }
+
+  function makeFakeDataTransfer(){
+    const store = {};
+    return {
+      effectAllowed: "all", dropEffect: "move",
+      setData(fmt, val){ store[fmt] = String(val); },
+      getData(fmt){ return store[fmt] !== undefined ? store[fmt] : (store["text/plain"]||""); },
+      clearData(){ Object.keys(store).forEach(k=>delete store[k]); },
+      files: [], items: [], types: []
+    };
+  }
+
+  function fireDnd(type, targetEl, dt){
+    if(!targetEl) return true;
+    let ev;
+    try{ ev = new Event(type, {bubbles:true, cancelable:true}); }
+    catch(e){ return true; }
+    try{ Object.defineProperty(ev, "dataTransfer", {value: dt, configurable:true}); }catch(e){}
+    return targetEl.dispatchEvent(ev);
+  }
+
+  function makeGhost(sourceEl){
+    const r = sourceEl.getBoundingClientRect();
+    const g = sourceEl.cloneNode(true);
+    g.style.position = "fixed";
+    g.style.left = r.left+"px";
+    g.style.top = r.top+"px";
+    g.style.width = r.width+"px";
+    g.style.height = r.height+"px";
+    g.style.margin = "0";
+    g.style.pointerEvents = "none";
+    g.style.opacity = "0.85";
+    g.style.zIndex = "99999";
+    g.style.transform = "scale(1.04)";
+    g.style.boxShadow = "0 6px 18px rgba(0,0,0,.25)";
+    g.classList.add("touch-drag-ghost");
+    document.body.appendChild(g);
+    return g;
+  }
+
+  function beginDrag(st){
+    st.dragging = true;
+    st.dt = makeFakeDataTransfer();
+    st.el.classList.add("touch-dragging-source");
+    st.ghost = makeGhost(st.el);
+    fireDnd("dragstart", st.el, st.dt);
+  }
+
+  function moveDrag(st, x, y){
+    if(st.ghost){
+      st.ghost.style.left = (x - st.ghost.offsetWidth/2)+"px";
+      st.ghost.style.top  = (y - st.ghost.offsetHeight/2)+"px";
+      st.ghost.style.display = "none";
+    }
+    const under = document.elementFromPoint(x, y);
+    if(st.ghost) st.ghost.style.display = "";
+    if(!under) return;
+    if(under !== st.lastTarget){
+      st.lastTarget = under;
+    }
+    fireDnd("dragover", under, st.dt);
+  }
+
+  function endDrag(st, x, y){
+    if(st.ghost && st.ghost.parentNode) st.ghost.parentNode.removeChild(st.ghost);
+    st.el.classList.remove("touch-dragging-source");
+    st.ghost.style.display = "none";
+    const under = document.elementFromPoint(x, y);
+    if(under){ fireDnd("drop", under, st.dt); }
+    fireDnd("dragend", st.el, st.dt);
+  }
+
+  document.addEventListener("touchstart", function(e){
+    if(e.touches.length !== 1) return;
+    const dragEl = isDraggableTarget(e.target);
+    if(!dragEl || dragEl.isContentEditable) return;
+    const t = e.touches[0];
+    const st = { el: dragEl, startX: t.clientX, startY: t.clientY, dragging:false, timer:null, ghost:null, dt:null, lastTarget:null };
+    st.timer = setTimeout(()=>{ if(touchState===st && !st.dragging) beginDrag(st); }, PRESS_MS);
+    touchState = st;
+  }, {passive:true});
+
+  document.addEventListener("touchmove", function(e){
+    const st = touchState;
+    if(!st || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - st.startX, dy = t.clientY - st.startY;
+    if(!st.dragging){
+      if(Math.hypot(dx,dy) > MOVE_PX){
+        clearTimeout(st.timer);
+        beginDrag(st);
+      } else {
+        return; // لم يبدأ السحب بعد، اسمح بالتمرير العادي
+      }
+    }
+    e.preventDefault();
+    moveDrag(st, t.clientX, t.clientY);
+  }, {passive:false});
+
+  function finishTouch(e){
+    const st = touchState;
+    if(!st) return;
+    clearTimeout(st.timer);
+    if(st.dragging){
+      const t = (e.changedTouches && e.changedTouches[0]) || {clientX:st.startX, clientY:st.startY};
+      endDrag(st, t.clientX, t.clientY);
+    }
+    touchState = null;
+  }
+  document.addEventListener("touchend", finishTouch, {passive:true});
+  document.addEventListener("touchcancel", finishTouch, {passive:true});
+})();
+</script>
+<style>
+  .touch-dragging-source{ opacity:.35; }
+  .touch-drag-ghost{ transition:none !important; }
+</style>
+<script>
 const DB = {
   admins: [],
   // تنسيق المواد الدراسية: جدول ديناميكي — أعمدته أسماء المواد، وصفوفه الوظائف (المنسق/المعلم)،
@@ -719,9 +886,17 @@ const DB = {
   folders: ["عام"],
   tasks: [], // {id, title, assignedRole, assignedName, createdDate, sendDate, sent, deliveryOrdinal, deliveryDay, delivered, executed, completion, evaluation, notes, senderRole, senderName}
   tierThresholds: {excellent:97, veryGood:90, good:80},
-  columnWidths: {} // بند 2: حفظ عرض أعمدة كل جدول بشكل دائم — { tableKey: [w1,w2,...] }
+  columnWidths: {}, // بند 2: حفظ عرض أعمدة كل جدول بشكل دائم — { tableKey: [w1,w2,...] }
+  // بند: نص نافذة "من نحن" الظاهرة في لوحة الدخول، قابل للتعديل من واجهة المشرف العام فقط.
+  // فارغ يعني: استخدام النص الافتراضي المكتوب في aboutOverlay بالـHTML كما هو.
+  aboutUsText: "",
 };
 const BACKUP_ADMIN = { username:"الأستاذ", password:"100%" };
+const DEFAULT_ABOUT_HTML = `<p>نحن الأستاذ/ أحمد أبوذكري، صنعنا هذا البرنامج، ولا نحل استخدامه أو التعديل عليه أو الاستفادة منه ماديًا أو معنويًا دون إذن منا، وهذه بياناتنا للتواصل:</p>
+    <p>الرقم السعودي: +9660564125716</p>
+    <p>الرقم المصري: +201030587285</p>
+    <p>الجيميل: sofianypp@gmail.com</p>`;
+const DEFAULT_ABOUT_TEXT = "نحن الأستاذ/ أحمد أبوذكري، صنعنا هذا البرنامج، ولا نحل استخدامه أو التعديل عليه أو الاستفادة منه ماديًا أو معنويًا دون إذن منا، وهذه بياناتنا للتواصل:\nالرقم السعودي: +9660564125716\nالرقم المصري: +201030587285\nالجيميل: sofianypp@gmail.com";
 
 /* ================================================================
    ===== إعداد قاعدة البيانات السحابية (Firebase) — اقرأ هذا! =====
@@ -1162,7 +1337,16 @@ document.getElementById("setupSaveBtn").addEventListener("click", ()=>{
   enterApp("admin", {username});
 });
 
-document.getElementById("aboutBtn").addEventListener("click", ()=>openOverlay("aboutOverlay"));
+document.getElementById("aboutBtn").addEventListener("click", ()=>{
+  const box = document.getElementById("aboutTextBox");
+  if(box){
+    const txt = (DB.aboutUsText || "").trim();
+    box.innerHTML = txt
+      ? txt.split(/\n+/).map(p=>`<p>${p.replace(/</g,"&lt;")}</p>`).join("")
+      : DEFAULT_ABOUT_HTML;
+  }
+  openOverlay("aboutOverlay");
+});
 function openOverlay(id){ document.getElementById(id).classList.add("show"); }
 function closeOverlay(id){ document.getElementById(id).classList.remove("show"); }
 document.querySelectorAll("[data-close]").forEach(el=>el.addEventListener("click",()=>closeOverlay(el.dataset.close)));
@@ -1315,6 +1499,7 @@ const NAV = {
     ["attachments","المرفقات"],
     ["tasks","التكليفات الإدارية"],
     ["correspondence","المراسلات الإدارية"],
+    ["aboutedit","تعديل نافذة (من نحن)"],
     ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
   ],
@@ -1383,6 +1568,7 @@ function renderView(role,key){
   if(key==="tasksSent"){ renderTasksWindow(view, role, "sent"); return; }
   if(key==="tasksInbox"){ renderTasksWindow(view, role, "inbox"); return; }
   if(key==="correspondence"){ renderCorrespondenceWindow(view, role); return; }
+  if(key==="aboutedit"){ renderAboutEditWindow(view); return; }
   if(key==="allmodels"){ renderStudentModelsList(view, "all"); return; }
   if(key==="solved"){ renderStudentModelsList(view, "solved"); return; }
   if(key==="unsolved"){ renderStudentModelsList(view, "unsolved"); return; }
@@ -2854,9 +3040,13 @@ function serializeModel(model, warnings){
     if(readingPassage){
       const text = readingPassage.textContent.trim();
       const img = el.querySelector(".rp-img");
+      const imgWrap = el.querySelector(".rp-img-wrap");
       const imgSrc = (img && img.style.display!=="none" && img.src) ? img.src : null;
+      const imgW = (imgWrap && imgSrc) ? (parseFloat(imgWrap.style.width)||null) : null;
+      const imgH = (imgWrap && imgSrc) ? (parseFloat(imgWrap.style.height)||null) : null;
+      const imgAlign = (imgWrap && imgWrap.dataset.align) || "right";
       if((text && text!=="الصق نص القطعة هنا للتحرير المباشر...") || imgSrc){
-        data.push({type:"reading", text: text==="الصق نص القطعة هنا للتحرير المباشر..."?"":text, imgSrc});
+        data.push({type:"reading", text: text==="الصق نص القطعة هنا للتحرير المباشر..."?"":text, imgSrc, imgW, imgH, imgAlign});
       }
     }
     const esList = el.querySelector(".es-list");
@@ -3670,6 +3860,9 @@ function buildReadingBlock(savedData){
   const body = el.querySelector(".qblock-body");
   const hasText = savedData && savedData.text;
   const defaultText = "الصق نص القطعة هنا للتحرير المباشر...";
+  const hasImg = !!(savedData && savedData.imgSrc);
+  const initAlign = (savedData && savedData.imgAlign) || "right";
+  const alignToCss = (a)=> a==="center" ? "margin-left:auto; margin-right:auto;" : a==="left" ? "margin-left:0; margin-right:auto;" : "margin-right:0; margin-left:auto;";
   body.innerHTML = `
     <div class="qrow" style="margin-bottom:8px;">
       <button class="chip-btn rp-image">إدراج صورة</button>
@@ -3677,27 +3870,61 @@ function buildReadingBlock(savedData){
     </div>
     <div class="passage-box rp-passage" contenteditable="true" style="min-height:120px;">${hasText ? savedData.text : defaultText}</div>
     <input type="file" accept="image/*" class="rp-file" style="display:none;">
-    <img class="rp-img" style="max-width:100%; margin-top:10px; ${savedData && savedData.imgSrc ? "" : "display:none;"} border-radius:8px;" ${savedData && savedData.imgSrc ? `src="${savedData.imgSrc}"` : ""}>
+    <div class="qrow rp-align-row" style="margin-top:8px; ${hasImg?"":"display:none;"}">
+      <span style="font-size:12px; color:#888;">محاذاة الصورة:</span>
+      <button type="button" class="chip-btn rp-align-btn" data-align="right">يمين</button>
+      <button type="button" class="chip-btn rp-align-btn" data-align="center">وسط</button>
+      <button type="button" class="chip-btn rp-align-btn" data-align="left">يسار</button>
+      <button type="button" class="chip-btn rp-removeimage" style="margin-right:auto;">✕ إزالة الصورة</button>
+    </div>
+    <div class="rp-img-wrap" data-align="${initAlign}" style="position:relative; display:${hasImg?"block":"none"}; margin-top:10px; ${hasImg && savedData.imgW ? `width:${savedData.imgW}px;` : "width:280px;"} ${hasImg && savedData.imgH ? `height:${savedData.imgH}px;` : "height:auto;"} ${alignToCss(initAlign)}">
+      <img class="rp-img" style="width:100%; height:100%; display:block; border-radius:8px; object-fit:fill;" ${hasImg ? `src="${savedData.imgSrc}"` : ""}>
+      <div class="rp-img-handle" data-dir="nw"></div><div class="rp-img-handle" data-dir="n"></div><div class="rp-img-handle" data-dir="ne"></div>
+      <div class="rp-img-handle" data-dir="e"></div><div class="rp-img-handle" data-dir="se"></div><div class="rp-img-handle" data-dir="s"></div>
+      <div class="rp-img-handle" data-dir="sw"></div><div class="rp-img-handle" data-dir="w"></div>
+    </div>
   `;
   const passageBox = body.querySelector(".rp-passage");
   const imgEl = body.querySelector(".rp-img");
+  const imgWrap = body.querySelector(".rp-img-wrap");
+  const alignRow = body.querySelector(".rp-align-row");
   if(!hasText) passageBox.dataset.fresh = "1";
   /* بمجرد الوقوف على الخلية أو الكتابة فيها يُمحى النص الافتراضي القديم */
   const clearDefaultOnce = ()=>{ if(passageBox.dataset.fresh==="1"){ passageBox.textContent=""; passageBox.dataset.fresh="0"; } };
   passageBox.addEventListener("focus", clearDefaultOnce);
   passageBox.addEventListener("input", clearDefaultOnce);
 
+  function setAlign(a){
+    imgWrap.dataset.align = a;
+    imgWrap.style.marginRight = ""; imgWrap.style.marginLeft = "";
+    if(a==="center"){ imgWrap.style.marginRight="auto"; imgWrap.style.marginLeft="auto"; }
+    else if(a==="left"){ imgWrap.style.marginRight="auto"; imgWrap.style.marginLeft="0"; }
+    else { imgWrap.style.marginRight="0"; imgWrap.style.marginLeft="auto"; }
+    body.querySelectorAll(".rp-align-btn").forEach(btn=> btn.classList.toggle("accent", btn.dataset.align===a));
+  }
+  body.querySelectorAll(".rp-align-btn").forEach(btn=> btn.addEventListener("click", ()=> setAlign(btn.dataset.align)));
+  setAlign(initAlign);
+
   /* نحوّل أي صورة (رفع أو لصق) إلى data URL دائم (base64) بدل blob: URL المؤقت،
      حتى تُخزَّن مع النموذج وتظهر بشكل صحيح لكل الطلاب لاحقًا وليس فقط في متصفح المعلم */
   function setImageFromFile(f){
     if(!f || !f.type || !f.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = ()=>{ imgEl.src = reader.result; imgEl.style.display="block"; };
+    reader.onload = ()=>{
+      imgEl.src = reader.result;
+      imgWrap.style.display = "block";
+      alignRow.style.display = "flex";
+      if(!imgWrap.style.width || imgWrap.style.width==="0px") imgWrap.style.width="280px";
+      imgWrap.style.height = "auto";
+    };
     reader.readAsDataURL(f);
   }
   body.querySelector(".rp-image").addEventListener("click", ()=>body.querySelector(".rp-file").click());
   body.querySelector(".rp-file").addEventListener("change", (e)=>{
     setImageFromFile(e.target.files[0]);
+  });
+  body.querySelector(".rp-removeimage").addEventListener("click", ()=>{
+    imgEl.src = ""; imgWrap.style.display = "none"; alignRow.style.display = "none";
   });
   passageBox.addEventListener("paste", (e)=>{
     const items = (e.clipboardData && e.clipboardData.items) || [];
@@ -3710,6 +3937,41 @@ function buildReadingBlock(savedData){
     }
     clearDefaultOnce();
   });
+
+  /* بند: 8 مقابض سحب حول الصورة (3 على كل جانب: أعلى/أسفل/يمين/يسار) تسمح بتغيير عرضها
+     وارتفاعها كلٌ على حدة بحرية تامة، بنفس أسلوب مقابض خلفية الخريطة الذهنية (mm-bg-handle). */
+  let rzDir=null, rzStartX=0, rzStartY=0, rzW=0, rzH=0;
+  function pointOf(e){
+    if(e.touches && e.touches.length) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    return {x:e.clientX, y:e.clientY};
+  }
+  body.querySelectorAll(".rp-img-handle").forEach(h=>{
+    function start(e){
+      rzDir = h.dataset.dir;
+      const p = pointOf(e);
+      rzStartX = p.x; rzStartY = p.y;
+      rzW = imgWrap.offsetWidth; rzH = imgWrap.offsetHeight;
+      e.preventDefault(); e.stopPropagation();
+    }
+    h.addEventListener("mousedown", start);
+    h.addEventListener("touchstart", start, {passive:false});
+  });
+  function move(e){
+    if(!rzDir) return;
+    const p = pointOf(e);
+    const dx = p.x - rzStartX, dy = p.y - rzStartY;
+    const MIN = 40;
+    if(rzDir.includes("e")) imgWrap.style.width = Math.max(MIN, rzW + dx) + "px";
+    if(rzDir.includes("w")) imgWrap.style.width = Math.max(MIN, rzW - dx) + "px";
+    if(rzDir.includes("s")) imgWrap.style.height = Math.max(MIN, rzH + dy) + "px";
+    if(rzDir.includes("n")) imgWrap.style.height = Math.max(MIN, rzH - dy) + "px";
+    if(e.type==="touchmove") e.preventDefault();
+  }
+  function end(){ rzDir = null; }
+  document.addEventListener("mousemove", move);
+  document.addEventListener("touchmove", move, {passive:false});
+  document.addEventListener("mouseup", end);
+  document.addEventListener("touchend", end);
   return el;
 }
 
@@ -4398,6 +4660,12 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     // بدل الصفر عند الحفظ في مثل هذه الحالة.
     if(saved && saved.w) b.dataset.savedW = saved.w;
     if(saved && saved.h) b.dataset.savedH = saved.h;
+    // بند: نطبّق الحجم المحفوظ فورًا كحدّ أدنى (min-width/min-height) بدل تركه يُحسب تلقائيًا
+    // من جديد من المحتوى فقط. هذا يمنع انكماش الصندوق إلى حجمه الافتراضي الصغير عند إعادة
+    // فتح الخريطة بعد تسجيل الخروج/الدخول، ويطابق تمامًا ما تعرضه واجهة الطالب بالفعل.
+    if(saved && saved.w && saved.h){
+      b.style.minWidth = saved.w+"px"; b.style.minHeight = saved.h+"px"; b.dataset.manualSize = "1";
+    }
     // بند: الصناديق وبطاقات التعريف وبطاقة العنوان تُنشأ فارغة تمامًا من الكتابة (بلا نص افتراضي
     // مثل "صندوق 1" أو "بطاقة تعريف")، فيكتب المعلم فيها ما يريد مباشرة دون الحاجة لحذف نص سابق.
     const labelText = saved && saved.label ? saved.label : "";
@@ -4904,9 +5172,12 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     if(q.type==="reading"){
       const box = document.createElement("div");
       box.className="passage-box"; box.style.marginBottom="14px"; box.style.background="#fbfbfb";
+      const rpAlign = q.imgAlign || "right";
+      const rpAlignCss = rpAlign==="center" ? "margin-left:auto; margin-right:auto;" : rpAlign==="left" ? "margin-left:0; margin-right:auto;" : "margin-right:0; margin-left:auto;";
+      const rpSizeCss = (q.imgW && q.imgH) ? `width:${q.imgW}px; height:${q.imgH}px;` : "width:auto; height:auto;";
       box.innerHTML = `<div style="font-weight:700; margin-bottom:6px; color:var(--muted); font-size:12px;">اقرأ القطعة جيدًا واستعن بها على إجابة الأسئلة التالية</div>
         ${q.text ? `<div>${q.text}</div>` : ""}
-        ${q.imgSrc ? `<img src="${q.imgSrc}" style="max-width:100%; margin-top:8px; border-radius:8px;">` : ""}`;
+        ${q.imgSrc ? `<img src="${q.imgSrc}" style="max-width:100%; ${rpSizeCss} ${rpAlignCss} display:block; margin-top:8px; border-radius:8px; object-fit:fill;">` : ""}`;
       area.appendChild(box);
       return;
     }
@@ -6888,6 +7159,46 @@ function drawCorrInboxTable(wrap, role){
   });
   draw();
 }
+function renderAboutEditWindow(view){
+  view.innerHTML = `
+    <h2>تعديل نافذة "من نحن"</h2>
+    <p class="sub">النص الذي تكتبه هنا هو ما سيظهر للجميع عند الضغط على زر "من نحن" في لوحة تسجيل الدخول. اترك المربع فارغًا ثم اضغط "حفظ" لإعادة النص الافتراضي.</p>
+    <textarea id="aboutEditTextarea" rows="10" style="width:100%; max-width:560px; box-sizing:border-box; font-size:14px; line-height:1.8; padding:10px; border:1.5px solid #ccc; border-radius:8px;" placeholder="${DEFAULT_ABOUT_TEXT.replace(/"/g,'&quot;')}"></textarea>
+    <div class="toolbar" style="margin-top:10px;">
+      <button class="primary-btn" id="aboutEditSaveBtn">حفظ</button>
+      <button class="secondary-btn" id="aboutEditResetBtn">استعادة النص الافتراضي</button>
+      <button class="secondary-btn" id="aboutEditPreviewBtn">معاينة</button>
+    </div>
+    <div class="msg" id="aboutEditMsg"></div>
+  `;
+  const ta = view.querySelector("#aboutEditTextarea");
+  ta.value = DB.aboutUsText || "";
+  const msg = view.querySelector("#aboutEditMsg");
+  view.querySelector("#aboutEditSaveBtn").addEventListener("click", ()=>{
+    DB.aboutUsText = ta.value.trim();
+    saveDB();
+    msg.textContent = "تم الحفظ.";
+    msg.style.color = "var(--accent)";
+    setTimeout(()=>{ msg.textContent=""; }, 2500);
+  });
+  view.querySelector("#aboutEditResetBtn").addEventListener("click", ()=>{
+    ta.value = "";
+    DB.aboutUsText = "";
+    saveDB();
+    msg.textContent = "تمت استعادة النص الافتراضي.";
+    msg.style.color = "var(--accent)";
+    setTimeout(()=>{ msg.textContent=""; }, 2500);
+  });
+  view.querySelector("#aboutEditPreviewBtn").addEventListener("click", ()=>{
+    const box = document.getElementById("aboutTextBox");
+    const txt = ta.value.trim();
+    box.innerHTML = txt
+      ? txt.split(/\n+/).map(p=>`<p>${p.replace(/</g,"&lt;")}</p>`).join("")
+      : DEFAULT_ABOUT_HTML;
+    openOverlay("aboutOverlay");
+  });
+}
+
 function renderCorrespondenceWindow(view, role){
   view.innerHTML = `
     <h2>المراسلات الإدارية</h2>
