@@ -427,7 +427,6 @@
     .workshop{ min-height:70vh; }
     .view, .workshop-scroll, #solveArea, .qitem{ max-width:100%; overflow-x:hidden; }
     .roles{ grid-template-columns:repeat(2,1fr); }
-    .options-grid{ grid-template-columns:1fr; }
     .match-cols{ gap:10px; }
     .match-col{ width:47%; }
     .match-card{ font-size:12px; padding:6px 9px; }
@@ -435,6 +434,11 @@
   @media (max-width: 560px){
     .topbar{ flex-direction:column; align-items:flex-start; gap:6px; }
     .view{ padding:14px 10px; }
+
+    /* عرض خيارات سؤال الاختياري (MCQ) بشكل رأسي على الجوال فقط دون التاب،
+       لضبط ظهورها على الشاشات الضيقة، بينما تبقى أفقية (شبكة) على التاب
+       وسطح المكتب كما كانت. */
+    .options-grid{ grid-template-columns:1fr; }
 
     /* عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي على الجوال فقط: كل مطلوب (سؤال+إجابة)
        في صف مستقل لحاله. هذا مقصور على عرض الجوال الضيق حتى لا يظهر التاب (900-561px) بنفس
@@ -721,8 +725,9 @@
    العادية، مع بقاء الاستجابة سريعة جدًا كما طُلب.
 ===================================================================== */
 (function(){
-  const PRESS_MS = 110;      // مدة الوقوف القصيرة قبل تفعيل السحب
-  const MOVE_PX  = 6;        // أو إن تحرك الإصبع أكثر من هذا المقدار
+  const PRESS_MS = 110;      // مدة الوقوف القصيرة قبل تفعيل السحب (بقيت قصيرة كما هي)
+  const MOVE_PX  = 9;        // مسافة تحرك الإصبع قبل اعتباره سحبًا (تمت زيادتها 1.5× عن السابق: 6px → 9px)
+                              // لإتاحة تمرير الشاشة لأعلى/أسفل دون تفعيل سحب البطاقات بالخطأ
   let touchState = null;     // {el, startX, startY, timer, dragging, dt, ghost, lastTarget}
 
   function isDraggableTarget(el){
