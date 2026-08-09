@@ -437,8 +437,11 @@
 
     /* عرض خيارات سؤال الاختياري (MCQ) بشكل رأسي على الجوال فقط دون التاب،
        لضبط ظهورها على الشاشات الضيقة، بينما تبقى أفقية (شبكة) على التاب
-       وسطح المكتب كما كانت. */
-    .options-grid{ grid-template-columns:1fr; }
+       وسطح المكتب كما كانت. !important هنا مقصودة: دالة layoutOptionsGrid
+       في جافاسكربت تكتب grid-template-columns كنمط مضمَّن (inline style) وقد
+       تُنفَّذ أحيانًا بعد هذه القاعدة أو بترتيب غير متوقع، فبدون !important قد
+       يتغلّب النمط المضمَّن على قاعدة CSS هذه ويُبقي العرض أفقيًا خطأً على الجوال. */
+    .options-grid{ grid-template-columns:1fr !important; }
 
     /* عرض المطلوبات في سؤال إضافة نموذج نحوي بشكل رأسي على الجوال فقط: كل مطلوب (سؤال+إجابة)
        في صف مستقل لحاله. هذا مقصور على عرض الجوال الضيق حتى لا يظهر التاب (900-561px) بنفس
@@ -723,15 +726,44 @@
    مدة "الوقوف" قبل بدء السحب قصيرة جدًا (110ms) أو فور تحرك الإصبع أكثر
    من 6px، أيهما أسبق — لتفادي سحب فوري غير مقصود أثناء محاولة التمرير
    العادية، مع بقاء الاستجابة سريعة جدًا كما طُلب.
+
+   تحديث لاحق (إصلاح صعوبة التمرير + منع التكبير/التصغير أثناء السحب):
+   1) المشكلة الحقيقية في صعوبة التمرير لم تكن مسافة الحركة (MOVE_PX) بل
+      مؤقّت "الوقوف" (PRESS_MS): كان يُفعِّل السحب بعد 110ms من مجرّد
+      ملامسة الإصبع للشاشة بصرف النظر عن أي حركة لاحقة، فإن كان تمرير
+      الطالب بطيئًا (إصبعه لم يتجاوز بعد MOVE_PX خلال أول 110ms) كان
+      السحب يبدأ خطأً ويُلغي التمرير تمامًا. الحل: المؤقّت الآن لا يُفعِّل
+      السحب إلا إن كان الإصبع شبه ساكن فعلًا (حركة أقل من STILL_PX)، وإلا
+      نترك القرار كليًا لفحص زاوية الحركة أدناه.
+   2) أضفنا فحص اتجاه الحركة: إن كانت الحركة أساسًا رأسية (تمرير) نُلغي
+      احتمال السحب فورًا ونسمح للمتصفح بالتمرير الطبيعي؛ ولا يبدأ السحب
+      إلا لو كانت الحركة أفقية بوضوح أو ضمن سحب مؤكَّد أصلًا.
+   3) دعم إصبعين أثناء السحب: إن كان الطالب يسحب بطاقة بإصبع واحد ولمس
+      بإصبع ثانٍ الشاشة، نمنع إيماءة التكبير/التصغير الافتراضية للمتصفح
+      (pinch-zoom) ونحوّل حركة الإصبع الثاني إلى تمرير يدوي للحاوية القابلة
+      للتمرير تحت الإصبعين، بينما تبقى البطاقة "ممسوكة" بالإصبع الأول في
+      مكانها إلى أن يُفلتها الطالب فوق مكان الإجابة.
 ===================================================================== */
 (function(){
-  const PRESS_MS = 110;      // مدة الوقوف القصيرة قبل تفعيل السحب (بقيت قصيرة كما هي)
-  const MOVE_PX  = 9;        // مسافة تحرك الإصبع قبل اعتباره سحبًا (تمت زيادتها 1.5× عن السابق: 6px → 9px)
-                              // لإتاحة تمرير الشاشة لأعلى/أسفل دون تفعيل سحب البطاقات بالخطأ
-  let touchState = null;     // {el, startX, startY, timer, dragging, dt, ghost, lastTarget}
+  const PRESS_MS  = 110;   // مدة الوقوف قبل تفعيل السحب (بقيت قصيرة كما هي)
+  const MOVE_PX   = 9;     // تجاوز هذه المسافة بحركة أفقية واضحة = سحب مؤكَّد
+  const STILL_PX  = 4;     // أقل من هذا يُعتبر الإصبع "ساكنًا فعلًا" فيسمح لمؤقّت الوقوف بتفعيل السحب
+  const DIR_BIAS  = 1.15;  // إن كانت الحركة الرأسية أكبر من الأفقية بهذه النسبة تُعتبر تمريرًا لا سحبًا
+  let touchState = null;   // {el, startX, startY, timer, dragging, dt, ghost, lastTarget, scroller, scrollTouchId, scrollLastY}
 
   function isDraggableTarget(el){
     return el && el.closest ? el.closest('[draggable="true"]') : null;
+  }
+
+  function findScrollableAncestor(el){
+    let node = el ? el.parentElement : null;
+    while(node && node !== document.body){
+      const style = getComputedStyle(node);
+      const canScrollY = /(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight;
+      if(canScrollY) return node;
+      node = node.parentElement;
+    }
+    return null; // null يعني: نُمرِّر النافذة نفسها (window)
   }
 
   function makeFakeDataTransfer(){
@@ -806,27 +838,83 @@
   }
 
   document.addEventListener("touchstart", function(e){
+    const st = touchState;
+
+    // بند 3: إصبع ثانٍ يلمس الشاشة أثناء سحب قائم فعلًا ببطاقة بالإصبع الأول
+    // → نمنع إيماءة التكبير/التصغير الافتراضية، ونُعِدّ الإصبع الثاني ليكون
+    // "إصبع تمرير" مستقل يُحرِّك الحاوية تحته دون التأثير على البطاقة الممسوكة.
+    if(st && st.dragging && e.touches.length >= 2){
+      e.preventDefault();
+      if(st.scrollTouchId === null || st.scrollTouchId === undefined){
+        const dragTouch = [...e.touches].find(t=>t.identifier===st.touchId);
+        const other = [...e.touches].find(t=>t.identifier!==st.touchId);
+        if(other){
+          st.scrollTouchId = other.identifier;
+          st.scrollLastY = other.clientY;
+          if(!st.scroller) st.scroller = findScrollableAncestor(st.el);
+        }
+        if(dragTouch) moveDrag(st, dragTouch.clientX, dragTouch.clientY);
+      }
+      return;
+    }
+
     if(e.touches.length !== 1) return;
     const dragEl = isDraggableTarget(e.target);
     if(!dragEl || dragEl.isContentEditable) return;
     const t = e.touches[0];
-    const st = { el: dragEl, startX: t.clientX, startY: t.clientY, dragging:false, timer:null, ghost:null, dt:null, lastTarget:null };
-    st.timer = setTimeout(()=>{ if(touchState===st && !st.dragging) beginDrag(st); }, PRESS_MS);
-    touchState = st;
-  }, {passive:true});
+    const newSt = { el: dragEl, touchId: t.identifier, startX: t.clientX, startY: t.clientY,
+      dragging:false, timer:null, ghost:null, dt:null, lastTarget:null,
+      scroller:null, scrollTouchId:null, scrollLastY:0 };
+    newSt.timer = setTimeout(()=>{
+      // لا نُفعِّل السحب من المؤقّت وحده إلا إن كان الإصبع شبه ساكن فعلًا؛
+      // أي حركة ملموسة تُترك لفحص الاتجاه في touchmove ليقرر (سحب أم تمرير).
+      if(touchState===newSt && !newSt.dragging){
+        const dx = newSt._lastX!==undefined ? newSt._lastX-newSt.startX : 0;
+        const dy = newSt._lastY!==undefined ? newSt._lastY-newSt.startY : 0;
+        if(Math.hypot(dx,dy) <= STILL_PX) beginDrag(newSt);
+      }
+    }, PRESS_MS);
+    touchState = newSt;
+  }, {passive:false});
 
   document.addEventListener("touchmove", function(e){
     const st = touchState;
-    if(!st || e.touches.length !== 1) return;
-    const t = e.touches[0];
+    if(!st) return;
+
+    // بند 3: أثناء السحب، إن وُجد إصبع تمرير ثانٍ نُمرِّر الحاوية يدويًا بحركته
+    if(st.dragging && st.scrollTouchId !== null && st.scrollTouchId !== undefined){
+      e.preventDefault();
+      const scrollT = [...e.touches].find(t=>t.identifier===st.scrollTouchId);
+      const dragT = [...e.touches].find(t=>t.identifier===st.touchId);
+      if(scrollT){
+        const deltaY = st.scrollLastY - scrollT.clientY;
+        if(st.scroller) st.scroller.scrollTop += deltaY;
+        else window.scrollBy(0, deltaY);
+        st.scrollLastY = scrollT.clientY;
+      }
+      if(dragT) moveDrag(st, dragT.clientX, dragT.clientY);
+      return;
+    }
+
+    const t = [...e.touches].find(x=>x.identifier===st.touchId) || e.touches[0];
+    if(!t) return;
+    st._lastX = t.clientX; st._lastY = t.clientY;
     const dx = t.clientX - st.startX, dy = t.clientY - st.startY;
     if(!st.dragging){
-      if(Math.hypot(dx,dy) > MOVE_PX){
-        clearTimeout(st.timer);
-        beginDrag(st);
-      } else {
-        return; // لم يبدأ السحب بعد، اسمح بالتمرير العادي
+      const dist = Math.hypot(dx,dy);
+      if(dist <= MOVE_PX){
+        return; // حركة طفيفة جدًا بعد — اسمح بالتمرير العادي، القرار لم يُحسم بعد
       }
+      const isMostlyVertical = Math.abs(dy) > Math.abs(dx) * DIR_BIAS;
+      if(isMostlyVertical){
+        // حركة رأسية واضحة = نية تمرير، لا سحب: نُلغي المؤقّت ونترك الحدث
+        // يمرّ للمتصفح دون preventDefault حتى يعمل التمرير الطبيعي.
+        clearTimeout(st.timer);
+        touchState = null;
+        return;
+      }
+      clearTimeout(st.timer);
+      beginDrag(st);
     }
     e.preventDefault();
     moveDrag(st, t.clientX, t.clientY);
@@ -835,19 +923,37 @@
   function finishTouch(e){
     const st = touchState;
     if(!st) return;
+    // إن انتهى إصبع التمرير الثانوي فقط (وما زال إصبع السحب الأساسي على الشاشة) نُكمل السحب بلا انقطاع
+    if(st.dragging && st.scrollTouchId !== null && st.scrollTouchId !== undefined){
+      const stillHasDragTouch = [...e.touches].some(t=>t.identifier===st.touchId);
+      const scrollTouchEnded = [...e.changedTouches].some(t=>t.identifier===st.scrollTouchId);
+      if(scrollTouchEnded && stillHasDragTouch){
+        st.scrollTouchId = null;
+        return;
+      }
+    }
     clearTimeout(st.timer);
     if(st.dragging){
-      const t = (e.changedTouches && e.changedTouches[0]) || {clientX:st.startX, clientY:st.startY};
+      const t = [...e.changedTouches].find(x=>x.identifier===st.touchId) || e.changedTouches[0] || {clientX:st.startX, clientY:st.startY};
       endDrag(st, t.clientX, t.clientY);
     }
     touchState = null;
   }
   document.addEventListener("touchend", finishTouch, {passive:true});
   document.addEventListener("touchcancel", finishTouch, {passive:true});
+
+  // بند إضافي: بعض متصفحات آيفون (Safari) تُطلق أحداث تكبير/تصغير (gesturestart/
+  // gesturechange) بمعزل عن أحداث اللمس العادية؛ نمنعها كذلك أثناء وجود سحب فعّال
+  // بإصبع، حتى لا يبدأ تكبير الصفحة رغم منعنا إياه في touchstart/touchmove أعلاه.
+  ["gesturestart","gesturechange"].forEach(evt=>{
+    document.addEventListener(evt, function(e){
+      if(touchState && touchState.dragging) e.preventDefault();
+    }, {passive:false});
+  });
 })();
 </script>
 <style>
-  .touch-dragging-source{ opacity:.35; }
+  .touch-dragging-source{ opacity:.35; touch-action:none; }
   .touch-drag-ghost{ transition:none !important; }
 </style>
 <script>
@@ -5338,6 +5444,14 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     if(!grid) return;
     const labels = [...grid.children].filter(c=>c.classList.contains("qrow"));
     if(labels.length < 2) return;
+    // على الجوال (عرض الشاشة ≤560px) تُفرض الخيارات دائمًا عموديًا (عمود واحد)
+    // بصرف النظر عن المساحة المتاحة، فلا يُسمح لحساب "أعمدة متعددة" أدناه
+    // بالكتابة فوق هذا القرار عبر النمط المضمَّن (inline style).
+    if(window.innerWidth <= 560){
+      grid.style.display = "grid";
+      grid.style.gridTemplateColumns = "1fr";
+      return;
+    }
     const parent = grid.parentElement;
     const avail = (parent ? parent.clientWidth : grid.clientWidth) || grid.clientWidth;
     if(!avail) return;
