@@ -64,6 +64,8 @@
   .overlay.show{ display:flex; }
   .modal{ width:100%; max-width:420px; background:var(--paper); border:2px solid var(--ink); border-radius:var(--radius); padding:24px; max-height:90vh; overflow-y:auto; }
   .modal.wide{ max-width:640px; }
+  /* بند: جداول المطلوبات (إضافة المطلوبات وتعديلها / إضافة وتعديل) بعرض الشاشة كاملة لوضوح النصوص */
+  .modal.xwide{ max-width:calc(100vw - 32px); width:calc(100vw - 32px); }
   .modal h2{ font-family:'Amiri', serif; margin:0 0 4px; font-size:22px; }
   .modal p{ color:var(--muted); font-size:14px; line-height:1.7; margin:8px 0 0; }
   .modal-close{ background:none; border:none; font-size:15px; font-weight:700; color:var(--muted); cursor:pointer; float:left; }
@@ -156,7 +158,7 @@
   .forms-sidebar.bank-sidebar h3{ color:#1d4ed8; }
   .tool-btn{
     display:block; width:100%; text-align:right; background:var(--paper); border:1.5px solid var(--ink);
-    border-radius:7px; padding:8px 10px; font-size:12.5px; font-weight:700; cursor:pointer; margin-bottom:6px;
+    border-radius:7px; padding:8px 10px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:6px;
   }
   .tool-btn:hover{ background:var(--soft); }
   .models-icons{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -392,8 +394,23 @@
   .mindbox .mb-del{ position:static; flex:0 0 auto; }
   .mindbox .mb-label{ display:block; min-height:1.3em; padding:2px 0; }
   .swatch-trigger{ width:16px; height:16px; border-radius:3px; border:1px solid #999; cursor:pointer; flex:0 0 auto; box-sizing:border-box; }
-  .swatch-panel{ position:absolute; z-index:50; background:#fff; border:1px solid #ccc; border-radius:6px; padding:5px; display:flex; flex-wrap:wrap; gap:4px; width:78px; box-shadow:0 2px 8px rgba(0,0,0,.18); }
+  .swatch-panel{ position:absolute; z-index:50; background:#fff; border:1px solid #ccc; border-radius:6px; padding:5px; display:flex; flex-wrap:nowrap; flex-direction:row; gap:4px; width:max-content; box-shadow:0 2px 8px rgba(0,0,0,.18); }
   .swatch-option{ width:16px; height:16px; border-radius:3px; border:1px solid #999; cursor:pointer; box-sizing:border-box; }
+  /* بند 2: لوحة عائمة لبنك الكلمات الموزعة عند التثبيت — حرة الحركة وقابلة لتغيير الحجم من كل اتجاه */
+  .gz-float-panel{ position:fixed; z-index:200; background:var(--paper); border:1.5px solid var(--ink); border-radius:8px; box-shadow:0 8px 24px -6px rgba(0,0,0,.35); display:flex; flex-direction:column; overflow:hidden; }
+  .gz-float-handle{ display:flex; align-items:center; gap:8px; background:var(--soft); padding:5px 10px; cursor:move; user-select:none; font-size:12px; font-weight:700; border-bottom:1px solid #ddd; flex:0 0 auto; }
+  .gz-float-handle .gz-float-grip{ letter-spacing:2px; color:#999; }
+  .gz-float-handle .gz-float-unpin{ margin-inline-start:auto; cursor:pointer; background:none; border:none; font-size:13px; }
+  .gz-float-body{ flex:1 1 auto; overflow:auto; padding:8px; }
+  .gz-resize-handle{ position:absolute; z-index:5; }
+  .gz-resize-handle.rh-e{ top:0; right:-4px; width:8px; height:100%; cursor:ew-resize; }
+  .gz-resize-handle.rh-w{ top:0; left:-4px; width:8px; height:100%; cursor:ew-resize; }
+  .gz-resize-handle.rh-s{ left:0; bottom:-4px; width:100%; height:8px; cursor:ns-resize; }
+  .gz-resize-handle.rh-n{ left:0; top:-4px; width:100%; height:8px; cursor:ns-resize; }
+  .gz-resize-handle.rh-se{ right:-4px; bottom:-4px; width:12px; height:12px; cursor:nwse-resize; }
+  .gz-resize-handle.rh-sw{ left:-4px; bottom:-4px; width:12px; height:12px; cursor:nesw-resize; }
+  .gz-resize-handle.rh-ne{ right:-4px; top:-4px; width:12px; height:12px; cursor:nesw-resize; }
+  .gz-resize-handle.rh-nw{ left:-4px; top:-4px; width:12px; height:12px; cursor:nwse-resize; }
   /* عرض الطالب (للقراءة فقط) لا يملك شريط المقبض، فنعيد له الحشو الأصلي */
   .mindbox.mm-mindbox{ padding:6px 10px; cursor:default; }
   /* بند: مقبض تغيير حجم الصندوق يدويًا (تكبير/تصغير) — دائرة صغيرة أسفل الزاوية، تظهر فقط
@@ -530,20 +547,24 @@
   /* ===================== بند 8: خط أكبر وأوضح وأثقل في جميع الواجهات ===================== */
   body{ font-size:17px; }
   button, .chip-btn, .small-btn, .tool-btn, .role-btn, .secondary-btn, .primary-btn, .logout-btn, .icon-btn, .link-btn, .model-icon{
-    font-size:15px !important; font-weight:700 !important;
+    font-size:16px !important; font-weight:700 !important;
   }
-  input, select, textarea{ font-size:15.5px !important; }
-  table.data, table.data th, table.data td{ font-size:15px !important; }
-  label{ font-size:14.5px !important; font-weight:700 !important; }
-  .qitem input[type=text], .qitem textarea{ font-size:15px !important; }
+  input, select, textarea{ font-size:16px !important; }
+  table.data, table.data th, table.data td{ font-size:16px !important; font-weight:700; }
+  label{ font-size:16px !important; font-weight:700 !important; }
+  .qitem input[type=text], .qitem textarea{ font-size:16px !important; }
   .view h2{ font-size:26px !important; }
-  .view .sub{ font-size:14px !important; }
-  .sidenav button{ font-size:15.5px !important; font-weight:800 !important; }
-  .msg{ font-size:14.5px !important; }
-  .qblock-head .htitle{ font-size:15px !important; }
-  .match-card, .drag-card, .word-chip, .mindbox{ font-size:14.5px !important; font-weight:700 !important; }
+  .view .sub{ font-size:16px !important; font-weight:700; }
+  .sidenav button{ font-size:16px !important; font-weight:800 !important; }
+  .msg{ font-size:16px !important; font-weight:700; }
+  .qblock-head .htitle{ font-size:16px !important; font-weight:700; }
+  .match-card, .drag-card, .word-chip, .mindbox{ font-size:16px !important; font-weight:700 !important; }
   .topbar .brand{ font-size:21px !important; }
-  .topbar .who{ font-size:14.5px !important; }
+  .topbar .who{ font-size:16px !important; font-weight:700; }
+  /* خط عام بحجم 16 ثقيل لكل نصوص محتوى النوافذ (واجهة المعلم وجميع الواجهات الأخرى) */
+  .view, .view p, .view span, .view div, .view td, .view th, .qitem, .forms-sidebar, .workshop{
+    font-size:16px; font-weight:700;
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1613,6 +1634,7 @@ const NAV = {
     ["aboutedit","تعديل نافذة (من نحن)"],
     ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
+    ["mindbank","بنك الخرائط الذهنية"],
   ],
   coordinator: [
     ["analysis","تحليل النتائج"],
@@ -1623,11 +1645,14 @@ const NAV = {
     ["correspondence","المراسلات الإدارية"],
     ["forms","النماذج التعليمية"],
     ["banks","بنوك الأسئلة"],
+    ["mindbank","بنك الخرائط الذهنية"],
   ],
   teacher: [
     ["forms","النماذج التعليمية"],
     ["essaygrading","تصحيح المقالي"],
     ["banks","بنوك الأسئلة"],
+    ["mindbank","بنك الخرائط الذهنية"],
+    ["mystudents","بيانات طلابي"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
     ["attachments","المرفقات"],
@@ -1680,6 +1705,8 @@ function renderView(role,key){
   if(key==="tasksInbox"){ renderTasksWindow(view, role, "inbox"); return; }
   if(key==="correspondence"){ renderCorrespondenceWindow(view, role); return; }
   if(key==="aboutedit"){ renderAboutEditWindow(view); return; }
+  if(key==="mindbank"){ renderMindBankWindow(view); return; }
+  if(key==="mystudents"){ renderMyStudentsWindow(view, role); return; }
   if(key==="allmodels"){ renderStudentModelsList(view, "all"); return; }
   if(key==="solved"){ renderStudentModelsList(view, "solved"); return; }
   if(key==="unsolved"){ renderStudentModelsList(view, "unsolved"); return; }
@@ -3037,8 +3064,8 @@ function serializeModel(model, warnings){
         const selT = qi.querySelector(".tf-mark.selT"), selF = qi.querySelector(".tf-mark.selF");
         const correct = selT ? true : (selF ? false : null);
         const hint2 = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
-        if(stmt && correct!==null) data.push({type:"tf", statement:stmt, correct, hint:hint2});
-        else if(stmt && correct===null) warnings.push(`سؤال "صواب/خطأ" بعبارة: "${stmt}" — لم يُحفظ لأنه لم يُحدَّد الجواب الصحيح (✓ أو ✗).`);
+        if(stmt) data.push({type:"tf", statement:stmt, correct, hint:hint2});
+        if(stmt && correct===null) warnings.push(`سؤال "صواب/خطأ" بعبارة: "${stmt}" — تم حفظه، لكن لم يُحدَّد الجواب الصحيح بعد (✓ أو ✗) فلن يُحتسب له تصحيح آلي حتى تحدّده.`);
       });
     }
     const scList = el.querySelector(".sc-list");
@@ -3049,8 +3076,8 @@ function serializeModel(model, warnings){
         const correctIdx = marks.map((m,i)=>m.classList.contains("selected")?i:null).filter(i=>i!==null);
         const hint3 = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
         if(cells.some(c=>c)){
-          if(correctIdx.length) data.push({type:"spellchoice", options:cells, correct:correctIdx, hint:hint3});
-          else warnings.push(`سؤال "خيارات إملاء" بالكلمات: "${cells.filter(c=>c).join("، ")}" — لم يُحفظ لأنه لم تُحدَّد أي كلمة صحيحة (اضغط "تحديد كصحيحة" تحت الكلمة الصحيحة).`);
+          data.push({type:"spellchoice", options:cells, correct:correctIdx, hint:hint3});
+          if(!correctIdx.length) warnings.push(`سؤال "خيارات إملاء" بالكلمات: "${cells.filter(c=>c).join("، ")}" — تم حفظه، لكن لم تُحدَّد أي كلمة صحيحة بعد (اضغط "تحديد كصحيحة" تحت الكلمة الصحيحة) فلن يُحتسب له تصحيح آلي حتى تحدّدها.`);
         }
       });
     }
@@ -3088,8 +3115,8 @@ function serializeModel(model, warnings){
           });
         });
       });
-      if(items.length) data.push({type:"classify", columns, columnHints, items});
-      else warnings.push(`سؤال "تصنيف" (أعمدة: ${columns.join("، ")}) — لم يُحفظ لأنه لا توجد أي بطاقات مسحوبة داخل الجدول بعد.`);
+      if(columns.some(c=>c && c!=="عمود جديد")) data.push({type:"classify", columns, columnHints, items});
+      if(columns.some(c=>c) && !items.length) warnings.push(`سؤال "تصنيف" (أعمدة: ${columns.join("، ")}) — تم حفظه، لكن لا توجد بعد أي بطاقات مسحوبة داخل الجدول.`);
     }
     const saList = el.querySelector(".sa-list");
     if(saList){
@@ -3103,7 +3130,15 @@ function serializeModel(model, warnings){
     const passageEl = el.querySelector(".gz-passage");
     if(passageEl){
       const passageWords = [...passageEl.querySelectorAll(".word-chip")].map(w=>w.textContent.trim());
-      const passageWordsTagged = [...passageEl.querySelectorAll(".word-chip")].map(w=>({text:w.textContent.trim(), tag:w.classList.contains("tag")}));
+      const passageWordsTagged = [...passageEl.querySelectorAll(".word-chip")].map(w=>{
+        const grpClass = [...w.classList].find(c=>c.startsWith("grp-"));
+        return {
+          text: w.textContent.trim(),
+          tag: w.classList.contains("tag"),
+          group: grpClass ? grpClass.replace("grp-","") : "",
+          color: w.style.background || ""
+        };
+      });
       const reqBody = el.querySelector(".gz-reqbody");
       if(reqBody && passageWords.length){
         let gzRowSeq = 0;
@@ -3123,8 +3158,8 @@ function serializeModel(model, warnings){
             const pencilEl = qRow ? qRow.querySelector(".pencil") : null;
             const hint = bulbEl ? (bulbEl.dataset.hint||"") : "";
             const strict = pencilEl ? pencilEl.classList.contains("on") : false;
-            if(correctWords.length) data.push({type:"grammarreq", passageWords, passageWordsTagged, question:qtext, correctWords, strict, hint, rowId, isEirab, rowSlot: qi});
-            else warnings.push(`سؤال نحوي: "${qtext}" — لم يُحفظ لأنه لم تُسحب أي كلمة كإجابة صحيحة في خانة الإجابة المقابلة.`);
+            if(qtext) data.push({type:"grammarreq", passageWords, passageWordsTagged, question:qtext, correctWords, strict, hint, rowId, isEirab, rowSlot: qi});
+            if(qtext && !correctWords.length) warnings.push(`سؤال نحوي: "${qtext}" — تم حفظه، لكن لم تُسحب بعد أي كلمة كإجابة صحيحة في خانة الإجابة المقابلة، فلن يُحتسب له تصحيح آلي حتى تحدّدها.`);
           });
         });
       }
@@ -3320,6 +3355,175 @@ function openPublishChoiceModal(model, onChoice){
   };
 }
 
+/* ============================================================
+   ===== بند 11: بنك المطلوبات والتلميحات الخاص بكل معلم (سؤال النموذج النحوي) =====
+   كل معلم له بنك خاص به من (مطلوب + تلميح) لا يتأثر ولا يظهر لبقية المعلمين، مخزَّن في
+   DB.teacherReqBank[اسم المستخدم]. زر "📋 إضافة المطلوبات وتعديلها" يفتح مربعًا حواريًا
+   يعرض هذا البنك مع مربع اختيار أمام كل مطلوب ورمز لمبة لتفعيل عرض تلميحه، وزر "إضافة
+   وتعديل" داخل المربع يفتح جدول إدارة كامل (إضافة/تعديل/حذف) لعناصر هذا البنك.
+   ============================================================ */
+function currentTeacherReqBank(){
+  DB.teacherReqBank = DB.teacherReqBank || {};
+  const key = session.user.username;
+  if(!DB.teacherReqBank[key]) DB.teacherReqBank[key] = [];
+  return DB.teacherReqBank[key];
+}
+function openTeacherReqBankModal(onInsert){
+  let overlay = document.getElementById("reqBankOverlay");
+  if(!overlay){
+    overlay = document.createElement("div"); overlay.id="reqBankOverlay"; overlay.className="overlay";
+    overlay.innerHTML = `<div class="modal xwide">
+      <button class="modal-close" id="reqBankClose">إغلاق ✕</button>
+      <h2>إضافة المطلوبات وتعديلها</h2>
+      <p class="sub">حدد المطلوبات التي تريد إضافتها إلى الجدول، واضغط على 💡 لعرض تلميح أي مطلوب.</p>
+      <div class="toolbar"><button class="chip-btn accent" id="reqBankManageBtn">إضافة وتعديل</button></div>
+      <div id="reqBankList" style="margin-top:12px; display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow:auto;"></div>
+      <div class="modal-actions"><button class="primary-btn" id="reqBankInsertBtn" style="flex:1;">إضافة المحدد إلى الجدول</button></div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#reqBankClose").addEventListener("click", ()=>overlay.classList.remove("show"));
+    overlay.addEventListener("click",(e)=>{ if(e.target===overlay) overlay.classList.remove("show"); });
+  }
+  function drawList(){
+    const bank = currentTeacherReqBank();
+    const list = overlay.querySelector("#reqBankList");
+    if(!bank.length){ list.innerHTML = '<div class="empty-note">لا توجد مطلوبات محفوظة بعد — اضغط "إضافة وتعديل" لإنشائها.</div>'; return; }
+    // بند 4: عرض المطلوبات والتلميحات في جدول من 6 أعمدة (المطلوب، التلميح) × 3 في كل صف
+    list.innerHTML = `<div class="table-wrap"><table class="data reqbank-select-table">
+        <thead><tr><th>المطلوب</th><th>التلميح</th><th>المطلوب</th><th>التلميح</th><th>المطلوب</th><th>التلميح</th></tr></thead>
+        <tbody></tbody>
+      </table></div>`;
+    const tb = list.querySelector("tbody");
+    function buildHintCell(item){
+      const td = document.createElement("td");
+      const bulb = document.createElement("span");
+      bulb.className = "bulb reqbank-bulb";
+      bulb.style.cssText = "cursor:pointer;" + (item.hint ? "" : "filter:grayscale(1) opacity(.4);");
+      bulb.textContent = "💡";
+      const hintBox = document.createElement("div");
+      hintBox.className = "reqbank-hint-text sub";
+      hintBox.style.cssText = "display:none; margin-top:4px; color:var(--accent);";
+      bulb.addEventListener("click", (e)=>{
+        e.preventDefault(); e.stopPropagation();
+        hintBox.textContent = item.hint || "لا يوجد تلميح لهذا المطلوب.";
+        hintBox.style.display = hintBox.style.display==="none" ? "block" : "none";
+      });
+      td.appendChild(bulb); td.appendChild(hintBox);
+      return td;
+    }
+    function buildReqCell(item){
+      const td = document.createElement("td");
+      const label = document.createElement("label");
+      label.style.cssText = "display:flex; align-items:center; gap:6px; cursor:pointer;";
+      label.innerHTML = `<input type="checkbox" class="reqbank-check" data-id="${item.id}"><span>${item.text.replace(/</g,"&lt;")}</span>`;
+      td.appendChild(label);
+      return td;
+    }
+    for(let i=0; i<bank.length; i+=3){
+      const tr = document.createElement("tr");
+      for(let j=i; j<i+3; j++){
+        if(bank[j]){
+          tr.appendChild(buildReqCell(bank[j]));
+          tr.appendChild(buildHintCell(bank[j]));
+        } else {
+          tr.appendChild(document.createElement("td"));
+          tr.appendChild(document.createElement("td"));
+        }
+      }
+      tb.appendChild(tr);
+    }
+  }
+  drawList();
+  overlay.querySelector("#reqBankManageBtn").onclick = ()=> openTeacherReqBankManageModal(drawList);
+  overlay.querySelector("#reqBankInsertBtn").onclick = ()=>{
+    const bank = currentTeacherReqBank();
+    const checked = [...overlay.querySelectorAll(".reqbank-check:checked")].map(cb=>cb.dataset.id);
+    const items = bank.filter(it=>checked.includes(it.id));
+    if(!items.length){ alert("حدد مطلوبًا واحدًا على الأقل أولًا."); return; }
+    onInsert(items);
+    overlay.classList.remove("show");
+  };
+  overlay.classList.add("show");
+}
+function openTeacherReqBankManageModal(onChange){
+  let overlay = document.getElementById("reqBankManageOverlay");
+  if(!overlay){
+    overlay = document.createElement("div"); overlay.id="reqBankManageOverlay"; overlay.className="overlay";
+    overlay.innerHTML = `<div class="modal xwide">
+      <button class="modal-close" id="reqBankManageClose">إغلاق ✕</button>
+      <h2>إدارة بنك المطلوبات والتلميحات الخاص بك</h2>
+      <p class="sub">هذا البنك خاص بحسابك فقط ولا يظهر أو يتأثر بتعديلات بقية المعلمين.</p>
+      <div class="table-wrap"><table class="data" id="reqBankManageTable">
+        <thead><tr><th>المطلوب</th><th>التلميح</th><th>المطلوب</th><th>التلميح</th><th>المطلوب</th><th>التلميح</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="toolbar" style="margin-top:10px;"><button class="chip-btn accent" id="reqBankAddItemBtn">➕ إضافة مطلوب جديد</button></div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#reqBankManageClose").addEventListener("click", ()=>{ overlay.classList.remove("show"); if(onChange) onChange(); });
+    overlay.addEventListener("click",(e)=>{ if(e.target===overlay){ overlay.classList.remove("show"); if(onChange) onChange(); } });
+  }
+  // بند 1: نفس تصميم جدول الأعمدة الستة (المطلوب، التلميح) × 3 يُستخدم أيضًا هنا عند الإضافة والتعديل
+  function buildTextCell(item){
+    const td = document.createElement("td"); td.className="rb-text";
+    const row = document.createElement("div"); row.style.cssText = "display:flex; align-items:flex-start; gap:4px;";
+    const textTa = document.createElement("textarea"); textTa.rows=1; textTa.style.cssText="width:100%; resize:vertical; font-family:inherit; overflow:hidden;";
+    textTa.value = item.text || "";
+    textTa.addEventListener("change", ()=>{ item.text = textTa.value.trim(); saveDB(); });
+    // بند: توسيع الخلية رأسيًا تلقائيًا لتناسب النص المكتوب دون الحاجة لسحب حد الخلية يدويًا
+    const autoGrowText = ()=>{ textTa.style.height="auto"; textTa.style.height=(textTa.scrollHeight)+"px"; };
+    textTa.addEventListener("input", autoGrowText);
+    requestAnimationFrame(autoGrowText);
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn danger"; delBtn.title = "حذف هذا المطلوب"; delBtn.textContent = "🗑";
+    delBtn.addEventListener("click", ()=>{
+      const bankRef = currentTeacherReqBank();
+      const idx = bankRef.findIndex(x=>x.id===item.id);
+      if(idx>-1){ bankRef.splice(idx,1); saveDB(); drawTable(); }
+    });
+    row.appendChild(delBtn); row.appendChild(textTa);
+    td.appendChild(row);
+    return td;
+  }
+  function buildHintCell(item){
+    const td = document.createElement("td"); td.className="rb-hint";
+    const hintTa = document.createElement("textarea"); hintTa.rows=1; hintTa.style.cssText="width:100%; resize:vertical; font-family:inherit; overflow:hidden;";
+    hintTa.value = item.hint || "";
+    hintTa.addEventListener("change", ()=>{ item.hint = hintTa.value.trim(); saveDB(); });
+    const autoGrowHint = ()=>{ hintTa.style.height="auto"; hintTa.style.height=(hintTa.scrollHeight)+"px"; };
+    hintTa.addEventListener("input", autoGrowHint);
+    requestAnimationFrame(autoGrowHint);
+    td.appendChild(hintTa);
+    return td;
+  }
+  function drawTable(){
+    const bank = currentTeacherReqBank();
+    const tb = overlay.querySelector("#reqBankManageTable tbody");
+    tb.innerHTML = "";
+    if(!bank.length){ tb.innerHTML = '<tr><td colspan="6" class="empty-note">لا توجد عناصر بعد</td></tr>'; return; }
+    for(let i=0; i<bank.length; i+=3){
+      const tr = document.createElement("tr");
+      for(let j=i; j<i+3; j++){
+        if(bank[j]){
+          tr.appendChild(buildTextCell(bank[j]));
+          tr.appendChild(buildHintCell(bank[j]));
+        } else {
+          tr.appendChild(document.createElement("td"));
+          tr.appendChild(document.createElement("td"));
+        }
+      }
+      tb.appendChild(tr);
+    }
+  }
+  overlay.querySelector("#reqBankAddItemBtn").onclick = ()=>{
+    const bank = currentTeacherReqBank();
+    bank.push({id:"rb"+Date.now()+Math.random().toString(36).slice(2,6), text:"", hint:""});
+    saveDB(); drawTable();
+  };
+  drawTable();
+  overlay.classList.add("show");
+}
+
 function openPickerModal(title, allOptions, selected, onSave){
   let overlay = document.getElementById("pickerOverlay");
   if(!overlay){
@@ -3422,7 +3626,8 @@ function openPreviewModal(model, data){
       const tagged = grammarGroups[Number(bankEl.dataset.gbank)] || [];
       tagged.forEach(item=>{
         const chip = document.createElement("span");
-        chip.className = "word-chip" + (item.tag ? " tag" : "");
+        chip.className = "word-chip" + (item.tag ? " tag" : "") + (item.group ? " grp-"+item.group : "");
+        if(item.color) chip.style.background = item.color;
         chip.textContent = item.text;
         bankEl.appendChild(chip);
       });
@@ -3510,7 +3715,7 @@ function pencilButton(){
     e.stopPropagation();
     p.classList.toggle("on");
     p.style.filter = p.classList.contains("on") ? "none" : "grayscale(1) opacity(.45)";
-    p.style.color = p.classList.contains("on") ? "var(--accent)" : "";
+    p.style.color = p.classList.contains("on") ? "#e03131" : "";
   });
   return p;
 }
@@ -3597,25 +3802,45 @@ function wireFreshClear(container){
    حتى لا يتحكم نظام التشغيل/المتصفح بتظليل عنصر عند مرور المؤشر (hover) —
    وهو أمر لا يمكن إلغاؤه فعليًا مع select الأصلي. لا يوجد أي أثر بصري
    عند المرور، فقط عند النقر الفعلي يتم اختيار اللون وتطبيقه وإغلاق القائمة. */
-function createSwatchPicker(colors, initialColor, onPick){
+function createSwatchPicker(colors, initialColor, onPick, alwaysOpen){
   const wrap = document.createElement("div");
   wrap.style.position = "relative";
   wrap.style.display = "inline-flex";
-  const trigger = document.createElement("div");
-  trigger.className = "swatch-trigger";
-  trigger.title = "اختر لونًا";
-  trigger.style.background = initialColor || "#fff";
-  wrap.appendChild(trigger);
+  wrap.style.alignItems = "center";
+  let trigger = null;
   const panel = document.createElement("div");
   panel.className = "swatch-panel";
-  panel.style.display = "none";
-  panel.style.top = "20px";
-  panel.style.right = "0";
-  function closePanel(){ panel.style.display = "none"; }
+  if(alwaysOpen){
+    // بند 1: تُعرض المربعات أفقيًا مباشرة دون الحاجة للنقر على زر مُشغّل لإظهارها
+    panel.style.position = "static";
+    panel.style.display = "flex";
+    panel.style.boxShadow = "none";
+    panel.style.border = "none";
+    panel.style.padding = "0";
+    panel.style.background = "transparent";
+  } else {
+    trigger = document.createElement("div");
+    trigger.className = "swatch-trigger";
+    trigger.title = "اختر لونًا";
+    trigger.style.background = initialColor || "#fff";
+    wrap.appendChild(trigger);
+    panel.style.display = "none";
+    panel.style.top = "20px";
+    panel.style.right = "0";
+  }
+  function closePanel(){ if(!alwaysOpen) panel.style.display = "none"; }
   function pick(c){
-    trigger.style.background = c || "#fff";
+    if(trigger) trigger.style.background = c || "#fff";
+    markSelected(c);
     closePanel();
     if(onPick) onPick(c);
+  }
+  const optionEls = [];
+  function markSelected(c){
+    optionEls.forEach(({el, val})=>{
+      el.style.outline = (val===(c||"")) ? "2px solid var(--accent, #2563eb)" : "none";
+      el.style.outlineOffset = "1px";
+    });
   }
   const noneSq = document.createElement("div");
   noneSq.className = "swatch-option";
@@ -3624,6 +3849,7 @@ function createSwatchPicker(colors, initialColor, onPick){
   noneSq.addEventListener("mousedown", ev=>ev.stopPropagation());
   noneSq.addEventListener("click", (ev)=>{ ev.stopPropagation(); pick(""); });
   panel.appendChild(noneSq);
+  optionEls.push({el:noneSq, val:""});
   colors.forEach(c=>{
     const sq = document.createElement("div");
     sq.className = "swatch-option";
@@ -3631,18 +3857,21 @@ function createSwatchPicker(colors, initialColor, onPick){
     sq.addEventListener("mousedown", ev=>ev.stopPropagation());
     sq.addEventListener("click", (ev)=>{ ev.stopPropagation(); pick(c); });
     panel.appendChild(sq);
+    optionEls.push({el:sq, val:c});
   });
-  trigger.addEventListener("mousedown", ev=>ev.stopPropagation());
-  trigger.addEventListener("click", (ev)=>{
-    ev.stopPropagation();
-    const isOpen = panel.style.display !== "none";
-    document.querySelectorAll(".swatch-panel").forEach(p=>p.style.display="none");
-    panel.style.display = isOpen ? "none" : "flex";
-  });
+  if(trigger){
+    trigger.addEventListener("mousedown", ev=>ev.stopPropagation());
+    trigger.addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      const isOpen = panel.style.display !== "none";
+      document.querySelectorAll(".swatch-panel").forEach(p=>{ if(p!==panel) p.style.display="none"; });
+      panel.style.display = isOpen ? "none" : "flex";
+    });
+  }
   panel.addEventListener("mousedown", ev=>ev.stopPropagation());
-  document.addEventListener("mousedown", (ev)=>{ if(!wrap.contains(ev.target)) closePanel(); });
+  if(!alwaysOpen){ document.addEventListener("mousedown", (ev)=>{ if(!wrap.contains(ev.target)) closePanel(); }); }
   wrap.appendChild(panel);
-  wrap.setColor = (c)=>{ trigger.style.background = c || "#fff"; };
+  wrap.setColor = (c)=>{ if(trigger) trigger.style.background = c || "#fff"; markSelected(c); };
   wrap.getTrigger = ()=> trigger;
   return wrap;
 }
@@ -3747,11 +3976,16 @@ function buildGrammarBlock(savedReqRows){
       <button class="chip-btn gz-clear-halat">مسح الحالات</button>
       <button class="chip-btn gz-alamat">العلامات</button>
       <button class="chip-btn gz-clear-alamat">مسح العلامات</button>
+      <button class="chip-btn accent gz-reqbank">📋 إضافة المطلوبات وتعديلها</button>
       <label style="display:flex; align-items:center; gap:4px; font-size:12.5px;">لون الكلمة المحددة:
         <span class="gz-colorpick-slot"></span>
       </label>
     </div>
     <p class="sub" style="margin:4px 0 0;">انقر على أي كلمة بعد التوزيع لتحديدها (لتلوينها أو لإضافة كلمة جديدة بجوارها أو حذفها بزر "حذف الكلمة المحددة" أو بمفتاح Delete)، وانقر نقرًا مزدوجًا عليها لتعديل نصّها.</p>
+    <div class="qrow" style="margin-top:8px;">
+      <button type="button" class="chip-btn gz-pin-btn">📌 تثبيت</button>
+      <span style="font-size:12px; color:#888;">تثبيت بنك الكلمات في مكانه أعلى الشاشة أثناء التمرير عبر صفوف المطلوبات، مع بقاء إمكانية تحريك صفوف المطلوبات لأعلى وأسفل.</span>
+    </div>
     <div class="passage-box gz-passage" style="margin-top:10px;"></div>
 
     <div style="margin-top:16px; font-weight:700;">المطلوبات</div>
@@ -3771,6 +4005,72 @@ function buildGrammarBlock(savedReqRows){
   `;
   const passage = body.querySelector(".gz-passage");
   const reqbody = body.querySelector(".gz-reqbody");
+  const gzPinBtn = body.querySelector(".gz-pin-btn");
+  const gzPassagePlaceholder = document.createComment("gz-passage-placeholder");
+  passage.parentNode.insertBefore(gzPassagePlaceholder, passage);
+  let gzFloatWrap = null;
+  function startDrag(handleEl, onMove){
+    handleEl.addEventListener("mousedown", (e)=>{
+      e.preventDefault();
+      const startX = e.clientX, startY = e.clientY;
+      const rect = gzFloatWrap.getBoundingClientRect();
+      function move(ev){ onMove(ev.clientX-startX, ev.clientY-startY, rect); }
+      function up(){ document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+  }
+  function pinPassage(){
+    if(gzFloatWrap) return;
+    const rect = passage.getBoundingClientRect();
+    gzFloatWrap = document.createElement("div");
+    gzFloatWrap.className = "gz-float-panel";
+    gzFloatWrap.style.left = rect.left+"px";
+    gzFloatWrap.style.top = (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h"))||0) + 8 + "px";
+    gzFloatWrap.style.width = rect.width+"px";
+    gzFloatWrap.style.height = Math.max(rect.height, 80)+"px";
+    gzFloatWrap.innerHTML = `<div class="gz-float-handle">
+        <span class="gz-float-grip">⋮⋮⋮</span><span>📌 بنك الكلمات الموزعة</span>
+        <button type="button" class="gz-float-unpin" title="إلغاء التثبيت">✕ إلغاء التثبيت</button>
+      </div>
+      <div class="gz-float-body"></div>
+      <div class="gz-resize-handle rh-n"></div><div class="gz-resize-handle rh-s"></div>
+      <div class="gz-resize-handle rh-e"></div><div class="gz-resize-handle rh-w"></div>
+      <div class="gz-resize-handle rh-ne"></div><div class="gz-resize-handle rh-nw"></div>
+      <div class="gz-resize-handle rh-se"></div><div class="gz-resize-handle rh-sw"></div>`;
+    document.body.appendChild(gzFloatWrap);
+    gzFloatWrap.querySelector(".gz-float-body").appendChild(passage);
+    gzFloatWrap.querySelector(".gz-float-unpin").addEventListener("click", unpinPassage);
+    // السحب الحر في أي اتجاه من شريط المقبض
+    startDrag(gzFloatWrap.querySelector(".gz-float-handle"), (dx,dy,rect0)=>{
+      gzFloatWrap.style.left = Math.max(0, rect0.left+dx)+"px";
+      gzFloatWrap.style.top = Math.max(0, rect0.top+dy)+"px";
+    });
+    // تغيير الحجم من كل اتجاه (الحواف والزوايا)
+    const MINW=180, MINH=80;
+    const resizers = {
+      "rh-e": (dx,dy,r)=>{ gzFloatWrap.style.width = Math.max(MINW, r.width+dx)+"px"; },
+      "rh-w": (dx,dy,r)=>{ const w=Math.max(MINW, r.width-dx); gzFloatWrap.style.width=w+"px"; gzFloatWrap.style.left=(r.left+r.width-w)+"px"; },
+      "rh-s": (dx,dy,r)=>{ gzFloatWrap.style.height = Math.max(MINH, r.height+dy)+"px"; },
+      "rh-n": (dx,dy,r)=>{ const h=Math.max(MINH, r.height-dy); gzFloatWrap.style.height=h+"px"; gzFloatWrap.style.top=(r.top+r.height-h)+"px"; },
+      "rh-se": (dx,dy,r)=>{ gzFloatWrap.style.width=Math.max(MINW,r.width+dx)+"px"; gzFloatWrap.style.height=Math.max(MINH,r.height+dy)+"px"; },
+      "rh-sw": (dx,dy,r)=>{ const w=Math.max(MINW,r.width-dx); gzFloatWrap.style.width=w+"px"; gzFloatWrap.style.left=(r.left+r.width-w)+"px"; gzFloatWrap.style.height=Math.max(MINH,r.height+dy)+"px"; },
+      "rh-ne": (dx,dy,r)=>{ gzFloatWrap.style.width=Math.max(MINW,r.width+dx)+"px"; const h=Math.max(MINH,r.height-dy); gzFloatWrap.style.height=h+"px"; gzFloatWrap.style.top=(r.top+r.height-h)+"px"; },
+      "rh-nw": (dx,dy,r)=>{ const w=Math.max(MINW,r.width-dx); gzFloatWrap.style.width=w+"px"; gzFloatWrap.style.left=(r.left+r.width-w)+"px"; const h=Math.max(MINH,r.height-dy); gzFloatWrap.style.height=h+"px"; gzFloatWrap.style.top=(r.top+r.height-h)+"px"; },
+    };
+    Object.entries(resizers).forEach(([cls, fn])=>{
+      startDrag(gzFloatWrap.querySelector("."+cls), fn);
+    });
+    gzPinBtn.classList.add("on","accent");
+  }
+  function unpinPassage(){
+    if(!gzFloatWrap) return;
+    gzPassagePlaceholder.parentNode.insertBefore(passage, gzPassagePlaceholder.nextSibling);
+    gzFloatWrap.remove();
+    gzFloatWrap = null;
+    gzPinBtn.classList.remove("on","accent");
+  }
+  gzPinBtn.addEventListener("click", ()=>{ gzFloatWrap ? unpinPassage() : pinPassage(); });
   wireReqTableColResize(body.querySelector("#reqTableWrap"), body.querySelector(".req-table"));
   let wordSeq = 0;
   let selectedAnchor = null;
@@ -3779,7 +4079,7 @@ function buildGrammarBlock(savedReqRows){
   const GZ_COLORS = ["#ff6b6b","#4dabf7","#51cf66","#ffd43b","#cc5de8","#ff922f","#20c997"];
   const gzSwatch = createSwatchPicker(GZ_COLORS, "", (c)=>{
     if(selectedAnchor) selectedAnchor.style.background = c || "";
-  });
+  }, true);
   body.querySelector(".gz-colorpick-slot").appendChild(gzSwatch);
 
   function selectChip(span){
@@ -3801,11 +4101,12 @@ function buildGrammarBlock(savedReqRows){
     return "#" + m.slice(0,3).map(n=>(+n).toString(16).padStart(2,"0")).join("");
   }
 
-  function addWordChip(text, tag, group, insertAfter){
+  function addWordChip(text, tag, group, insertAfter, color){
     wordSeq++;
     const span = document.createElement("span");
     span.className = "word-chip" + (tag?" tag":"") + (group?" grp-"+group:"");
     span.textContent = text;
+    if(color) span.style.background = color;
     span.draggable = true;
     span.dataset.wid = "w"+wordSeq;
     span.addEventListener("dragstart",(e)=>{ e.dataTransfer.setData("text/plain", text); });
@@ -3849,7 +4150,7 @@ function buildGrammarBlock(savedReqRows){
   passage.tabIndex = 0;
   body.querySelector(".gz-clearall").addEventListener("click", ()=>{ passage.innerHTML=""; selectedAnchor=null; });
   const tagSet = {
-    ".gz-eirab": ["مبتدأ","خبر","فاعل","مفعول به","مفعول مطلق","مفعول لأجله","اسم مجرور","اسم لفعل ناسخ","اسم لحرف ناسخ","مضاف إليه","نعت","اسم معطوف"],
+    ".gz-eirab": ["مبتدأ","خبر","فاعل","مفعول به","مفعول مطلق","مفعول لأجله","اسم مجرور","اسم لفعل ناسخ","اسم لحرف ناسخ","مضاف إليه","نعت","اسم معطوف","فعل ماضٍ","فعل مضارع","فعل أمر"],
     ".gz-halat": ["مرفوع","منصوب","مجرور","مبني على"],
     ".gz-alamat": ["الضمة","الفتحة","الكسرة","المقدرة","الألف","الواو","الياء","ثبوت النون","حذف النون","الفتح","الضم","السكون","الكسر"],
   };
@@ -3913,17 +4214,52 @@ function buildGrammarBlock(savedReqRows){
     delTd.innerHTML = '<span class="gz-rowdel" title="حذف هذا السطر">✕</span>';
     delTd.querySelector(".gz-rowdel").addEventListener("click", ()=>tr.remove());
     tr.appendChild(delTd);
+    // بند 2: حذف الصف تلقائيًا إن أصبح فارغًا تمامًا (كل خانات السؤال بلا نص) بعد أن يغادر
+    // التركيز الصف بالكامل، بدل إبقاء صفوف فارغة معلّقة في الجدول.
+    tr.addEventListener("focusout", ()=>{
+      setTimeout(()=>{
+        if(!tr.isConnected) return;
+        if(tr.contains(document.activeElement)) return;
+        const allEmpty = [...tr.querySelectorAll("textarea.req-q-input")].every(t=>!t.value.trim());
+        if(allEmpty) tr.remove();
+      }, 0);
+    });
     reqbody.appendChild(tr);
   }
   body.querySelector(".gz-addrow").addEventListener("click", ()=>addReqRow(false));
   body.querySelector(".gz-eirabrow").addEventListener("click", ()=>addReqRow(true));
+  body.querySelector(".gz-reqbank").addEventListener("click", ()=>{
+    openTeacherReqBankModal((selectedItems)=>{
+      // بند 1: إضافة المطلوبات المحددة أفقيًا — نملأ خانات الصف الحالي أولًا حتى تمتلئ
+      // الأعمدة الثلاثة، ثم ننتقل لصف جديد، وهكذا حتى تنتهي كل العناصر المحددة.
+      function nextEmptySlot(){
+        const rows = [...reqbody.querySelectorAll("tr")].filter(tr=>tr.dataset.kind!=="eirab");
+        for(const tr of rows){
+          for(const qRow of tr.querySelectorAll(".req-q-row")){
+            const inp = qRow.querySelector("textarea.req-q-input");
+            if(inp && !inp.value.trim()) return qRow;
+          }
+        }
+        addReqRow(false);
+        return reqbody.lastElementChild.querySelector(".req-q-row");
+      }
+      selectedItems.forEach(item=>{
+        const qRow = nextEmptySlot();
+        const inp = qRow.querySelector("textarea.req-q-input");
+        inp.value = item.text;
+        inp.style.height="auto"; inp.style.height=(inp.scrollHeight)+"px";
+        const bulbEl = qRow.querySelector(".bulb");
+        if(item.hint){ bulbEl.dataset.hint = item.hint; bulbEl.style.filter = "none"; }
+      });
+    });
+  });
   body.querySelector(".gz-clearanswers").addEventListener("click", ()=>{
     reqbody.querySelectorAll(".drop-cell").forEach(td=>td.innerHTML="");
   });
   if(savedReqRows && savedReqRows.length){
     const first = savedReqRows[0];
     const tagged = first.passageWordsTagged || (first.passageWords||[]).map(w=>({text:w, tag:false}));
-    tagged.forEach(w=>addWordChip(w.text, w.tag));
+    tagged.forEach(w=>addWordChip(w.text, w.tag, w.group||null, null, w.color||""));
     // نجمع الأسئلة المحفوظة حسب الصف الأصلي (rowId) حتى نعيد بناء نفس عدد الأعمدة/الأسئلة في كل صف
     // بدلًا من إنشاء صف جديد بثلاث خانات لكل سؤال على حدة (وهو ما كان يترك خانتين فارغتين).
     const rowsMap = new Map();
@@ -3948,7 +4284,7 @@ function buildGrammarBlock(savedReqRows){
         const bulbEl = qRow.querySelector(".bulb");
         if(bulbEl && row.hint){ bulbEl.dataset.hint = row.hint; bulbEl.style.filter = "none"; }
         const pencilEl = qRow.querySelector(".pencil");
-        if(pencilEl && row.strict){ pencilEl.classList.add("on"); pencilEl.style.filter="none"; pencilEl.style.color="var(--accent)"; }
+        if(pencilEl && row.strict){ pencilEl.classList.add("on"); pencilEl.style.filter="none"; pencilEl.style.color="#e03131"; }
         const cell = dropCells[i];
         if(cell){
           (row.correctWords||[]).forEach(w=>{
@@ -3961,7 +4297,8 @@ function buildGrammarBlock(savedReqRows){
       });
     });
   } else {
-    addReqRow(false);
+    // بند 2: لا نُدرج صفًا فارغًا تلقائيًا عند إضافة سؤال نموذج نحوي جديد لا يملك بيانات محفوظة —
+    // يبدأ جدول المطلوبات فارغًا تمامًا حتى يضيف المعلم صفوفًا بنفسه أو من بنك المطلوبات.
   }
   return el;
 }
@@ -5843,7 +6180,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         tagged.forEach(item=>{
           if(mode==="passage" && item.tag) return;
           if(mode==="eirab" && !item.tag) return;
-          const chip=document.createElement("span"); chip.className="word-chip"+(item.tag?" tag":""); chip.textContent=item.text; chip.draggable=true;
+          const chip=document.createElement("span"); chip.className="word-chip"+(item.tag?" tag":"")+(item.group?" grp-"+item.group:""); if(item.color) chip.style.background=item.color; chip.textContent=item.text; chip.draggable=true;
           chip.addEventListener("dragstart", e=>e.dataTransfer.setData("text/plain", item.text));
           bank.appendChild(chip);
         });
@@ -7418,6 +7755,181 @@ function drawCorrInboxTable(wrap, role){
   });
   draw();
 }
+/* ============================================================
+   ===== بند 6: بنك الخرائط الذهنية =====
+   نافذة تتيح للمعلم/المنسق/المشرف حفظ صور خرائط ذهنية جاهزة (لاستخدامها لاحقًا كخلفية
+   لسؤال الخريطة الذهنية)، مع تبويبين لفتح جيميناي وكلود داخل النافذة نفسها لتوليد
+   صور الخرائط بالذكاء الاصطناعي ثم تحميلها وحفظها في هذا البنك.
+   ملاحظة: بعض المواقع (مثل Gemini) قد تمنع عرضها داخل إطار iframe لأسباب أمنية من
+   طرفها هي، وفي هذه الحالة نوفر زرًا لفتحها في تبويب جديد كبديل فوري. */
+function renderMindBankWindow(view){
+  DB.mindmapBank = DB.mindmapBank || [];
+  const owner = session.user.username + "::" + session.role;
+  function mine(){ return DB.mindmapBank.filter(x=>x.owner===owner); }
+  view.innerHTML = `
+    <h2>بنك الخرائط الذهنية</h2>
+    <p class="sub">احفظ صور خرائط ذهنية جاهزة هنا لاستخدامها لاحقًا كخلفية لسؤال "خريطة ذهنية"، ويمكنك فتح أدوات الذكاء الاصطناعي (جيميناي وكلود) هنا مباشرة لتوليد الصور.</p>
+    <div class="toolbar">
+      <button class="chip-btn accent" id="mbAddBtn">➕ إضافة صورة من جهازي</button>
+      <button class="chip-btn" id="mbOpenGemini">فتح Gemini</button>
+      <button class="chip-btn" id="mbOpenClaude">فتح Claude</button>
+      <input type="file" id="mbFileInput" accept="image/*" style="display:none;">
+    </div>
+    <div id="mbAiFrameBox" style="display:none; margin:12px 0; border:1.5px solid var(--ink); border-radius:10px; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--soft); padding:6px 10px;">
+        <span id="mbAiFrameTitle" style="font-weight:700; font-size:13px;"></span>
+        <span style="display:flex; gap:6px;">
+          <a id="mbAiFrameOpenTab" href="#" target="_blank" rel="noopener" class="chip-btn" style="padding:3px 10px; font-size:12px; text-decoration:none;">فتح في تبويب جديد</a>
+          <button type="button" class="icon-btn" id="mbAiFrameClose" title="إغلاق">✕</button>
+        </span>
+      </div>
+      <iframe id="mbAiFrame" style="width:100%; height:70vh; border:none; display:block;"></iframe>
+      <div class="sub" style="padding:6px 10px;">إذا لم تظهر الصفحة داخل هذا الإطار (بعض المواقع تمنع الفتح داخل إطار)، استخدم زر "فتح في تبويب جديد" أعلاه، ثم بعد توليد الصورة نزّلها إلى جهازك واستخدم زر "➕ إضافة صورة من جهازي" لحفظها هنا.</div>
+    </div>
+    <div id="mbGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:14px;"></div>
+  `;
+  const frameBox = document.getElementById("mbAiFrameBox");
+  const frame = document.getElementById("mbAiFrame");
+  const frameTitle = document.getElementById("mbAiFrameTitle");
+  const frameOpenTab = document.getElementById("mbAiFrameOpenTab");
+  function openAiTool(name, url){
+    frameTitle.textContent = name;
+    frame.src = url;
+    frameOpenTab.href = url;
+    frameBox.style.display = "block";
+    frameBox.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+  document.getElementById("mbOpenGemini").addEventListener("click", ()=>openAiTool("Gemini", "https://gemini.google.com/"));
+  document.getElementById("mbOpenClaude").addEventListener("click", ()=>openAiTool("Claude", "https://claude.ai/"));
+  document.getElementById("mbAiFrameClose").addEventListener("click", ()=>{ frameBox.style.display="none"; frame.src=""; });
+
+  function draw(){
+    const grid = document.getElementById("mbGrid");
+    const items = mine();
+    if(!items.length){ grid.innerHTML = '<div class="empty-note">لا توجد صور محفوظة بعد.</div>'; return; }
+    grid.innerHTML = "";
+    items.forEach(item=>{
+      const card = document.createElement("div");
+      card.style.cssText = "border:1.5px solid #ddd; border-radius:8px; overflow:hidden; background:#fff;";
+      card.innerHTML = `<img src="${item.src}" style="width:100%; height:110px; object-fit:cover; display:block;">
+        <div style="padding:6px 8px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <span style="font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.name||"صورة"}</span>
+          <button class="icon-btn danger" title="حذف" style="flex:0 0 auto;">🗑</button>
+        </div>`;
+      card.querySelector("button").addEventListener("click", ()=>{
+        DB.mindmapBank = DB.mindmapBank.filter(x=>x.id!==item.id);
+        saveDB(); draw();
+      });
+      grid.appendChild(card);
+    });
+  }
+  document.getElementById("mbAddBtn").addEventListener("click", ()=>document.getElementById("mbFileInput").click());
+  document.getElementById("mbFileInput").addEventListener("change", (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      DB.mindmapBank.push({id:"mb"+Date.now(), owner, name:f.name, src:reader.result});
+      saveDB(); draw();
+    };
+    reader.readAsDataURL(f);
+    e.target.value = "";
+  });
+  draw();
+}
+
+/* ============================================================
+   ===== بند 10: نافذة "بيانات طلابي" في واجهة المعلم =====
+   جدول مطابق تمامًا في التصميم والوظيفة لجدول "بيانات الطلاب" في واجهة المشرف العام
+   (نفس الأعمدة: اسم المستخدم، الصف، الفصل، كلمة المرور، التفعيل)، يعمل على نفس مصدر
+   البيانات DB.students، مع تقييد الظهور: كل معلم لا يرى ولا يضيف إلا الطلاب الذين
+   أضافهم بنفسه (عبر علامة addedByTeacher)، فلا تظهر له بيانات طلاب معلم آخر.
+   ============================================================ */
+function renderMyStudentsWindow(view, role){
+  const teacherUsername = session.user.username;
+  view.innerHTML = `
+    <h2>بيانات طلابي</h2>
+    <p class="sub">أضف طلابك هنا وستُدرج تلقائيًا في جدول "بيانات الطلاب" العام لدى المشرف العام، مع بقاء بيانات طلاب المعلمين الآخرين مخفية عنك.</p>
+    <div class="toolbar">
+      <button class="chip-btn accent" id="myStAddBtn">➕ إضافة طالب</button>
+      <button class="chip-btn" onclick="printSection('myStTableWrap')">طباعة</button>
+      <button class="chip-btn" id="myStExportBtn">تصدير إكسل</button>
+    </div>
+    <div id="myStTableWrap"></div>
+  `;
+  function mine(){ return DB.students.map((r,i)=>({r,i})).filter(x=>x.r.addedByTeacher===teacherUsername); }
+  function editable(val, onSave){
+    const span = document.createElement("span");
+    span.textContent = val; span.contentEditable="true"; span.style.outline="none";
+    span.addEventListener("blur", ()=>{ onSave(span.textContent.trim()); saveDB(); });
+    return span;
+  }
+  function passwordField(val, onSave){
+    const box = document.createElement("div");
+    box.style.cssText = "display:flex; align-items:center; gap:4px; width:100%; max-width:100%; box-sizing:border-box;";
+    const inp = document.createElement("input");
+    inp.type = "password"; inp.value = val || ""; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
+    const toggle = document.createElement("button");
+    toggle.type = "button"; toggle.className = "icon-btn"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
+    toggle.addEventListener("click", ()=>{ inp.type = inp.type==="password" ? "text" : "password"; });
+    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); });
+    box.appendChild(inp); box.appendChild(toggle);
+    return box;
+  }
+  function draw(){
+    const wrap = document.getElementById("myStTableWrap");
+    const rows = mine();
+    const table = document.createElement("div"); table.className="table-wrap";
+    const t = document.createElement("table"); t.className="data"; table.appendChild(t);
+    wrap.innerHTML = ""; wrap.appendChild(table);
+    t._clearAllHandler = ()=>{
+      DB.students = DB.students.filter(s=>s.addedByTeacher!==teacherUsername);
+      saveDB(); draw();
+    };
+    const classOptions = allClassesInUse();
+    t.innerHTML = `<thead><tr><th>م</th><th>اسم المستخدم</th><th>الصف</th><th>الفصل</th><th>كلمة المرور</th><th>التفعيل</th><th></th></tr></thead><tbody></tbody>`;
+    const tb = t.querySelector("tbody");
+    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty-note">لم تُضف أي طلاب بعد</td></tr>`; }
+    rows.forEach(({r,i}, serial)=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${serial+1}</td><td class="c-user"></td>
+        <td><select class="cs-grade"><option value="">—</option>${ALL_GRADES.map(g=>`<option value="${g}" ${r.grade===g?"selected":""}>${g}</option>`).join("")}</select></td>
+        <td><select class="cs-class"><option value="">—</option>${classOptions.map(c=>`<option value="${c}" ${String(r.cls)===c?"selected":""}>${c}</option>`).join("")}<option value="__new__">+ إضافة فصل جديد</option></select></td>
+        <td class="c-pass"></td>
+        <td><button class="chip-btn ${r.active?'accent':''}" style="padding:4px 10px;">${r.active?'✅ مفعّل':'⛔ تفعيل'}</button></td>
+        <td><button class="icon-btn danger">🗑</button></td>`;
+      tr.querySelector(".c-user").appendChild(editable(r.username, v=>r.username=v));
+      tr.querySelector(".c-pass").appendChild(passwordField(r.password||"", v=>r.password=v));
+      tr.querySelector(".cs-grade").addEventListener("change", (e)=>{ r.grade = e.target.value; saveDB(); fillBetweenSame(DB.students, "grade"); draw(); });
+      tr.querySelector(".cs-class").addEventListener("change", (e)=>{
+        if(e.target.value==="__new__"){
+          const nv = prompt("اكتب اسم/رقم الفصل الجديد:");
+          if(nv){ r.cls = nv.trim(); }
+          saveDB(); fillBetweenSame(DB.students, "cls"); draw();
+          return;
+        }
+        r.cls = e.target.value; saveDB(); fillBetweenSame(DB.students, "cls"); draw();
+      });
+      tr.querySelector(".chip-btn").addEventListener("click", ()=>{ r.active=!r.active; saveDB(); draw(); });
+      tr.querySelector(".icon-btn.danger").addEventListener("click", ()=>{
+        pushArrayDeleteUndo(DB.students, i, r, ()=>draw());
+        DB.students.splice(i,1); saveDB(); draw();
+      });
+      tb.appendChild(tr);
+    });
+    enableColumnResize(t);
+  }
+  document.getElementById("myStAddBtn").addEventListener("click", ()=>{
+    DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:"", cls:"", active:false, addedByTeacher:teacherUsername});
+    saveDB(); draw();
+  });
+  document.getElementById("myStExportBtn").addEventListener("click", ()=>{
+    const rows = mine().map(({r}, i)=>[i+1, r.username, r.grade||"", r.cls||"", r.active?"نعم":"لا"]);
+    exportCSV(["م","اسم المستخدم","الصف","الفصل","مفعّل"], rows, "بيانات_طلابي");
+  });
+  draw();
+}
+
 function renderAboutEditWindow(view){
   view.innerHTML = `
     <h2>تعديل نافذة "من نحن"</h2>
