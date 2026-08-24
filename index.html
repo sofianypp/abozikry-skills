@@ -279,8 +279,9 @@
   /* عرض الأعمدة يتحدد الآن عبر colgroup داخل كل جدول (أعمدة متساوية تمامًا)؛ هذان السطران احتياطيان فقط. */
   .req-table td.req-q-td{ width:auto; }
   .req-table td.req-a-td{ width:auto; }
-  .drop-cell{ min-height:40px; width:100%; min-width:0; box-sizing:border-box; border:1px dashed #bbb; border-radius:5px; padding:4px 6px; background:#fbfbfb; white-space:normal; overflow-wrap:anywhere; display:flex; align-items:center; }
-  .req-table td .drop-cell{ display:flex; width:100%; }
+  .drop-cell{ min-height:40px; width:100%; min-width:0; box-sizing:border-box; border:1px dashed #bbb; border-radius:5px; padding:4px 6px; background:#fbfbfb; white-space:normal; overflow-wrap:anywhere; display:flex; flex-wrap:wrap; align-items:center; align-content:flex-start; }
+  .drop-cell > .word-chip, .drop-cell > .drag-card{ flex:0 0 auto; }
+  .req-table td .drop-cell{ display:flex; flex-wrap:wrap; width:100%; }
   .req-q-row{ display:flex; align-items:center; gap:4px; width:100%; min-width:0; min-height:40px; }
   .req-q-row textarea.req-q-input{
     min-width:0; width:100%; flex:1 1 auto !important; box-sizing:border-box;
