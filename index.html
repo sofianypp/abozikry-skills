@@ -124,6 +124,9 @@
   table.data th.col-serial, table.data td.col-serial{ width:34px; min-width:34px; text-align:center; padding-left:4px; padding-right:4px; white-space:nowrap; }
   table.data td .c-pass, table.data td > div{ max-width:100%; }
   table.data th{ background:var(--soft); position:sticky; top:0; }
+  /* بند 8/9/10: تظليل الخلايا القابلة للتحديد أثناء وضع "تحديد الخلايا"، وتمييز الخلايا المحددة فعليًا */
+  table.data.cell-select-mode td{ cursor:cell; }
+  table.data td.cell-selected{ background:#fde68a !important; outline:2px solid #d97706; outline-offset:-2px; }
   .table-wrap{ overflow:auto; border:1px solid #d8d8d8; border-radius:8px; max-height:60vh; }
   .tk-cards-wrap{ display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; align-items:start; }
   .tk-vcard{ border:1.5px solid #d8d8d8; border-radius:10px; overflow:hidden; background:#fff; }
@@ -448,6 +451,17 @@
     .match-cols{ gap:10px; }
     .match-col{ width:47%; }
     .match-card{ font-size:12px; padding:6px 9px; }
+
+    /* بند 2: أزرار شريط النماذج العلوي (إلى اختبار / حفظ وغيرها) كانت تختفي أو يخرج
+       عرضها عن حدود شاشة الجوال لأن الشريط لا يلتف. الآن يُسمح لها بالالتفاف على أكثر
+       من سطر وتتصغّر مساحاتها الداخلية كي تظهر كاملة ومتناسبة مع عرض الجوال. */
+    .workshop-topbar{ flex-wrap:wrap; row-gap:8px; }
+    .workshop-topbar .title{ width:100%; }
+    .workshop-topbar .btns{ flex-wrap:wrap; width:100%; justify-content:flex-start; }
+    .workshop-topbar .btns .small-btn{ flex:0 0 auto; padding:6px 9px; font-size:12px !important; }
+  }
+  @media (max-width:420px){
+    .workshop-topbar .btns .small-btn{ flex:1 1 calc(50% - 8px); text-align:center; }
   }
   @media (max-width: 560px){
     .topbar{ flex-direction:column; align-items:flex-start; gap:6px; }
@@ -592,7 +606,8 @@
         <button class="role-btn" data-role="student">طالب</button>
       </div>
       <label for="usernameSelect">اسم المستخدم</label>
-      <select id="usernameSelect" disabled><option value="">اختر الصفة أولًا</option></select>
+      <input type="text" id="usernameSelect" list="usernameDatalist" autocomplete="off" placeholder="اختر الصفة أولًا" disabled>
+      <datalist id="usernameDatalist"></datalist>
       <label for="passwordInput">كلمة المرور</label>
       <input type="password" id="passwordInput" placeholder="••••••••">
       <div class="row-between">
@@ -1350,19 +1365,25 @@ function showMsg(t,type){ statusMsg.textContent=t; statusMsg.className="msg show
 function clearMsg(){ statusMsg.className="msg"; }
 function tableFor(role){ return {admin:DB.admins, coordinator:DB.coordinators, teacher:DB.teachers, student:DB.students}[role] || []; }
 
+// بند 5: تحويل خانة "اسم المستخدم" في لوحة الدخول الرئيسة من قائمة منسدلة إلى مربع نص
+// قابل للبحث (مع قائمة اقتراحات تلقائية datalist)، حتى يتمكن المستخدم من كتابة جزء من
+// اسمه للبحث عنه بدل تصفح قائمة طويلة يدويًا، مع إبقاء نفس آلية الدخول القائمة تمامًا.
+const usernameDatalist = document.getElementById("usernameDatalist");
 function refreshUsernameList(){
-  usernameSelect.innerHTML = "";
+  usernameSelect.value = "";
+  usernameDatalist.innerHTML = "";
   const rows = tableFor(currentRole);
   // مفتاح الدخول الاحتياطي "الأستاذ/100%" يجب أن يبقى متاحًا دائمًا لدور المشرف العام
   // حتى بعد تسجيل مشرف حقيقي (بحسب المواصفات: "فاجعل الجميع يعمل ويمكن الدخول بأحدهما")
   const showBackup = currentRole==="admin" && !rows.some(r=>r.username===BACKUP_ADMIN.username);
   if(!rows.length && !showBackup){
-    usernameSelect.innerHTML = '<option value="">لا يوجد مستخدمون مسجّلون بعد</option>';
+    usernameSelect.placeholder = "لا يوجد مستخدمون مسجّلون بعد";
     usernameSelect.disabled = true; return;
   }
-  const options = rows.map(r=>`<option value="${r.username}">${r.username}</option>`);
-  if(showBackup) options.push(`<option value="${BACKUP_ADMIN.username}">${BACKUP_ADMIN.username} (دخول احتياطي)</option>`);
-  usernameSelect.innerHTML = '<option value="">اختر اسم المستخدم</option>' + options.join("");
+  const options = rows.map(r=>`<option value="${r.username}">`);
+  if(showBackup) options.push(`<option value="${BACKUP_ADMIN.username}">`);
+  usernameDatalist.innerHTML = options.join("");
+  usernameSelect.placeholder = "اكتب أو اختر اسم المستخدم للبحث";
   usernameSelect.disabled = false;
 }
 
@@ -1620,7 +1641,7 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
   document.getElementById("appShell").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
   roleBtns.forEach(b=>b.classList.remove("active"));
-  usernameSelect.innerHTML='<option value="">اختر الصفة أولًا</option>'; usernameSelect.disabled=true;
+  usernameSelect.value=""; usernameSelect.placeholder="اختر الصفة أولًا"; usernameDatalist.innerHTML=""; usernameSelect.disabled=true;
   passwordInput.value=""; clearMsg();
 });
 
@@ -1647,6 +1668,7 @@ const NAV = {
     ["forms","النماذج التعليمية"],
     ["banks","بنوك الأسئلة"],
     ["mindbank","بنك الخرائط الذهنية"],
+    ["mystudents","بيانات الطلاب"],
   ],
   teacher: [
     ["forms","النماذج التعليمية"],
@@ -2516,6 +2538,7 @@ function renderFormsWindow(view, role, bankMode){
           <select id="fNumber"><option value="">اختر الفصل والصف والمادة أولًا</option></select>
           <div class="toolbar" style="margin-top:10px;">
             <button class="chip-btn accent" id="fOpen">فتح</button>
+            <button class="chip-btn" id="fRename">إعادة تسمية</button>
             <button class="chip-btn" id="fDelete">حذف</button>
             <button class="chip-btn" id="fCopyTo">نسخ إلى</button>
           </div>
@@ -2549,6 +2572,9 @@ function renderFormsWindow(view, role, bankMode){
         </div>
         <div class="workshop-scroll" id="workshopScroll">
           <div class="empty-note">اختر الفصل الدراسي والصف، ثم اضغط "جديد" من قائمة رقم النموذج أو افتح نموذجًا موجودًا.</div>
+        </div>
+        <div style="padding:10px 16px; border-top:1px solid #ddd; background:var(--paper); display:flex; justify-content:center;">
+          <button class="small-btn" id="wsSaveBottom">💾 حفظ</button>
         </div>
       </div>
     </div>
@@ -2606,8 +2632,11 @@ function renderFormsWindow(view, role, bankMode){
       const scheduled = group.filter(isSched).sort((a,b)=>(a.scheduledAt||0)-(b.scheduledAt||0));
       published.concat(scheduled).forEach((m,i)=>{
         m.number = i+1;
+        // بند 1: النماذج/الاختبارات/البنوك التي أعاد المعلم تسميتها (customTitle) تحتفظ
+        // باسمها المخصص عند إعادة الترقيم التلقائي، بدل أن يُستبدل دائمًا بـ"نموذج N".
+        if(m.customTitle) return;
         if(!bankMode) m.title = (kind==="test" ? "اختبار " : "نموذج ") + (i+1);
-        else if(!m.customTitle) m.title = "بنك " + (i+1);
+        else m.title = "بنك " + (i+1);
       });
     });
   }
@@ -2621,7 +2650,9 @@ function renderFormsWindow(view, role, bankMode){
       ? `<option value="">اختر</option><option value="__all__">جميع البنوك</option><option value="__new__">جديد</option>`
       : `<option value="">اختر</option><option value="__all__">جميع النماذج</option><option value="__alltests__">جميع الاختبارات</option><option value="__everything__">الجميع</option><option value="__new__">جديد</option>`;
     existing.forEach(m=>{
-      const label = bankMode ? (m.title || ("بنك رقم "+m.number)) : ((m.kind==="test" ? "اختبار رقم " : "نموذج رقم ") + m.number);
+      const label = bankMode
+        ? (m.title || ("بنك رقم "+m.number))
+        : (m.customTitle ? `${m.title} (${m.kind==="test"?"اختبار":"نموذج"} ${m.number})` : ((m.kind==="test" ? "اختبار رقم " : "نموذج رقم ") + m.number));
       const sched = (m.scheduledAt && m.scheduledAt>Date.now()) ? " (مجدول)" : "";
       opts += `<option value="${m.id}">${label}${sched}${(m.subject && m.subject!==subject) ? " (بلا مادة محددة)" : ""}</option>`;
     });
@@ -2654,10 +2685,11 @@ function renderFormsWindow(view, role, bankMode){
       const nextNum = matchingModels(term, grade, subject).filter(m=>(m.kind||"model")==="model").length + 1;
       const defaultTitle = bankMode ? `بنك ${nextNum}` : `نموذج ${nextNum}`;
       const model = { id:"m"+Date.now(), term, grade, subject, number:nextNum, title:defaultTitle, kind:"model", createdAt:Date.now(), scheduledAt:null, testDuration:null, blocks:[], data:[], updatedAt:Date.now() };
-      if(bankMode){
-        const newName = prompt("أدخل اسمًا لبنك الأسئلة الجديد:", defaultTitle);
-        if(newName && newName.trim()){ model.title = newName.trim(); model.customTitle = true; }
-      }
+      // بند: نطلب من المعلم اسمًا مميزًا للنموذج/الاختبار الجديد منذ إنشائه مباشرة (مثل
+      // "إملاء 1" أو "قدرات 2" أو "نحو 3")، حتى يسهل التمييز بينها لاحقًا بدل الاعتماد
+      // على رقم مجرد لا يدل على محتواها. يمكن تركه فارغًا للإبقاء على التسمية الافتراضية.
+      const newName = prompt(`أدخل اسمًا مميزًا لهذا ${bankMode?"البنك":(model.kind==="test"?"الاختبار":"النموذج")} (مثل: إملاء، قدرات، نحو...) — أو اتركه فارغًا للاسم الافتراضي "${defaultTitle}":`, defaultTitle);
+      if(newName && newName.trim() && newName.trim()!==defaultTitle){ model.title = newName.trim(); model.customTitle = true; }
       // بند: الصفوف الإضافية المختارة عبر زر "+" — تُنشأ لها نسخ مرتبطة (نفس المادة والفصل
       // الدراسي) تحمل نفس معرّف المجموعة (linkedGroup)، بحيث يُنشر أي تعديل لاحق يُحفظ في
       // النموذج الأساسي تلقائيًا إلى كل نسخه في تلك الصفوف دفعة واحدة.
@@ -2688,6 +2720,33 @@ function renderFormsWindow(view, role, bankMode){
     }
     refreshNumbers();
     updateToolButtonsState();
+  });
+
+  // بند 1: آلية إعادة تسمية النماذج/الاختبارات (وبنوك الأسئلة) التي يعدّها المعلم، بدل
+  // الاكتفاء بالاسم التلقائي "نموذج N"/"اختبار N". يعمل الزر على العنصر المحدد حاليًا في
+  // قائمة "رقم النموذج"، ويمنع إعادة التسمية لخيارات المجموعات (جميع النماذج... إلخ).
+  document.getElementById("fRename").addEventListener("click", ()=>{
+    const grade=fGrade.value, subject=fSubject.value, sel=fNumber.value;
+    if(!sel || sel==="__new__" || sel==="__all__" || sel==="__alltests__" || sel==="__everything__"){
+      alert("حدد نموذجًا أو اختبارًا بعينه من القائمة أولًا لإعادة تسميته.");
+      return;
+    }
+    if(!checkFormsPermission(grade, subject)) return;
+    const model = DB[MKEY].find(m=>m.id===sel);
+    if(!model){ alert("تعذّر العثور على العنصر المحدد."); return; }
+    const newName = prompt("أدخل الاسم الجديد:", model.title||"");
+    if(newName===null) return;
+    const trimmed = newName.trim();
+    if(!trimmed){ alert("الاسم لا يمكن أن يكون فارغًا."); return; }
+    model.title = trimmed;
+    model.customTitle = true;
+    model.updatedAt = Date.now();
+    saveDB();
+    refreshNumbers();
+    fNumber.value = sel;
+    if(activeModel && activeModel.id===model.id){
+      document.getElementById("workshopTitle").textContent = `${model.title} — ${model.grade} — ${model.term}${model.subject ? " — "+model.subject : ""}`;
+    }
   });
 
   document.getElementById("fDelete").addEventListener("click", ()=>{
@@ -2915,7 +2974,7 @@ function renderFormsWindow(view, role, bankMode){
     return gradable;
   }
 
-  document.getElementById("wsSave").addEventListener("click", ()=>{
+  function handleSaveClick(){
     if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
     openPublishChoiceModal(activeModel, (choice, scheduledAt)=>{
       if(choice==="now"){
@@ -2929,7 +2988,11 @@ function renderFormsWindow(view, role, bankMode){
       recomputeGroupNumbers(activeModel.term, activeModel.grade, activeModel.subject);
       refreshNumbers();
     });
-  });
+  }
+  document.getElementById("wsSave").addEventListener("click", handleSaveClick);
+  // بند 3: زر "حفظ" مكرر أسفل النماذج التعليمية وبنوك الأسئلة، لتفادي الاضطرار للتمرير
+  // للأعلى دائمًا بعد إضافة أسئلة كثيرة. يُنفّذ نفس إجراء زر الحفظ العلوي بالضبط.
+  if(document.getElementById("wsSaveBottom")) document.getElementById("wsSaveBottom").addEventListener("click", handleSaveClick);
 
   /* الحفظ التلقائي في واجهة المعلم/المنسق/المشرف (بند 15-17): حفظ صامت من التعديل دون تنبيه */
   let autosaveTimer=null;
@@ -3022,21 +3085,137 @@ function renderFormsWindow(view, role, bankMode){
     else if(mode==="test") list = list.filter(m=>(m.kind||"model")==="test");
     list = list.sort((a,b)=> ((a.kind||"model")===(b.kind||"model")) ? (a.number-b.number) : ((a.kind||"model")==="test" ? 1 : -1) );
     if(!list.length){ scroll.innerHTML = `<div class="empty-note">لا توجد ${bankMode?"بنوك أسئلة":"نماذج أو اختبارات"} بعد لهذا الصف والفصل الدراسي والمادة.</div>`; return; }
-    scroll.innerHTML = `<div class="models-icons" style="gap:14px;"></div>`;
+    // بند 4: آلية تحديد عدة نماذج/اختبارات/بنوك مع بعضها (بعضها أو جميعها) وتنفيذ إجراء
+    // جماعي عليها: حذف، أو نقل إلى صف آخر، أو نسخ إلى صف آخر — بدل تكرار الإجراء يدويًا
+    // عنصرًا عنصرًا. شريط الإجراءات الجماعية يظهر أعلى الشبكة، ويبقى معطّلًا حتى يُحدَّد عنصر واحد على الأقل.
+    scroll.innerHTML = `
+      <div class="toolbar" id="bulkBar" style="margin-bottom:12px; align-items:center; flex-wrap:wrap; gap:8px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700;"><input type="checkbox" id="bulkSelectAll"> تحديد الكل</label>
+        <span id="bulkCount" style="font-size:12.5px; color:var(--muted);">لم يُحدَّد شيء</span>
+        <button class="chip-btn" id="bulkDelete" disabled>حذف المحدد</button>
+        <button class="chip-btn" id="bulkMove" disabled>نقل المحدد إلى صف آخر</button>
+        <button class="chip-btn" id="bulkCopy" disabled>نسخ المحدد إلى صف آخر</button>
+        <div id="bulkTargetBox"></div>
+      </div>
+      <div class="models-icons" style="gap:14px;"></div>`;
     const box = scroll.querySelector(".models-icons");
+    const selected = new Set();
+    function refreshBulkBar(){
+      const n = selected.size;
+      document.getElementById("bulkCount").textContent = n ? `تم تحديد ${n}` : "لم يُحدَّد شيء";
+      ["bulkDelete","bulkMove","bulkCopy"].forEach(id=> document.getElementById(id).disabled = n===0);
+      document.getElementById("bulkSelectAll").checked = n>0 && n===list.length;
+    }
     list.forEach(m=>{
       const isTest = (m.kind||"model")==="test";
       const isSched = !!(m.scheduledAt && m.scheduledAt>Date.now());
       const icon = document.createElement("div");
       icon.className="model-icon" + (isTest ? " test-icon" : "");
-      icon.style.width="86px"; icon.style.height="86px"; icon.style.flexDirection="column"; icon.style.display="flex"; icon.style.gap="3px";
-      icon.innerHTML = bankMode
-        ? `<div style="font-size:11px; font-weight:700; padding:0 2px; text-align:center;">${(m.title||"بنك")}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`
-        : `<div style="font-size:11px; font-weight:700;">${isTest ? "اختبار" : "نموذج"}</div><div style="font-size:24px; font-weight:900; line-height:1;">${m.number}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`;
-      icon.title = bankMode ? (m.title||"بنك") : `${isTest ? "اختبار" : "نموذج"}${isSched ? " مجدول" : ""} ${m.number}`;
-      icon.addEventListener("click", ()=>openModel(m));
+      icon.style.width="94px"; icon.style.height=(m.customTitle && !bankMode) ? "112px" : "96px"; icon.style.flexDirection="column"; icon.style.display="flex"; icon.style.gap="3px"; icon.style.position="relative";
+      icon.innerHTML = `
+        <input type="checkbox" class="bulkCk" title="تحديد" style="position:absolute; top:2px; right:2px; width:16px; height:16px; z-index:2;">
+        <button type="button" class="renamePencil" title="إعادة تسمية" style="position:absolute; top:0; left:0; border:none; background:none; font-size:13px; cursor:pointer; z-index:2;">✏️</button>
+        ${bankMode
+          ? `<div style="font-size:11px; font-weight:700; padding:14px 2px 0; text-align:center;">${(m.title||"بنك")}</div>${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`
+          : `<div style="font-size:11px; font-weight:700; padding-top:14px;">${isTest ? "اختبار" : "نموذج"}</div><div style="font-size:24px; font-weight:900; line-height:1;">${m.number}</div>${m.customTitle ? `<div style="font-size:10.5px; font-weight:700; padding:0 2px; text-align:center; color:var(--accent); word-break:break-word;">${m.title}</div>` : ""}${isSched ? '<div class="sched-badge">مجدول</div>' : ""}`}
+      `;
+      icon.title = bankMode ? (m.title||"بنك") : `${m.customTitle ? m.title+" — " : ""}${isTest ? "اختبار" : "نموذج"}${isSched ? " مجدول" : ""} ${m.number}`;
+      icon.addEventListener("click", (e)=>{
+        if(e.target.closest(".bulkCk") || e.target.closest(".renamePencil")) return;
+        openModel(m);
+      });
+      icon.querySelector(".bulkCk").addEventListener("click", (e)=>{
+        e.stopPropagation();
+        if(e.target.checked) selected.add(m.id); else selected.delete(m.id);
+        refreshBulkBar();
+      });
+      icon.querySelector(".renamePencil").addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const newName = prompt("أدخل الاسم الجديد:", m.title||"");
+        if(newName===null) return;
+        const trimmed = newName.trim();
+        if(!trimmed){ alert("الاسم لا يمكن أن يكون فارغًا."); return; }
+        m.title = trimmed; m.customTitle = true; m.updatedAt = Date.now();
+        saveDB();
+        showAllModelsIcons(term, grade, subject, mode);
+      });
       box.appendChild(icon);
     });
+    document.getElementById("bulkSelectAll").addEventListener("change", (e)=>{
+      selected.clear();
+      if(e.target.checked) list.forEach(m=>selected.add(m.id));
+      box.querySelectorAll(".bulkCk").forEach((ck,i)=>{ ck.checked = selected.has(list[i].id); });
+      refreshBulkBar();
+    });
+    document.getElementById("bulkDelete").addEventListener("click", ()=>{
+      if(!selected.size) return;
+      if(!confirm(`هل أنت متأكد من حذف ${selected.size} عنصرًا محددًا؟`)) return;
+      flushAutosave();
+      DB.deletedModelIds = DB.deletedModelIds || {};
+      DB[MKEY] = DB[MKEY].filter(m=>{
+        if(selected.has(m.id)){ DB.deletedModelIds[m.id] = Date.now(); return false; }
+        return true;
+      });
+      saveDB();
+      activeModel = null;
+      recomputeGroupNumbers(term, grade, subject);
+      refreshNumbers();
+      showAllModelsIcons(term, grade, subject, mode);
+    });
+    function bulkTargetPrompt(actionLabel, run){
+      const bulkTargetBox = document.getElementById("bulkTargetBox");
+      if(bulkTargetBox.querySelector("select")) return;
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; align-items:center; gap:6px;";
+      row.innerHTML = `<select style="min-width:140px;"><option value="">اختر الصف الهدف لـ ${actionLabel}</option>${restrictedGrades.map(g=>`<option>${g}</option>`).join("")}</select>
+        <button type="button" class="chip-btn" style="padding:2px 8px;">×</button>`;
+      bulkTargetBox.appendChild(row);
+      row.querySelector("button").addEventListener("click", ()=> row.remove());
+      row.querySelector("select").addEventListener("change", (e)=>{
+        const targetGrade = e.target.value;
+        if(!targetGrade) return;
+        if(!checkFormsPermission(targetGrade, subject)){ e.target.value=""; return; }
+        run(targetGrade);
+        row.remove();
+      });
+    }
+    document.getElementById("bulkMove").addEventListener("click", ()=>{
+      if(!selected.size) return;
+      bulkTargetPrompt("النقل", (targetGrade)=>{
+        if(targetGrade===grade){ alert("هذا هو الصف نفسه، اختر صفًا آخر."); return; }
+        flushAutosave();
+        DB[MKEY].filter(m=>selected.has(m.id)).forEach(m=>{
+          m.grade = targetGrade;
+          delete m.linkedGroup;
+        });
+        recomputeGroupNumbers(term, grade, subject);
+        recomputeGroupNumbers(term, targetGrade, subject);
+        saveDB();
+        activeModel = null;
+        alert(`تم نقل ${selected.size} عنصرًا إلى الصف: ${targetGrade}.`);
+        refreshNumbers();
+        showAllModelsIcons(term, grade, subject, mode);
+      });
+    });
+    document.getElementById("bulkCopy").addEventListener("click", ()=>{
+      if(!selected.size) return;
+      bulkTargetPrompt("النسخ", (targetGrade)=>{
+        if(targetGrade===grade){ alert("هذا هو الصف نفسه، اختر صفًا آخر."); return; }
+        flushAutosave();
+        DB[MKEY].filter(m=>selected.has(m.id)).forEach(m=>{
+          const nextNum = matchingModels(term, targetGrade, subject).filter(x=>(x.kind||"model")===(m.kind||"model")).length + 1;
+          const copy = { ...JSON.parse(JSON.stringify(m)), id:"m"+Date.now()+Math.random().toString(36).slice(2,7), grade:targetGrade, subject, term, number:nextNum, createdAt:Date.now(), updatedAt:Date.now() };
+          delete copy.linkedGroup;
+          DB[MKEY].push(copy);
+        });
+        recomputeGroupNumbers(term, targetGrade, subject);
+        saveDB();
+        alert(`تم نسخ ${selected.size} عنصرًا إلى الصف: ${targetGrade}.`);
+        refreshNumbers();
+        showAllModelsIcons(term, grade, subject, mode);
+      });
+    });
+    refreshBulkBar();
     updateTestModeBtn();
   }
 }
@@ -5533,10 +5712,11 @@ function renderStudentModelsList(view, mode){
         const solved = hasResult(m.id);
         const card = document.createElement("div");
         card.className = "student-model-card" + (isTest ? " test-card" : "");
-        card.title = m.subject || "";
+        card.title = (m.customTitle ? m.title+" — " : "") + (m.subject || "");
         card.innerHTML = `
           <div class="smc-kind">${isTest ? "اختبار" : "نموذج"}</div>
           <div class="smc-num">${m.number}</div>
+          ${m.customTitle ? `<div class="smc-title" style="font-size:12px; font-weight:800; text-align:center; padding:0 4px; word-break:break-word;">${m.title}</div>` : ""}
           <div class="smc-subject">${m.subject || "—"}</div>
           <div class="smc-status">${solved ? "✅ محلول" : "⬜ لم يُحل"}</div>
         `;
@@ -7848,20 +8028,43 @@ function renderMindBankWindow(view){
    ============================================================ */
 function renderMyStudentsWindow(view, role){
   const teacherUsername = session.user.username;
+  // بند 11: يُسمح بالتفعيل (وبعرض/إدارة الطلاب) من هذه النافذة للمعلم والمنسق والمشرف
+  // العام معًا، وليس مقصورًا على المشرف وحده. المعلم يرى طلابه الذين أضافهم فقط،
+  // بينما يرى المنسق والمشرف العام جميع الطلاب (ليتمكنا من التفعيل والإشراف).
+  const isBroadRole = role==="admin" || role==="coordinator";
   view.innerHTML = `
-    <h2>بيانات طلابي</h2>
-    <p class="sub">أضف طلابك هنا وستُدرج تلقائيًا في جدول "بيانات الطلاب" العام لدى المشرف العام، مع بقاء بيانات طلاب المعلمين الآخرين مخفية عنك.</p>
-    <div class="toolbar">
+    <h2>${isBroadRole ? "بيانات الطلاب" : "بيانات طلابي"}</h2>
+    <p class="sub">${isBroadRole ? "بيانات جميع الطلاب المسجّلين في المنصة، ويمكنك من هنا تفعيل أي طالب أو تعديل بياناته." : 'أضف طلابك هنا وستُدرج تلقائيًا في جدول "بيانات الطلاب" العام لدى المشرف العام، مع بقاء بيانات طلاب المعلمين الآخرين مخفية عنك.'}</p>
+    <div class="toolbar" style="flex-wrap:wrap; gap:8px;">
       <button class="chip-btn accent" id="myStAddBtn">➕ إضافة طالب</button>
+      <button class="chip-btn" id="myStActivateAllBtn">✅ تفعيل الجميع</button>
       <button class="chip-btn" onclick="printSection('myStTableWrap')">طباعة</button>
       <button class="chip-btn" id="myStExportBtn">تصدير إكسل</button>
     </div>
+    <div class="toolbar" style="margin-top:4px;">
+      <label style="margin:0; white-space:nowrap;">بحث عن طالب</label>
+      <input type="text" id="myStSearch" list="myStNamesList" autocomplete="off" placeholder="اكتب اسم الطالب للبحث..." style="flex:1; min-width:160px;">
+      <datalist id="myStNamesList"></datalist>
+    </div>
     <div id="myStTableWrap"></div>
   `;
-  function mine(){ return DB.students.map((r,i)=>({r,i})).filter(x=>x.r.addedByTeacher===teacherUsername); }
-  function editable(val, onSave){
+  // بند 7: قائمة بأسماء الطلاب (اقتراح تلقائي عند الكتابة) بجانب مربع البحث أعلاه،
+  // لتسهيل الوصول إلى طالب بعينه بسرعة بدل تصفح كل الصفوف يدويًا.
+  function mine(){
+    const all = DB.students.map((r,i)=>({r,i}));
+    return isBroadRole ? all : all.filter(x=>x.r.addedByTeacher===teacherUsername);
+  }
+  function editable(val, onSave, isNewDefault){
     const span = document.createElement("span");
     span.textContent = val; span.contentEditable="true"; span.style.outline="none";
+    // بند 6: عند إضافة طالب جديد يظهر اسمه المبدئي "طالب جديد..." — الآن يُحذف هذا
+    // الاسم الافتراضي تلقائيًا بمجرد الوقوف على الخانة بالمؤشر (التركيز عليها) حتى
+    // لا يضطر المعلم لحذفه يدويًا قبل كتابة اسم الطالب الحقيقي.
+    if(isNewDefault){
+      span.addEventListener("focus", ()=>{
+        if(/^طالب_جديد\d*$/.test(span.textContent.trim())) span.textContent = "";
+      }, {once:true});
+    }
     span.addEventListener("blur", ()=>{ onSave(span.textContent.trim()); saveDB(); });
     return span;
   }
@@ -7877,20 +8080,25 @@ function renderMyStudentsWindow(view, role){
     box.appendChild(inp); box.appendChild(toggle);
     return box;
   }
+  let searchTerm = "";
   function draw(){
     const wrap = document.getElementById("myStTableWrap");
-    const rows = mine();
+    const namesList = document.getElementById("myStNamesList");
+    let rows = mine();
+    if(namesList) namesList.innerHTML = mine().map(({r})=>`<option value="${r.username}">`).join("");
+    if(searchTerm.trim()) rows = rows.filter(({r})=> (r.username||"").toLowerCase().includes(searchTerm.trim().toLowerCase()));
     const table = document.createElement("div"); table.className="table-wrap";
     const t = document.createElement("table"); t.className="data"; table.appendChild(t);
     wrap.innerHTML = ""; wrap.appendChild(table);
     t._clearAllHandler = ()=>{
-      DB.students = DB.students.filter(s=>s.addedByTeacher!==teacherUsername);
+      if(isBroadRole) DB.students = [];
+      else DB.students = DB.students.filter(s=>s.addedByTeacher!==teacherUsername);
       saveDB(); draw();
     };
     const classOptions = allClassesInUse();
     t.innerHTML = `<thead><tr><th>م</th><th>اسم المستخدم</th><th>الصف</th><th>الفصل</th><th>كلمة المرور</th><th>التفعيل</th><th></th></tr></thead><tbody></tbody>`;
     const tb = t.querySelector("tbody");
-    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty-note">لم تُضف أي طلاب بعد</td></tr>`; }
+    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty-note">${searchTerm.trim() ? "لا توجد نتائج مطابقة للبحث" : "لم تُضف أي طلاب بعد"}</td></tr>`; }
     rows.forEach(({r,i}, serial)=>{
       const tr=document.createElement("tr");
       tr.innerHTML=`<td>${serial+1}</td><td class="c-user"></td>
@@ -7899,7 +8107,7 @@ function renderMyStudentsWindow(view, role){
         <td class="c-pass"></td>
         <td><button class="chip-btn ${r.active?'accent':''}" style="padding:4px 10px;">${r.active?'✅ مفعّل':'⛔ تفعيل'}</button></td>
         <td><button class="icon-btn danger">🗑</button></td>`;
-      tr.querySelector(".c-user").appendChild(editable(r.username, v=>r.username=v));
+      tr.querySelector(".c-user").appendChild(editable(r.username, v=>r.username=v, r.__isNew));
       tr.querySelector(".c-pass").appendChild(passwordField(r.password||"", v=>r.password=v));
       tr.querySelector(".cs-grade").addEventListener("change", (e)=>{ r.grade = e.target.value; saveDB(); fillBetweenSame(DB.students, "grade"); draw(); });
       tr.querySelector(".cs-class").addEventListener("change", (e)=>{
@@ -7920,8 +8128,18 @@ function renderMyStudentsWindow(view, role){
     });
     enableColumnResize(t);
   }
+  document.getElementById("myStSearch").addEventListener("input", (e)=>{ searchTerm = e.target.value; draw(); });
   document.getElementById("myStAddBtn").addEventListener("click", ()=>{
-    DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:"", cls:"", active:false, addedByTeacher:teacherUsername});
+    DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:"", cls:"", active:false, addedByTeacher:teacherUsername, __isNew:true});
+    saveDB(); draw();
+  });
+  // بند 12/7: زر "تفعيل الجميع" — يُفعّل دفعة واحدة كل الطلاب الظاهرين حاليًا في الجدول
+  // (تراعي نتيجة البحث الحالي إن وُجد)، بدل تفعيل كل طالب يدويًا واحدًا تلو الآخر.
+  document.getElementById("myStActivateAllBtn").addEventListener("click", ()=>{
+    let rows = mine();
+    if(searchTerm.trim()) rows = rows.filter(({r})=> (r.username||"").toLowerCase().includes(searchTerm.trim().toLowerCase()));
+    if(!rows.length){ alert("لا يوجد طلاب لتفعيلهم."); return; }
+    rows.forEach(({r})=> r.active = true);
     saveDB(); draw();
   });
   document.getElementById("myStExportBtn").addEventListener("click", ()=>{
@@ -8397,6 +8615,23 @@ function addMiniTableToolbar(table){
   exportBtn.type="button"; exportBtn.title="تصدير الجدول إلى إكسل"; exportBtn.textContent="📤";
   exportBtn.className="icon-btn"; exportBtn.style.cssText="width:24px;height:24px;font-size:12px;padding:0;";
   exportBtn.addEventListener("click",(e)=>{ e.stopPropagation(); genericExportTable(table); });
+  // بند 8/9/10: زرا "تحديد خلايا" و"مسح المحدد" — يتيحان تحديد خلية واحدة أو عدة خلايا
+  // متفرقة (بالضغط عليها) أو نطاق كامل (Shift+ضغط) أو عمود كامل (بالضغط على رأس العمود)
+  // ثم مسح محتواها فقط دون حذف الصف أو العمود الذي تنتمي إليه.
+  const selectBtn = document.createElement("button");
+  selectBtn.type="button"; selectBtn.title="تفعيل/إيقاف وضع تحديد الخلايا"; selectBtn.textContent="🔲";
+  selectBtn.className="icon-btn"; selectBtn.style.cssText="width:24px;height:24px;font-size:12px;padding:0;";
+  const clearSelBtn = document.createElement("button");
+  clearSelBtn.type="button"; clearSelBtn.title="مسح محتوى الخلايا المحددة"; clearSelBtn.textContent="🧹";
+  clearSelBtn.className="icon-btn"; clearSelBtn.style.cssText="width:24px;height:24px;font-size:12px;padding:0;"; clearSelBtn.disabled = true;
+  table._clearSelBtn = clearSelBtn;
+  selectBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const on = selectBtn.classList.toggle("on");
+    table._toggleSelectMode(on);
+    selectBtn.title = on ? "إيقاف وضع تحديد الخلايا" : "تفعيل وضع تحديد الخلايا (اضغط على الخلايا لتحديدها، Shift للتحديد بنطاق، أو اضغط رأس عمود لتحديده كاملًا)";
+  });
+  clearSelBtn.addEventListener("click", (e)=>{ e.stopPropagation(); table._runClearSelected(); });
   // زر حذف جميع بيانات الجدول (سلة 🗑) بعد الموافقة على رسالة تحذير
   // ملاحظة مهمة: هذا الزر لا يُضاف إطلاقًا إلا إذا كان للجدول _clearAllHandler حقيقي مرتبط
   // بمصدر البيانات الفعلي (DB.* + saveDB). قديمًا كان الزر يظهر على كل الجداول، وإن لم يوجد
@@ -8414,9 +8649,9 @@ function addMiniTableToolbar(table){
     });
     // بند: زر الحذف يُضاف الآن آخر زر في الشريط (بعد زر تصدير الإكسل مباشرة)
     // في جميع الجداول وجميع النوافذ والواجهات، بدل أن يكون أول زر كما كان سابقًا.
-    bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn); bar.appendChild(clearBtn);
+    bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn); bar.appendChild(selectBtn); bar.appendChild(clearSelBtn); bar.appendChild(clearBtn);
   } else {
-    bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn);
+    bar.appendChild(fsBtn); bar.appendChild(printBtn); bar.appendChild(exportBtn); bar.appendChild(selectBtn); bar.appendChild(clearSelBtn);
   }
   container.appendChild(bar); container.appendChild(tableWrap);
 }
@@ -8483,6 +8718,108 @@ function tableWidthsKey(headRow){
   const headers = [...headRow.children].map(th=>(th.textContent||"").trim()).join("|");
   return __currentTableScopeKey + "::" + headers;
 }
+/* ============================================================
+   ===== بند 8/9/10: تحديد مجموعة خلايا في أي جدول (عمود كامل/نطاق/خلايا متفرقة)
+   ومسح محتواها دون حذف الصف أو العمود نفسه. تعمل هذه الآلية بشكل عام على كل جدول
+   من فئة "data" في التطبيق (يُستدعى enableCellSelection من enableColumnResize لكل
+   جدول تلقائيًا)، عبر تشغيل نفس أحداث الحفظ الأصلية لكل خلية (blur/change) بعد تفريغ
+   محتواها، حتى تُحفَظ عملية المسح في مصدر البيانات الحقيقي وليس بصريًا فقط. ============ */
+function enableCellSelection(table){
+  if(table.dataset.cellSelectWired) return;
+  table.dataset.cellSelectWired = "1";
+  const selected = new Set();
+  let selectMode = false;
+  let lastCell = null;
+
+  function isClearableCell(td){
+    if(!td || td.tagName!=="TD") return false;
+    if(td.hasAttribute("colspan")) return false; // صفوف "لا توجد بيانات" ونحوها
+    // خلايا تحتوي زر إجراء واحد فقط (مثل 🗑) لا معنى لـ"مسحها" لأنها ليست بيانات
+    const btns = td.querySelectorAll("button");
+    if(btns.length && td.textContent.trim()===[...btns].map(b=>b.textContent.trim()).join("")) return false;
+    return true;
+  }
+  function cellPos(td){
+    const tr = td.parentElement;
+    const rowIdx = [...tr.parentElement.children].indexOf(tr);
+    const colIdx = [...tr.children].indexOf(td);
+    return {rowIdx, colIdx};
+  }
+  function paintSelection(){
+    table.querySelectorAll("td.cell-selected").forEach(td=> td.classList.remove("cell-selected"));
+    selected.forEach(td=> td.classList.add("cell-selected"));
+    const clearBtn = table._clearSelBtn;
+    if(clearBtn) clearBtn.disabled = selected.size===0;
+  }
+  function selectRange(a, b){
+    const pa = cellPos(a), pb = cellPos(b);
+    const r1=Math.min(pa.rowIdx,pb.rowIdx), r2=Math.max(pa.rowIdx,pb.rowIdx);
+    const c1=Math.min(pa.colIdx,pb.colIdx), c2=Math.max(pa.colIdx,pb.colIdx);
+    const tbody = table.querySelector("tbody");
+    if(!tbody) return;
+    [...tbody.children].forEach((tr,ri)=>{
+      if(ri<r1||ri>r2) return;
+      [...tr.children].forEach((td,ci)=>{
+        if(ci<c1||ci>c2) return;
+        if(isClearableCell(td)) selected.add(td);
+      });
+    });
+  }
+  table.addEventListener("click", (e)=>{
+    if(!selectMode) return;
+    const td = e.target.closest("td");
+    if(!td || td.closest("table")!==table) return;
+    if(!isClearableCell(td)) return;
+    e.preventDefault();
+    if(e.shiftKey && lastCell){
+      selectRange(lastCell, td);
+    } else if(selected.has(td)){
+      selected.delete(td);
+    } else {
+      selected.add(td);
+    }
+    lastCell = td;
+    paintSelection();
+  }, true);
+  // بند 9: الضغط على رأس عمود أثناء وضع التحديد يحدد كل خلايا ذلك العمود دفعة واحدة
+  // (لتفريغ بيانات عمود كامل دون حذف العمود نفسه من الجدول).
+  const headRow = table.querySelector("thead tr:first-child");
+  if(headRow){
+    [...headRow.children].forEach((th, ci)=>{
+      th.addEventListener("click", (e)=>{
+        if(!selectMode || e.target.closest(".col-resize-grip")) return;
+        const tbody = table.querySelector("tbody");
+        if(!tbody) return;
+        const cells = [...tbody.querySelectorAll("tr")].map(tr=>tr.children[ci]).filter(isClearableCell);
+        const allSelected = cells.length && cells.every(td=>selected.has(td));
+        cells.forEach(td=> allSelected ? selected.delete(td) : selected.add(td));
+        paintSelection();
+      });
+    });
+  }
+  function clearCellContent(td){
+    const input = td.querySelector('input[type="text"], input[type="password"], input[type="number"]');
+    const sel = td.querySelector("select");
+    const span = td.querySelector('span[contenteditable="true"]');
+    if(input){ input.value = ""; input.dispatchEvent(new Event("change", {bubbles:true})); return; }
+    if(sel){ sel.selectedIndex = 0; sel.dispatchEvent(new Event("change", {bubbles:true})); return; }
+    if(span){ span.textContent = ""; span.dispatchEvent(new Event("blur", {bubbles:true})); return; }
+    if(td.isContentEditable){ td.textContent = ""; td.dispatchEvent(new Event("blur", {bubbles:true})); return; }
+  }
+  table._runClearSelected = function(){
+    if(!selected.size) return;
+    if(!confirm(`سيتم مسح محتوى ${selected.size} خلية محددة دون حذف صفوفها أو أعمدتها. هل أنت متأكد؟`)) return;
+    [...selected].forEach(clearCellContent);
+    selected.clear();
+    paintSelection();
+  };
+  table._toggleSelectMode = function(on){
+    selectMode = on;
+    table.classList.toggle("cell-select-mode", on);
+    if(!on){ selected.clear(); paintSelection(); }
+  };
+}
+
 /* بند: خلايا سطر المطلوبات متساوية تمامًا افتراضيًا (عبر colgroup) لكنها قابلة للتوسيع/التضييق
    بالسحب بين عمودين متجاورين؛ مجموع نسب الأعمدة يبقى ثابتًا (100%) فلا يتجاوز عرض السطر أبدًا
    عرض القطعة الموزعة. عمود الحذف الأخير ثابت العرض ولا يُسحب. */
@@ -8544,6 +8881,7 @@ function enableColumnResize(table){
   if(table.dataset.resizable) return;
   table.dataset.resizable = "1";
   table.style.tableLayout = "fixed";
+  enableCellSelection(table);
   addMiniTableToolbar(table);
   const headRow = table.querySelector("thead tr:first-child");
   if(!headRow) return;
