@@ -433,6 +433,14 @@
   .sa-solve-box{ display:inline-block; vertical-align:top; width:23%; margin:0 1% 14px !important; box-sizing:border-box; border-radius:10px; }
   @media (max-width:900px){ .sa-solve-box{ width:48%; } }
   @media (max-width:560px){ .sa-solve-box{ width:100%; margin:0 0 14px !important; } }
+  /* بند 1: تكبير خط إجابة سؤال الإملاء السماعي ليقارب خط زر التشغيل أو أكبر منه قليلًا،
+     مع ضبط عائلة الخط لضمان ظهور حرف الهمزة الممدودة "آ" بشكل صحيح (بند 4) */
+  .sa-solve-box .sa-answer{ font-size:15px; font-weight:700; font-family:'Tajawal','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif; transition:background .35s ease, color .35s ease, border-color .35s ease; }
+  /* بند 2: تلوين تعبئة مربع إجابة الإملاء السماعي بأخضر خفيف مع تباين واضح عند تطابق الإجابة */
+  .sa-solve-box .sa-answer.sa-match-ok{ background:#d9f2e3 !important; color:#0f5132 !important; border-color:#2e7d4f !important; }
+  /* بند 5: تلوين تعبئة خيارات الأسئلة (اختياري / صح وخطأ) باللون الأخضر عند صحة إجابة الطالب في النماذج فقط */
+  .options-grid label.opt-correct-fill{ background:#d9f2e3; color:#0f5132; border-radius:6px; }
+  .tf-mark.tf-correct-fill{ background:#d9f2e3 !important; color:#0f5132 !important; border-color:#2e7d4f !important; }
 
   .banner{ background:#fbeae7; border:1.5px solid var(--danger); color:var(--danger); border-radius:8px; padding:10px 14px; font-size:13px; font-weight:700; margin-bottom:14px; }
   .empty-note{ color:#999; font-size:12.5px; text-align:center; padding:20px; }
@@ -2920,12 +2928,19 @@ function renderFormsWindow(view, role, bankMode){
     if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
     const term=activeModel.term, grade=activeModel.grade, subject=activeModel.subject;
     if(activeModel.kind!=="test"){
-      // تحويل النموذج إلى اختبار: نطلب من المعلم تحديد مدة الاختبار بالدقائق
+      // بند 6: تحويل النموذج إلى اختبار لا يعود بحذف النموذج الأصلي، بل يُنشئ نسخة مستقلة
+      // منه ويحوّل هذه النسخة إلى اختبار، بينما يبقى النموذج الأصلي كما هو دون تغيير
       openTestDurationModal((minutes)=>{
-        activeModel.kind = "test";
-        activeModel.testMode = true;
-        activeModel.testDuration = minutes;
+        flushAutosave();
+        const nextTestNum = matchingModels(term, grade, subject).filter(x=>(x.kind||"model")==="test").length + 1;
+        const testCopy = { ...JSON.parse(JSON.stringify(activeModel)), id:"m"+Date.now()+Math.random().toString(36).slice(2,7),
+          kind:"test", testMode:true, testDuration:minutes, number:nextTestNum, customTitle:false,
+          createdAt:Date.now(), updatedAt:Date.now() };
+        delete testCopy.linkedGroup;
+        DB[MKEY].push(testCopy);
         recomputeGroupNumbers(term, grade, subject);
+        saveDB();
+        activeModel = testCopy;
         openModel(activeModel);
         refreshNumbers();
       });
@@ -5755,6 +5770,15 @@ function removeTestTimeUpOverlay(){
   if(el) el.remove();
 }
 
+// بند 3: إزالة الحركات (الفتحة/الضمة/الكسرة/التنوين/الشدة/السكون وألف الوصل الفوقية) من نص
+// الإجابة قبل مقارنته بالإجابة النموذجية في سؤال الإملاء السماعي، فوجودها لا يؤثر في التصحيح
+function stripArabicDiacritics(s){
+  return String(s||"").replace(/[\u064B-\u0652\u0670\u0640]/g, "");
+}
+function normalizeSpellAnswer(s){
+  return stripArabicDiacritics(String(s||"")).trim().toLowerCase();
+}
+
 function renderSolveView(view, model, forceRetry, justSubmitted){
   view.innerHTML = `
     <button class="chip-btn" id="solveBack">◀ رجوع</button>
@@ -6095,6 +6119,11 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       box.querySelectorAll('input[type="radio"]').forEach(r=>{
         r.addEventListener("change", ()=>{
           answers[idx] = Number(r.dataset.oi); checkAllAnswered();
+          // بند 5: تلوين الخيار المختار باللون الأخضر إن كان صحيحًا، في النماذج فقط
+          box.querySelectorAll(".options-grid label").forEach(l=>l.classList.remove("opt-correct-fill"));
+          if(!model.testMode && answers[idx]===q.correct){
+            const lbl = r.closest("label"); if(lbl) lbl.classList.add("opt-correct-fill");
+          }
           if(q.boxMode){
             const closedBox = box.querySelector(".mcq-box-closed");
             const openBox = box.querySelector(".mcq-box-open");
@@ -6105,9 +6134,11 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     } else if(q.type==="tf"){
       box.querySelectorAll(".tf-mark").forEach(m=>{
         m.addEventListener("click", ()=>{
-          box.querySelectorAll(".tf-mark").forEach(x=>x.classList.remove("selT","selF"));
+          box.querySelectorAll(".tf-mark").forEach(x=>x.classList.remove("selT","selF","tf-correct-fill"));
           m.classList.add(m.dataset.v==="true"?"selT":"selF");
           answers[idx] = m.dataset.v==="true";
+          // بند 5: تلوين الاختيار باللون الأخضر إن كان صحيحًا، في النماذج فقط
+          if(!model.testMode && answers[idx]===q.correct) m.classList.add("tf-correct-fill");
           checkAllAnswered();
         });
       });
@@ -6337,7 +6368,19 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     } else if(q.type==="spellaudio"){
       answers[idx] = "";
       const inp = box.querySelector(".sa-answer");
-      inp.addEventListener("input", ()=>{ answers[idx] = inp.value; checkAllAnswered(); });
+      let saMatchTimer = null;
+      inp.addEventListener("input", ()=>{
+        answers[idx] = inp.value; checkAllAnswered();
+        // بند 2: إزالة التلوين الأخضر فور تغيير الكتابة، ثم إعادة فحص التطابق بعد ثانية من
+        // التوقف عن الكتابة، وذلك في النماذج فقط (يتوقف تلقائيًا عند تحويل النموذج إلى اختبار)
+        inp.classList.remove("sa-match-ok");
+        if(saMatchTimer){ clearTimeout(saMatchTimer); saMatchTimer=null; }
+        if(!model.testMode){
+          saMatchTimer = setTimeout(()=>{
+            if(inp.value.trim() && normalizeSpellAnswer(inp.value)===normalizeSpellAnswer(q.answer)) inp.classList.add("sa-match-ok");
+          }, 1000);
+        }
+      });
       const playBtn = box.querySelector(".sa-solve-playpause");
       const restartBtn = box.querySelector(".sa-solve-restart");
       if(playBtn && q.audioUrl){
@@ -6624,7 +6667,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         });
         return;
       } else if(q.type==="spellaudio"){
-        correct = answers[idx].trim().toLowerCase()===q.answer.trim().toLowerCase(); label=q.answer;
+        correct = normalizeSpellAnswer(answers[idx])===normalizeSpellAnswer(q.answer); label=q.answer;
       } else if(q.type==="grammarreq"){
         if(q.strict){
           const need=[...q.correctWords].sort(), got=[...answers[idx]].sort();
@@ -6670,18 +6713,10 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       details.push({question: label, qtype: toolLabelFor(q.type), correct});
     });
 
-    // بند 22: إن كانت هذه محاولة "إعادة حل" (forceRetry) بعد وجود نتيجة محفوظة بالفعل، فلا تُحفظ هذه
-    // المحاولة إطلاقًا ولا تدخل في تحليل النتائج — فقط رسالة إرسال وهمية للتدريب دون إرسال فعلي
-    if(forceRetry){
-      if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
-      if(model.testMode){ try{ localStorage.removeItem(`testStart_${session.user.username}_${model.id}`); }catch(e){} }
-      removeTestTimeUpOverlay();
-      const msgEl2 = document.getElementById("solveMsg");
-      msgEl2.className = "msg show ok";
-      msgEl2.textContent = "تم الإرسال بنجاح";
-      return;
-    }
-
+    // بند 7 (سياسة جديدة): تُحتسب دائمًا المحاولة الأحدث فقط — سواء كانت أول محاولة أو إعادة
+    // حل (forceRetry) — وتُرصد وتُحلَّل نتائجها وتحدياتها، بينما تُستبدل (لا تُضاف) على سجل
+    // النتيجة نفسه أدناه (existing ? Object.assign : push)، فتُحذف تلقائيًا كل بيانات الرصد
+    // والتحليل والتحديات الخاصة بالمحاولة السابقة لنفس الطالب على نفس النموذج.
     const studentRow = DB.students.find(s=>s.username===session.user.username);
     const existing = DB.results.find(r=>r.studentUsername===session.user.username && r.modelId===model.id);
     // بند: نحفظ الإجابات الفعلية (الكلمات التي أفلتها الطالب) لأسئلة النموذج النحوي والخريطة
