@@ -627,6 +627,7 @@
     </div>
   </main>
   <button class="about-btn" id="aboutBtn">من نحن</button>
+  <button class="about-btn" id="diagBtn" style="left:auto; right:16px;">🔧 تشخيص الاتصال</button>
 </div>
 
 <div class="overlay" id="aboutOverlay"><div class="modal">
@@ -656,6 +657,12 @@
   </select>
   <label>كلمة المرور</label><input type="password" id="regPassword">
   <div class="modal-actions"><button class="primary-btn" id="regSaveBtn" style="flex:1;">حفظ</button></div>
+</div></div>
+
+<div class="overlay" id="diagOverlay"><div class="modal">
+  <button class="modal-close" data-close="diagOverlay">إغلاق ✕</button>
+  <h2>تشخيص الاتصال بقاعدة البيانات</h2>
+  <div id="diagBody" style="font-size:13.5px; line-height:1.9; color:var(--ink);"></div>
 </div></div>
 
 <div class="overlay" id="setupOverlay"><div class="modal">
@@ -1077,6 +1084,7 @@ const FIREBASE_CONFIG = {
 
 let storageReady = false;
 let firebaseDB = null; // مرجع Firebase Realtime Database إن نجح الاتصال
+let diagInfo = { firebaseStatus:"لم تبدأ المحاولة بعد", firebaseError:"", cloudHasData:null, usedLocalOnly:true };
 
 function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.apiKey);
@@ -1148,9 +1156,20 @@ async function syncFromCloudInBackground(){
       firebaseDB = firebase.database();
       await ensureFirebaseAuth();
       const snap = await firebaseDB.ref("platform-db").get();
-      if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase"; }
-    }catch(e){ console.error("تعذّر الاتصال بـ Firebase:", e); }
+      if(snap.exists()){
+        cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase";
+        diagInfo.firebaseStatus = "متصل بنجاح"; diagInfo.cloudHasData = true;
+      } else {
+        diagInfo.firebaseStatus = "متصل بنجاح، لكن لا توجد بيانات محفوظة في السحابة إطلاقًا"; diagInfo.cloudHasData = false;
+      }
+    }catch(e){
+      diagInfo.firebaseStatus = "فشل الاتصال"; diagInfo.firebaseError = (e && (e.message||e.code||String(e))) || "خطأ غير معروف";
+      console.error("تعذّر الاتصال بـ Firebase:", e);
+    }
+  } else {
+    diagInfo.firebaseStatus = "غير مُهيَّأ (لا توجد إعدادات Firebase صالحة في الكود)";
   }
+  diagInfo.usedLocalOnly = !(cloudSource==="firebase" && cloudSaved);
   if(cloudSource===null){
     try{
       if(typeof window.storage !== "undefined"){
@@ -1394,6 +1413,31 @@ function refreshUsernameList(){
   usernameSelect.placeholder = "اكتب أو اختر اسم المستخدم للبحث";
   usernameSelect.disabled = false;
 }
+
+function diagEsc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function renderDiagPanel(){
+  const box = document.getElementById("diagBody");
+  const listOf = (rows, roleName)=>{
+    if(!rows || !rows.length) return `<div style="margin:6px 0; color:var(--muted);">${roleName}: لا يوجد أي حساب محفوظ حاليًا.</div>`;
+    const names = rows.map(r=>r.username).join("، ");
+    return `<div style="margin:6px 0;"><b>${roleName}</b> (${rows.length}): ${diagEsc(names)}</div>`;
+  };
+  let html = "";
+  html += `<div style="margin:6px 0;"><b>حالة الاتصال بقاعدة البيانات السحابية (Firebase):</b> ${diagEsc(diagInfo.firebaseStatus)}</div>`;
+  if(diagInfo.firebaseError) html += `<div style="margin:6px 0; color:var(--danger);"><b>تفاصيل الخطأ:</b> ${diagEsc(diagInfo.firebaseError)}</div>`;
+  html += `<div style="margin:6px 0;"><b>مصدر البيانات المعروضة الآن:</b> ${diagInfo.usedLocalOnly ? "محلية من هذا الجهاز/المتصفح فقط (لم تصل بيانات سحابية أحدث بعد)" : "مزامَنة من السحابة (Firebase)"}</div>`;
+  html += `<hr style="border:none; border-top:1px solid #ddd; margin:12px 0;">`;
+  html += `<div style="margin:6px 0; color:var(--muted); font-size:12.5px;">الحسابات المحمَّلة فعليًا الآن (تحقق أن اسم المستخدم مطابق تمامًا لما هو معروض هنا، بما في ذلك المسافات):</div>`;
+  html += listOf(DB.admins, "المشرفون");
+  html += listOf(DB.coordinators, "المنسقون");
+  html += listOf(DB.teachers, "المعلمون");
+  html += listOf(DB.students, "الطلاب");
+  box.innerHTML = html;
+}
+document.getElementById("diagBtn").addEventListener("click", ()=>{
+  renderDiagPanel();
+  openOverlay("diagOverlay");
+});
 
 roleBtns.forEach(btn=>{
   btn.addEventListener("click", ()=>{
