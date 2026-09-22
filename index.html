@@ -6,7 +6,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>منصة أنت المستقبل</title>
+<title>منصة أنت ونحن التعليمية</title>
+<meta name="description" content="منصة أنت ونحن التعليمية — منصة تدريب على المهارات اللغوية للمعلمين والمنسقين والطلاب.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -35,8 +36,8 @@
 
   /* ===================== LOGIN SCREEN ===================== */
   .brandbar{ padding:28px clamp(16px,4vw,48px) 8px; text-align:center; }
-  .brandbar .eyebrow{ font-family:'Amiri', serif; font-size:15px; color:var(--muted); letter-spacing:2px; }
-  .brandbar h1{ font-family:'Amiri', serif; font-weight:700; font-size:clamp(28px,4vw,40px); margin:4px 0 0; position:relative; display:inline-block; }
+  .brandbar .eyebrow{ font-family:'Amiri', serif; font-size:25px; color:var(--muted); letter-spacing:2px; }
+  .brandbar h1{ font-family:'Amiri', serif; font-weight:700; font-size:20px; margin:4px 0 0; position:relative; display:inline-block; }
   .brandbar h1::after{ content:""; display:block; width:64px; height:3px; background:var(--accent); margin:10px auto 0; border-radius:2px; }
   #loginScreen main{ display:flex; align-items:center; justify-content:center; padding:16px clamp(12px,4vw,48px) 80px; }
   .card{ width:100%; max-width:440px; border:2px solid var(--line); border-radius:var(--radius); padding:clamp(20px,4vw,32px); background:var(--paper); margin:0 auto; }
@@ -435,7 +436,8 @@
   @media (max-width:560px){ .sa-solve-box{ width:100%; margin:0 0 14px !important; } }
   /* بند 1: تكبير خط إجابة سؤال الإملاء السماعي ليقارب خط زر التشغيل أو أكبر منه قليلًا،
      مع ضبط عائلة الخط لضمان ظهور حرف الهمزة الممدودة "آ" بشكل صحيح (بند 4) */
-  .sa-solve-box .sa-answer{ font-size:15px; font-weight:700; font-family:'Tajawal','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif; transition:background .35s ease, color .35s ease, border-color .35s ease; }
+  .sa-solve-box .sa-answer{ font-size:25px !important; font-weight:900 !important; text-align:center !important; line-height:1.5; min-height:64px; padding:12px 10px !important; font-family:'Tajawal','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif; transition:background .35s ease, color .35s ease, border-color .35s ease; }
+  .sa-solve-box .sa-answer::placeholder{ font-size:14px; font-weight:500; }
   /* بند 2: تلوين تعبئة مربع إجابة الإملاء السماعي بأخضر خفيف مع تباين واضح عند تطابق الإجابة */
   .sa-solve-box .sa-answer.sa-match-ok{ background:#d9f2e3 !important; color:#0f5132 !important; border-color:#2e7d4f !important; }
   /* بند 5: تلوين تعبئة خيارات الأسئلة (اختياري / صح وخطأ) باللون الأخضر عند صحة إجابة الطالب في النماذج فقط */
@@ -588,11 +590,83 @@
   .view, .view p, .view span, .view div, .view td, .view th, .qitem, .forms-sidebar, .workshop{
     font-size:16px; font-weight:700;
   }
+
+  /* ===== التسجيل الجديد: صفوف (المادة / الصف / المشرف) متجاورة أفقيًا مع علامة + ===== */
+  .reg-trow{ display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:6px; align-items:center; margin-bottom:6px; }
+  .reg-trow select{ font-size:13px; padding:10px 6px; min-width:0; }
+  .reg-plus{ width:40px; height:40px; font-size:22px; font-weight:900; line-height:1; border:2px solid var(--accent); background:var(--accent); color:var(--accent-ink); border-radius:8px; cursor:pointer; }
+  .reg-plus.reg-minus{ background:var(--paper); color:var(--danger); border-color:var(--danger); }
+
+  /* ===== الاختيار من متعدد (واجهة الطالب): وضع الصناديق يغطي الخيارات فقط + زرا النخلة و ɇ ===== */
+  .options-grid.mcq-covered label.qrow{ position:relative; }
+  .mcq-opt-cover{ position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%; box-sizing:border-box; z-index:3; display:flex; align-items:center; justify-content:center; background:#eef2f0; border:2px solid var(--ink); border-radius:8px; font-weight:900; font-size:15px; cursor:pointer; user-select:none; }
+  .mcq-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .mcq-head .mcq-qtext{ flex:1 1 auto; min-width:0; font-weight:700; }
+  .mcq-head .hint-bulb{ flex:0 0 auto; }
+  .mcq-tools{ display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; }
+  .options-grid.mcq-covered label.qrow{ width:100%; min-height:46px; box-sizing:border-box; }
+  .mcq-tool-btn{ min-width:38px; height:34px; font-size:18px; font-weight:900; padding:0 8px; border:1.5px solid var(--ink); background:var(--paper); border-radius:8px; cursor:pointer; }
+  .mcq-tool-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  #platformUpdateBanner{ position:fixed; top:0; left:0; right:0; z-index:100000; background:#0f5c53; color:#fff; text-align:center; padding:10px 12px; font-weight:700; font-size:14px; }
+  #platformUpdateBanner button{ margin-right:10px; padding:5px 14px; border-radius:6px; border:none; font-weight:800; cursor:pointer; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style id="tenantStyles">
+
+  /* ===================== تعدد المؤسسات: مكونات مشتركة ===================== */
+  .org-banner{ padding:9px clamp(14px,3vw,28px); font-size:13.5px; font-weight:700; border-bottom:2px solid var(--ink); display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .org-banner.support{ background:#fff4d6; border-bottom-color:var(--warn); color:#5c3b06; }
+  .org-banner.warn{ background:#fbeae7; border-bottom-color:var(--danger); color:var(--danger); }
+  .org-banner .chip-btn{ padding:4px 10px; font-size:12.5px; }
+
+  .tn-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:0 0 14px; }
+  .tn-stat{ border:2px solid var(--ink); border-radius:10px; padding:12px 14px; }
+  .tn-stat .n{ font-size:26px; font-weight:900; line-height:1.1; }
+  .tn-stat .l{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .tn-stat.bad{ border-color:var(--danger); } .tn-stat.bad .n{ color:var(--danger); }
+  .tn-stat.warn{ border-color:var(--warn); } .tn-stat.warn .n{ color:var(--warn); }
+
+  .tn-badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; border:1.5px solid currentColor; white-space:nowrap; }
+  .tn-badge.ok{ color:var(--accent); } .tn-badge.off{ color:var(--danger); } .tn-badge.exp{ color:var(--warn); }
+
+  /* زر التبديل (Toggle Switch) — يتوافق مع اتجاه RTL */
+  .tn-switch{ position:relative; display:inline-block; width:48px; height:26px; flex:0 0 auto; vertical-align:middle; }
+  .tn-switch input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:2; }
+  .tn-switch .trk{ position:absolute; inset:0; background:#d3d3d3; border:2px solid var(--ink); border-radius:999px; box-sizing:border-box; transition:background .18s; }
+  .tn-switch .trk::before{ content:""; position:absolute; top:2px; right:2px; width:18px; height:18px; background:#fff; border:2px solid var(--ink); border-radius:50%; box-sizing:border-box; transition:transform .18s; }
+  .tn-switch input:checked + .trk{ background:var(--accent); }
+  .tn-switch input:checked + .trk::before{ transform:translateX(-22px); }
+  .tn-switch input:focus-visible + .trk{ outline:3px solid #2563eb; outline-offset:2px; }
+  .tn-switch input:disabled{ cursor:not-allowed; } .tn-switch input:disabled + .trk{ opacity:.45; }
+  @media (prefers-reduced-motion: reduce){ .tn-switch .trk, .tn-switch .trk::before{ transition:none; } }
+
+  #regRoleGroup.locked{ opacity:.4; pointer-events:none; filter:grayscale(1); }
+  .tn-inline{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .tn-inline > input, .tn-inline > select{ width:auto; flex:1 1 140px; min-width:0; }
+  .tn-check{ display:flex; align-items:center; gap:8px; margin:14px 0 6px; font-size:14px; font-weight:700; color:var(--ink); }
+  .tn-check input{ width:auto; }
+  .tn-note{ font-size:12.5px; color:var(--muted); line-height:1.7; margin:6px 0 0; }
+  .tn-flash{ border:2px solid var(--accent); background:#eef7f5; border-radius:10px; padding:12px 14px; margin:0 0 14px; font-size:14px; line-height:1.9; }
+  .tn-flash code, .tn-code{ font-family:Consolas,"Courier New",monospace; direction:ltr; unicode-bidi:embed; background:var(--soft); border:1px solid #d8d8d8; border-radius:6px; padding:1px 8px; font-size:14px; letter-spacing:1px; }
+  .tn-mini{ padding:3px 9px !important; font-size:12px !important; }
+  .tn-list{ margin:0; padding:0; list-style:none; font-size:12.5px; line-height:1.8; }
+  .tn-list li span{ color:var(--muted); }
+  .tn-chips{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px; }
+  .tn-chip{ display:inline-flex; align-items:center; gap:4px; border:1.5px solid var(--ink); border-radius:999px; padding:1px 4px 1px 10px; font-size:12.5px; font-weight:700; background:var(--paper); }
+  .tn-chip button{ border:none; background:none; cursor:pointer; font-size:14px; line-height:1; color:var(--danger); padding:0 4px; }
+  .tn-toast{ position:fixed; bottom:22px; right:50%; transform:translateX(50%); background:var(--ink); color:#fff; padding:11px 20px; border-radius:10px; font-weight:700; font-size:14px; z-index:5000; max-width:min(92vw,520px); text-align:center; }
+  .tn-toast.err{ background:var(--danger); }
+  .tn-form-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 14px; }
+  .tn-section-title{ font-family:'Amiri', serif; font-size:17px; margin:18px 0 2px; padding-top:12px; border-top:1px solid #ddd; }
+  .tn-empty{ border:2px dashed #ccc; border-radius:10px; padding:32px 16px; text-align:center; color:var(--muted); }
+  td .tn-datewrap{ display:flex; flex-direction:column; gap:6px; }
+  td .tn-datewrap input[type=date]{ width:100%; font-size:13px; padding:5px 6px; border:1.5px solid #ccc; border-radius:6px; font-family:inherit; }
+  td .tn-renew{ display:flex; gap:4px; flex-wrap:wrap; }
+
+</style>
 </head>
 <body>
 
@@ -601,23 +675,16 @@
     ⏳ جارِ الاتصال بقاعدة البيانات...
   </div>
   <div class="brandbar">
-    <div class="eyebrow">منصة التدريب على المهارات اللغوية</div>
+    <div class="eyebrow">منصة أنت ونحن التعليمية</div>
     <h1>تسجيل الدخول</h1>
   </div>
   <main>
     <div class="card">
-      <label style="margin-top:0;">اختر صفتك</label>
-      <div class="roles" id="roleGroup">
-        <button class="role-btn" data-role="admin">مشرف</button>
-        <button class="role-btn" data-role="coordinator">منسق</button>
-        <button class="role-btn" data-role="teacher">معلم</button>
-        <button class="role-btn" data-role="student">طالب</button>
-      </div>
-      <label for="usernameSelect">اسم المستخدم</label>
-      <input type="text" id="usernameSelect" list="usernameDatalist" autocomplete="off" placeholder="اختر الصفة أولًا" disabled>
-      <datalist id="usernameDatalist"></datalist>
+      <label for="usernameInput" style="margin-top:0;">اسم المستخدم</label>
+      <input type="text" id="usernameInput" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="اكتب اسم المستخدم">
       <label for="passwordInput">كلمة المرور</label>
-      <input type="password" id="passwordInput" placeholder="••••••••">
+      <input type="password" id="passwordInput" autocomplete="current-password" placeholder="••••••••">
+      <div style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;" aria-hidden="true"><label for="hpWebsite">الموقع</label><input type="text" id="hpWebsite" name="website" tabindex="-1" autocomplete="off"></div>
       <div class="row-between">
         <button class="link-btn" id="forgotBtn">نسيت كلمة المرور؟</button><span></span>
       </div>
@@ -627,7 +694,6 @@
     </div>
   </main>
   <button class="about-btn" id="aboutBtn">من نحن</button>
-  <button class="about-btn" id="diagBtn" style="left:auto; right:16px;">🔧 تشخيص الاتصال</button>
 </div>
 
 <div class="overlay" id="aboutOverlay"><div class="modal">
@@ -641,37 +707,22 @@
   </div>
 </div></div>
 
-<div class="overlay" id="registerOverlay"><div class="modal">
+<div class="overlay" id="registerOverlay"><div class="modal wide">
   <button class="modal-close" data-close="registerOverlay">إغلاق ✕</button>
   <h2>تسجيل جديد</h2>
-  <p>سيتم إرسال بياناتك للمشرف العام أو أحد المنسقين للموافقة عليها.</p>
-  <label>اسم المستخدم</label><input type="text" id="regUsername">
-  <label>الصف</label>
-  <select id="regGrade"><option value="">اختر الصف</option>
-    <option>الأول</option><option>الثاني</option><option>الثالث</option><option>الرابع</option><option>الخامس</option><option>السادس</option>
-    <option>أول متوسط</option><option>ثاني متوسط</option><option>ثالث متوسط</option><option>أول ثانوي</option><option>ثاني ثانوي</option><option>ثالث ثانوي</option>
-  </select>
-  <label>الفصل</label>
-  <select id="regClass"><option value="">اختر الفصل</option>
-    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-  </select>
-  <label>كلمة المرور</label><input type="password" id="regPassword">
-  <div class="modal-actions"><button class="primary-btn" id="regSaveBtn" style="flex:1;">حفظ</button></div>
-</div></div>
-
-<div class="overlay" id="diagOverlay"><div class="modal">
-  <button class="modal-close" data-close="diagOverlay">إغلاق ✕</button>
-  <h2>تشخيص الاتصال بقاعدة البيانات</h2>
-  <div id="diagBody" style="font-size:13.5px; line-height:1.9; color:var(--ink);"></div>
-</div></div>
-
-<div class="overlay" id="setupOverlay"><div class="modal">
-  <h2>إعداد حساب المشرف العام</h2>
-  <p>من فضلك قم بإنشاء اسم مستخدم وكلمة مرور للمشرف العام، واحفظهما لتتمكن من الدخول بهما المرة القادمة.</p>
-  <label>اسم المستخدم الجديد</label><input type="text" id="setupUsername">
-  <label>كلمة المرور الجديدة</label><input type="password" id="setupPassword">
-  <label>البريد الإلكتروني</label><input type="email" id="setupEmail">
-  <div class="modal-actions"><button class="primary-btn" id="setupSaveBtn" style="flex:1;">حفظ</button></div>
+  <p>اكتب رمز مؤسستك أولًا (تحصل عليه من إدارة مؤسستك)، ثم اختر صفتك وأكمل بياناتك. يُفعَّل الحساب مباشرة ما لم توقف إدارة المؤسسة التفعيل التلقائي.</p>
+  <label for="regOrgCode">رمز المؤسسة</label>
+  <div class="tn-inline"><input type="text" id="regOrgCode" dir="ltr" style="text-align:left; text-transform:uppercase;" autocomplete="off" placeholder="مثال: AB12CD"><button type="button" class="chip-btn" id="regOrgCheck">تحقق</button></div>
+  <div class="msg" id="regOrgMsg"></div>
+  <label>الصفة</label>
+  <div class="roles locked" id="regRoleGroup" style="grid-template-columns:repeat(3,1fr); margin-bottom:6px;">
+    <button type="button" class="role-btn" data-rrole="teacher">معلم</button>
+    <button type="button" class="role-btn" data-rrole="student">طالب</button>
+    <button type="button" class="role-btn" data-rrole="parent">ولي أمر</button>
+  </div>
+  <div id="regFields" class="hidden"></div>
+  <div class="msg" id="regMsg"></div>
+  <div class="modal-actions"><button class="primary-btn" id="regSaveBtn" style="flex:1;" disabled>إنشاء الحساب</button></div>
 </div></div>
 
 <div class="overlay" id="forgotOverlay"><div class="modal">
@@ -695,7 +746,7 @@
   <div class="topbar">
     <div style="display:flex; align-items:center; gap:10px;">
       <button class="logout-btn" id="sidenavToggle" title="طي/عرض القائمة الجانبية" style="padding:6px 10px; font-size:16px; line-height:1;">☰</button>
-      <div class="brand">منصة أنت المستقبل</div>
+      <div class="brand">منصة أنت ونحن التعليمية</div>
     </div>
     <div class="who">
       <span id="taskBellWrap" style="position:relative; display:none; margin-left:4px;">
@@ -714,6 +765,7 @@
       <span>مسجّل الدخول: <b id="whoName">—</b></span><button class="logout-btn" id="logoutBtn">تسجيل الخروج</button>
     </div>
   </div>
+  <div id="orgBanner" class="org-banner hidden"></div>
   <div class="app-body">
     <nav class="sidenav" id="sidenav"></nav>
     <div class="view" id="viewArea"></div>
@@ -729,33 +781,68 @@
 // ظهرت منذ آخر مرة كانت هذه البصمة مطابقة، فنُجبر إعادة تحميل حقيقية. لا حاجة
 // لتذكّر تغيير أي رقم يدويًا مع كل رفعة جديدة على GitHub — كل شيء تلقائي بالكامل.
 (function selfUpdateCheck(){
-  const STORAGE_KEY = "platform-last-known-hash";
+  // تحديث تلقائي بلا أي رقم يدوي: نقارن بصمة الشيفرة التي تعمل الآن (كل <script> و<style> مضمّنة) ببصمة النسخة
+  // المنشورة حاليًا (تُجلب متجاوزة الكاش). يتكرر الفحص عند الفتح وكل دقيقة وعند العودة للتبويب/التطبيق أو عودة الاتصال،
+  // فلا يحتاج المستخدم لتنشيط المتصفح يدويًا حتى لو ظلّت الصفحة مفتوحة أيامًا (سبب المشكلة سابقًا: فحص واحد عند الفتح فقط).
   const PAGE_URL = location.href.split("?")[0].split("#")[0];
-
   function simpleHash(str){
     let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-    for(let i=0;i<str.length;i++){
-      const ch = str.charCodeAt(i);
-      h1 = Math.imul(h1 ^ ch, 2654435761);
-      h2 = Math.imul(h2 ^ ch, 1597334677);
-    }
-    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
-    return (4294967296 * (2097151 & h2) + (h1>>>0)).toString(36);
+    for(let i=0;i<str.length;i++){ const ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
+    h1 = Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+    h2 = Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
   }
-
-  fetch(PAGE_URL + "?_cachebust=" + Date.now(), { cache: "no-store" })
-    .then(r => r.text())
-    .then(html => {
-      const remoteHash = simpleHash(html);
-      let lastKnown = null;
-      try{ lastKnown = localStorage.getItem(STORAGE_KEY); }catch(e){}
-      if(lastKnown === remoteHash) return; // مطابق — لا شيء جديد
-      try{ localStorage.setItem(STORAGE_KEY, remoteHash); }catch(e){}
-      if(lastKnown === null) return; // أول تشغيل على هذا الجهاز — فقط نسجّل البصمة، بلا إعادة تحميل
-      location.replace(PAGE_URL + "?v=" + Date.now()); // نسخة أحدث فعليًا — أعد التحميل متجاوزًا الكاش
-    })
-    .catch(()=>{ /* لا يوجد اتصال بالشبكة الآن — نكمل بالنسخة الحالية بصمت */ });
+  function sigOf(doc){
+    let s = "";
+    doc.querySelectorAll("script:not([src]), style").forEach(el=>{ s += el.textContent.length + ":" + el.textContent; });
+    return simpleHash(s);
+  }
+  let runningSig = null, checking = false, bannerShown = false;
+  function reloadsRecently(){
+    try{
+      const now = Date.now();
+      const arr = JSON.parse(sessionStorage.getItem("platform-reloads")||"[]").filter(t=>now-t<120000);
+      return arr;
+    }catch(e){ return []; }
+  }
+  function isBusy(){
+    try{
+      if(typeof activeModel!=="undefined" && activeModel) return true;
+      const sub = document.getElementById("solveSubmit");
+      if(sub && sub.offsetParent) return true;
+    }catch(e){}
+    return false;
+  }
+  function doReload(){
+    try{ if(typeof flushSaveDBNow==="function") flushSaveDBNow(); }catch(e){}
+    try{ const a=reloadsRecently(); a.push(Date.now()); sessionStorage.setItem("platform-reloads", JSON.stringify(a)); }catch(e){}
+    setTimeout(()=>location.replace(PAGE_URL + "?v=" + Date.now()), 400);
+  }
+  function showBanner(){
+    if(bannerShown) return; bannerShown = true;
+    const b = document.createElement("div"); b.id = "platformUpdateBanner";
+    b.innerHTML = 'تتوفر نسخة أحدث من المنصة <button type="button">تحديث الآن</button>';
+    b.querySelector("button").addEventListener("click", doReload);
+    document.body.appendChild(b);
+  }
+  async function check(){
+    if(checking || runningSig===null) return;
+    checking = true;
+    try{
+      const r = await fetch(PAGE_URL + "?_cb=" + Date.now() + Math.random().toString(36).slice(2), {cache:"no-store"});
+      if(!r.ok) return;
+      const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+      if(!doc.querySelector("script")) return;
+      if(sigOf(doc) === runningSig) return;
+      if(isBusy() || reloadsRecently().length>=3) showBanner(); else doReload();
+    }catch(e){ /* لا اتصال — نكمل بالنسخة الحالية */ }
+    finally{ checking = false; }
+  }
+  document.addEventListener("DOMContentLoaded", ()=>{ runningSig = sigOf(document); setTimeout(check, 1500); });
+  setInterval(check, 60000);
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") check(); });
+  window.addEventListener("focus", check);
+  window.addEventListener("online", check);
 })();
 </script>
 
@@ -1009,7 +1096,7 @@
   .touch-drag-ghost{ transition:none !important; }
 </style>
 <script>
-const DB = {
+const ROOT = {
   admins: [],
   // تنسيق المواد الدراسية: جدول ديناميكي — أعمدته أسماء المواد، وصفوفه الوظائف (المنسق/المعلم)،
   // وكل خلية تحوي أسماء المستخدمين (اسم المستخدم) المرتبطين بتلك المادة لتلك الوظيفة (مفصولة بفواصل)
@@ -1027,6 +1114,9 @@ const DB = {
     { username:"طالب_نورة", password:"1234", grade:"الخامس", cls:"2", active:false }
   ],
   pendingStudents: [],
+  parents: [], // أولياء الأمور المسجَّلون ذاتيًا
+  deletedUsers: {}, // شواهد حذف المستخدمين {kind::hash: وقت الحذف} — تمنع عودة مستخدم محذوف عند الدمج مع السحابة
+  settings: { autoActivateStudents:true, autoActivateTeachers:true }, // التفعيل التلقائي للتسجيل الجديد
   attachTasks: [], // مرفقات مُسندة لجهة محددة (بند 10)
   deletedModelIds: {}, // بند 18: شواهد حذف النماذج {id: وقت الحذف} — تمنع عودة نموذج محذوف عمدًا أثناء الدمج مع السحابة
   correspondence: [], // {id, subject, assignedRole, assignedName, createdDate, createdISO, sent, senderRole, senderName, reply, seenBy}
@@ -1054,7 +1144,433 @@ const DB = {
   // فارغ يعني: استخدام النص الافتراضي المكتوب في aboutOverlay بالـHTML كما هو.
   aboutUsText: "",
 };
-const BACKUP_ADMIN = { username:"الأستاذ", password:"100%" };
+
+/* =====================================================================
+   ===== طبقة تعدد المؤسسات (Multi-Tenant) وعزل البيانات =====
+   الفكرة: ROOT هو الجذر الحقيقي المحفوظ (Firebase/محلي) ويحوي كل المؤسسات. كل سجل يخصّ مؤسسة يحمل
+   الحقل orgId (المقابل لـ organization_id). أما DB فهو "واجهة معزولة" (Proxy): أثناء أي جلسة تعرض لصاحبها
+   سجلات مؤسسته فقط، وأي إضافة تُوسَم تلقائيًا بمؤسسته، وأي سجل من مؤسسة أخرى يُرفض عند الكتابة.
+   بهذا يعمل كل كود المنصة القديم (DB.students, DB.models ...) كما هو لكن داخل حدود مؤسسة واحدة.
+   المشرف العام (بلا مؤسسة) لا يرى سجلات المؤسسات إطلاقًا إلا حين يفتح مؤسسة بعينها (وضع الدعم).
+   ملاحظة أمنية: هذا عزل على مستوى التطبيق. العزل الصارم ضد العبث عبر أدوات المتصفح يتطلب خادمًا
+   أو قواعد Firebase مرتبطة بهوية كل مستخدم (انظر رسالة التسليم).
+   ===================================================================== */
+const DEFAULT_ORG_ID = "org_default";
+const TENANT_ARRAYS  = ["orgAdmins","coordinators","teachers","students","pendingStudents","parents","attachTasks","models","banks","results","attachments","tasks","correspondence","mindmapBank"];
+const TENANT_OBJECTS = ["subjects","settings","tierThresholds","columnWidths","folders","teacherReqBank","customHeaders"];
+const META_KEYS = TENANT_OBJECTS.slice();
+const SCOPE = { orgId: null };   // المؤسسة الفعّالة لهذه الجلسة (null = المشرف العام / قبل الدخول)
+const GLOBAL_META = {};          // إعدادات مؤقتة خارج أي مؤسسة (غير محفوظة)
+
+function newOrgMeta(){
+  return {
+    subjects: { columns:["لغتي","المهارات","الإملاء","العلوم","الاجتماعيات"], rows:[{role:"المنسق",cells:{}},{role:"المعلم",cells:{}}] },
+    settings: { autoActivateStudents:true, autoActivateTeachers:true },
+    tierThresholds: { excellent:97, veryGood:90, good:80 },
+    columnWidths: {},
+    folders: ["عام"],
+    teacherReqBank: {},
+    customHeaders: {}
+  };
+}
+function orgMetaFor(orgId){
+  if(!ROOT.orgMeta || typeof ROOT.orgMeta!=="object") ROOT.orgMeta = {};
+  let m = ROOT.orgMeta[orgId];
+  if(!m || typeof m!=="object") m = ROOT.orgMeta[orgId] = {};
+  if(META_KEYS.some(k=>m[k]==null)){ const d = newOrgMeta(); META_KEYS.forEach(k=>{ if(m[k]==null) m[k] = d[k]; }); }
+  return m;
+}
+
+const __IDX = /^\d+$/;
+const __MUT = new Set(["push","pop","shift","unshift","splice","sort","reverse","fill","copyWithin"]);
+const __arrCache = {};
+const __commitFns = {};
+/* مصفوفة "معزولة": تعرض سجلات مؤسسة واحدة من مصفوفة الجذر، وتكتب فيها مع الحفاظ على سجلات بقية المؤسسات */
+function scopedArray(rootKey, oid){
+  const ck = rootKey + "|" + oid;
+  if(__arrCache[ck]) return __arrCache[ck];
+  const own  = x => !!x && typeof x==="object" && x.orgId===oid;
+  const snap = () => Array.isArray(ROOT[rootKey]) ? ROOT[rootKey].filter(own) : [];
+  const commit = (next)=>{
+    const all = Array.isArray(ROOT[rootKey]) ? ROOT[rootKey] : [];
+    const others = all.filter(x=>!own(x));
+    const mine = [];
+    for(const x of Array.from(next)){
+      if(!x || typeof x!=="object") continue;
+      if(!x.orgId) x.orgId = oid;          // وسم تلقائي بمؤسسة الجلسة
+      if(x.orgId!==oid) continue;          // حاجز: لا يُقبل سجل يخص مؤسسة أخرى
+      mine.push(x);
+    }
+    ROOT[rootKey] = others.concat(mine);
+  };
+  const p = new Proxy([], {
+    get(t, k){
+      if(typeof k==="symbol"){
+        if(k===Symbol.iterator) return ()=>snap()[Symbol.iterator]();
+        if(k===Symbol.isConcatSpreadable) return true;
+        return undefined;
+      }
+      if(k==="length") return snap().length;
+      if(__IDX.test(k)) return snap()[+k];
+      if(k==="constructor") return Array;
+      if(k==="toJSON") return undefined;
+      if(__MUT.has(k)) return (...a)=>{ const s = snap(); const r = Array.prototype[k].apply(s, a); commit(s); return r; };
+      const fn = Array.prototype[k];
+      if(typeof fn==="function") return (...a)=>fn.apply(snap(), a);
+      return undefined;
+    },
+    set(t, k, v){
+      if(k==="length"){ const s = snap(); s.length = v; commit(s); return true; }
+      if(typeof k==="string" && __IDX.test(k)){ const s = snap(); s[+k] = v; commit(s); return true; }
+      return true;
+    },
+    has(t, k){ if(typeof k==="string" && __IDX.test(k)) return (+k) < snap().length; return k==="length" || (k in Array.prototype); },
+    deleteProperty(t, k){ if(typeof k==="string" && __IDX.test(k)){ const s = snap(); s.splice(+k,1); commit(s); } return true; },
+    ownKeys(){ const n = snap().length, ks = []; for(let i=0;i<n;i++) ks.push(String(i)); ks.push("length"); return ks; },
+    getOwnPropertyDescriptor(t, k){
+      if(k==="length") return {value:snap().length, writable:true, enumerable:false, configurable:false};
+      if(typeof k==="string" && __IDX.test(k)){ const s = snap(); if(+k < s.length) return {value:s[+k], writable:true, enumerable:true, configurable:true}; }
+      return undefined;
+    }
+  });
+  __arrCache[ck] = p;
+  __commitFns[ck] = commit;
+  return p;
+}
+function commitTenantArray(rootKey, oid, arr){ scopedArray(rootKey, oid); __commitFns[rootKey+"|"+oid](Array.from(arr||[])); }
+
+/* الواجهة المعزولة التي يستخدمها كل كود المنصة */
+const DB = new Proxy({}, {
+  get(_, key){
+    if(typeof key==="symbol") return undefined;
+    const oid = SCOPE.orgId;
+    if(TENANT_ARRAYS.includes(key)) return oid ? scopedArray(key, oid) : [];
+    if(TENANT_OBJECTS.includes(key)) return oid ? orgMetaFor(oid)[key] : GLOBAL_META[key];
+    return ROOT[key];
+  },
+  set(_, key, value){
+    const oid = SCOPE.orgId;
+    if(TENANT_ARRAYS.includes(key)){
+      if(oid) commitTenantArray(key, oid, value);
+      else console.warn("محاولة كتابة إلى", key, "خارج أي مؤسسة — تم تجاهلها.");
+      return true;
+    }
+    if(TENANT_OBJECTS.includes(key)){ if(oid) orgMetaFor(oid)[key] = value; else GLOBAL_META[key] = value; return true; }
+    ROOT[key] = value;
+    return true;
+  },
+  has(_, key){ return key in ROOT || TENANT_ARRAYS.includes(key) || TENANT_OBJECTS.includes(key); }
+});
+function withScope(orgId, fn){ const prev = SCOPE.orgId; SCOPE.orgId = orgId; try{ return fn(); } finally{ SCOPE.orgId = prev; } }
+
+/* ---- ترحيل بيانات المنصة القديمة (بلا مؤسسات) إلى "المؤسسة الافتراضية" — آمن ويتكرر بلا ضرر ---- */
+function ensureTenancy(){
+  if(!Array.isArray(ROOT.organizations)) ROOT.organizations = [];
+  if(!Array.isArray(ROOT.orgAdmins)) ROOT.orgAdmins = [];
+  if(!ROOT.orgMeta || typeof ROOT.orgMeta!=="object") ROOT.orgMeta = {};
+  if(!ROOT.deletedOrgs || typeof ROOT.deletedOrgs!=="object") ROOT.deletedOrgs = {};
+  const now = Date.now();
+  if(!ROOT.tenancyMigrated){
+    if(!ROOT.organizations.some(o=>o && o.id===DEFAULT_ORG_ID)){
+      ROOT.organizations.push({ id:DEFAULT_ORG_ID, name:"المؤسسة الافتراضية", code:"DEFAULT", subscriptionStatus:"active", subscriptionExpiry:"", createdAt:now, updatedAt:now, statusLog:[], migrated:true });
+    }
+    ROOT.tenancyMigrated = true;
+  }
+  const def = ROOT.organizations.find(o=>o && o.id===DEFAULT_ORG_ID);
+  TENANT_ARRAYS.forEach(k=>{ if(!Array.isArray(ROOT[k])) ROOT[k] = []; });
+  if(def){
+    TENANT_ARRAYS.forEach(k=>{ ROOT[k].forEach(x=>{ if(x && typeof x==="object" && !x.orgId) x.orgId = DEFAULT_ORG_ID; }); });
+    const hadMeta = !!(ROOT.orgMeta[DEFAULT_ORG_ID] && typeof ROOT.orgMeta[DEFAULT_ORG_ID]==="object");
+    if(!hadMeta) ROOT.orgMeta[DEFAULT_ORG_ID] = {};
+    TENANT_OBJECTS.forEach(k=>{
+      if(ROOT[k]!==undefined){ if(!hadMeta) ROOT.orgMeta[DEFAULT_ORG_ID][k] = ROOT[k]; delete ROOT[k]; }
+    });
+    orgMetaFor(DEFAULT_ORG_ID);
+  }
+  // سجلات مديري المؤسسات دائمًا مرتبطة بمؤسسة؛ ما بلا مؤسسة يبقى غير مرئي (لا يُمنح صلاحية)
+}
+function genOrgId(){ return "org_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function genOrgCode(){
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  for(let tries=0; tries<50; tries++){
+    const u = new Uint8Array(6); crypto.getRandomValues(u);
+    const code = Array.from(u).map(b=>A[b % A.length]).join("");
+    if(!(ROOT.organizations||[]).some(o=>o && String(o.code||"").toUpperCase()===code)) return code;
+  }
+  return "ORG" + Date.now().toString(36).toUpperCase().slice(-5);
+}
+
+/* ---- أدوات التواريخ والحالات ---- */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function isoOfDate(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+function todayLocalISO(){ return isoOfDate(new Date()); }
+function addMonthsISO(baseISO, months){
+  const d = new Date((baseISO||todayLocalISO())+"T00:00:00");
+  const day = d.getDate();
+  d.setMonth(d.getMonth()+months);
+  if(d.getDate()!==day) d.setDate(0);   // 31 يناير + شهر ⇒ آخر فبراير
+  return isoOfDate(d);
+}
+function daysUntilISO(iso){
+  if(!iso) return null;
+  const a = new Date(todayLocalISO()+"T00:00:00"), b = new Date(iso+"T00:00:00");
+  return Math.round((b-a)/86400000);
+}
+function orgById(id){ return (ROOT.organizations||[]).find(o=>o && o.id===id) || null; }
+/* حالة اشتراك المؤسسة الفعلية: تُحسب من الحالة اليدوية + تاريخ الانتهاء (يبقى الاشتراك سارياً طوال يوم الانتهاء نفسه) */
+function orgStateOf(org){
+  if(!org) return {ok:false, code:"missing", label:"غير موجودة"};
+  if(org.subscriptionStatus!=="active") return {ok:false, code:"inactive", label:"موقوفة"};
+  if(org.subscriptionExpiry && org.subscriptionExpiry < todayLocalISO()) return {ok:false, code:"expired", label:"منتهية"};
+  return {ok:true, code:"active", label:"نشطة"};
+}
+
+/* ---- تفرّد أسماء المستخدمين عبر المنصة (تسجيل الدخول باسم المستخدم فقط، فيجب ألا يتكرر بين مؤسستين) ---- */
+function allAccountRecords(){
+  return [].concat(ROOT.admins||[], ROOT.orgAdmins||[], ROOT.coordinators||[], ROOT.teachers||[], ROOT.students||[], ROOT.parents||[]);
+}
+function usernameTakenAnywhere(u, exceptRec){
+  const key = Sec.norm(u);
+  if(!key) return false;
+  if(key===Sec.norm(SUPER_ADMIN.username)) return true;
+  return allAccountRecords().some(r=>r && r!==exceptRec && r.username && Sec.norm(r.username)===key);
+}
+function usernameTakenOtherOrg(u, orgId){
+  const key = Sec.norm(u);
+  if(!key) return false;
+  if(key===Sec.norm(SUPER_ADMIN.username)) return true;
+  return allAccountRecords().some(r=>r && r.username && Sec.norm(r.username)===key && (r.orgId||null)!==(orgId||null));
+}
+function uniqueUsername(base, start){
+  let n = start || 1;
+  while(usernameTakenAnywhere(base+n)) n++;
+  return base+n;
+}
+
+/* ---- الحارس (Middleware): يُستدعى عند الدخول، واستعادة الجلسة، وعند كل عرض شاشة وكل حفظ، وبعد كل مزامنة ---- */
+const MSG_ORG_SUSPENDED = "عذراً، تم إيقاف اشتراك المؤسسة. يرجى مراجعة الإدارة أو المشرف العام.";
+const Guard = (function(){
+  let loggingOut = false;
+  function accountState(role, rec, orgOverride){
+    if(!rec) return {ok:false, msg:"لم يعد حسابك موجودًا. يرجى مراجعة إدارة المؤسسة."};
+    if(!rec.orgId) return {ok:true};   // المشرف العام
+    const org = orgOverride || orgById(rec.orgId);
+    if(!org) return {ok:false, code:"noorg", msg:"المؤسسة المرتبطة بحسابك غير موجودة. يرجى مراجعة المشرف العام."};
+    const st = orgStateOf(org);
+    if(!st.ok) return {ok:false, code:st.code, msg:MSG_ORG_SUSPENDED};
+    if(role==="student" && rec.feeStatus==="unpaid") return {ok:false, code:"unpaid", msg:"تم إيقاف حسابك لعدم سداد الرسوم. يرجى مراجعة إدارة المؤسسة."};
+    if((role==="student"||role==="teacher"||role==="parent") && rec.active===false) return {ok:false, code:"inactive-user", msg:"حسابك بانتظار التفعيل من إدارة المؤسسة أو أحد المنسقين."};
+    if(role==="orgadmin" && rec.active===false) return {ok:false, code:"inactive-user", msg:"تم إيقاف حسابك. يرجى مراجعة المشرف العام."};
+    return {ok:true};
+  }
+  function currentRec(){
+    if(!session || !session.user) return null;
+    const key = Sec.norm(session.user.username);
+    return tableFor(session.role).find(r=>r && Sec.norm(r.username)===key && (r.orgId||null)===(session.orgId||null)) || null;
+  }
+  function forceLogout(msg){
+    if(loggingOut) return; loggingOut = true;
+    try{ flushSaveDBNow(); }catch(e){}
+    try{ stopTestTimerAndOverlays(); }catch(e){}
+    session = null; currentRole = null; SCOPE.orgId = null;
+    try{ localStorage.removeItem("platform-session"); }catch(e){}
+    try{
+      document.getElementById("appShell").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+      usernameInput.value = ""; passwordInput.value = "";
+      showMsg(msg, "err");
+    }catch(e){}
+    loggingOut = false;
+  }
+  function verifySession(){
+    if(!session || session.isSuper || !session.orgId) return true;
+    const org = orgById(session.orgId);
+    if(!org){ if(cloudSynced){ forceLogout("المؤسسة المرتبطة بحسابك غير موجودة. يرجى مراجعة المشرف العام."); return false; } return true; }
+    const rec = currentRec();
+    if(!rec){ if(cloudSynced){ forceLogout("لم يعد حسابك موجودًا في المؤسسة. يرجى مراجعة إدارة المؤسسة."); return false; } return true; }
+    const st = accountState(session.role, rec, org);
+    if(!st.ok){ forceLogout(st.msg); return false; }
+    return true;
+  }
+  /* فحص لقطة واردة من السحابة قبل تطبيقها (حتى لو أُجّل تطبيقها بسبب نموذج مفتوح): إيقاف الاشتراك يسري فورًا */
+  function checkIncoming(saved){
+    if(!session || session.isSuper || !session.orgId || !saved) return;
+    const list = k=>{ const v = saved[k]; return Array.isArray(v) ? v : Object.values(v||{}); };
+    const org = list("organizations").find(o=>o && o.id===session.orgId);
+    const gone = saved.deletedOrgs && saved.deletedOrgs[session.orgId];
+    if(!org || gone){ forceLogout("المؤسسة المرتبطة بحسابك غير موجودة. يرجى مراجعة المشرف العام."); return; }
+    const tbl = ({orgadmin:"orgAdmins", coordinator:"coordinators", teacher:"teachers", student:"students", parent:"parents"})[session.role];
+    const key = Sec.norm(session.user.username);
+    const rec = list(tbl).find(r=>r && Sec.norm(r.username)===key && (r.orgId||null)===(session.orgId||null));
+    if(!rec) return;   // غياب السجل في لقطة قديمة لا يُعدّ حذفًا قاطعًا
+    const st = accountState(session.role, rec, org);
+    if(!st.ok) forceLogout(st.msg);
+  }
+  return { accountState, verifySession, checkIncoming, forceLogout, currentRec };
+})();
+
+/* =====================================================================
+   ===== طبقة الأمان: التشفير، وقفل محاولات الدخول الخاطئة، وأدوات المستخدمين =====
+   - كلمات المرور لا تُخزَّن نصًّا صريحًا أبدًا: تُشتقّ بـ PBKDF2-SHA256 (120,000 دورة)
+     مع "ملح" عشوائي فريد لكل مستخدم، ولا يمكن استعادتها (تشفير أحادي الاتجاه).
+   - اسم المستخدم يُطبَّع (توحيد الهمزات والتشكيل والمسافات...) ثم يُشتقّ منه معرّف SHA-256
+     يُستخدم في الجلسة المحفوظة وفي عدّاد قفل المحاولات، فلا يُخزَّن اسم الدخول صريحًا هناك.
+   ===================================================================== */
+const SUPER_ADMIN = {
+  username: "المشرف العام",
+  passSalt: "8NhQC1RLMxT8jGCYKbHKhw==",
+  passHash: "+7w/Am5lCbA63ifXu213bjyxgQXoacX4tFp3fXE4mIQ=",
+  passIter: 120000,
+  builtin: true
+};
+
+const Sec = (function(){
+  const ITER = 120000;
+  const enc = new TextEncoder();
+  const subtle = (window.crypto && window.crypto.subtle) || null;
+  function b64(u8){ let s=""; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]); return btoa(s); }
+  function unb64(s){ const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+  // توحيد اسم المستخدم للمقارنة/منع التكرار: يتجاهل التشكيل والتطويل وشكل الألف والياء والتاء المربوطة
+  // والمسافات وحالة الأحرف والأرقام الهندية، فيُعدّ "أَحمد  مُحمد" و"احمد محمد" اسمًا واحدًا.
+  function norm(u){
+    return String(u==null?"":u).normalize("NFKC")
+      .replace(/[\u064B-\u065F\u0670\u0640]/g,"")
+      .replace(/[إأآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه")
+      .replace(/[\u0660-\u0669]/g,d=>String(d.charCodeAt(0)-0x0660))
+      .replace(/[\u06F0-\u06F9]/g,d=>String(d.charCodeAt(0)-0x06F0))
+      .replace(/\s+/g,"").toLowerCase();
+  }
+  async function sha256Hex(str){
+    const d = await subtle.digest("SHA-256", enc.encode(str));
+    return Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
+  const uhCache = new Map();
+  async function userHash(username){
+    const key = norm(username);
+    if(uhCache.has(key)) return uhCache.get(key);
+    const h = await sha256Hex("uid|"+key);
+    uhCache.set(key, h);
+    return h;
+  }
+  async function derive(pw, salt, iter){
+    const key = await subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
+    const bits = await subtle.deriveBits({name:"PBKDF2", hash:"SHA-256", salt, iterations:iter}, key, 256);
+    return new Uint8Array(bits);
+  }
+  function safeEq(a,b){
+    if(a.length!==b.length) return false;
+    let r=0; for(let i=0;i<a.length;i++) r |= a[i]^b[i];
+    return r===0;
+  }
+  async function hashPassword(pw){
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const h = await derive(String(pw), salt, ITER);
+    return { passSalt:b64(salt), passHash:b64(h), passIter:ITER };
+  }
+  async function verify(pw, rec){
+    if(!rec) return false;
+    if(rec.passHash && rec.passSalt){
+      const h = await derive(String(pw), unb64(rec.passSalt), rec.passIter||ITER);
+      return safeEq(h, unb64(rec.passHash));
+    }
+    // حساب قديم ما زال بكلمة مرور نصّية (قبل الترحيل التلقائي للتشفير)
+    if(typeof rec.password==="string" && rec.password!=="") return rec.password===String(pw);
+    return false;
+  }
+  return { norm, userHash, hashPassword, verify, sha256Hex, available: !!subtle };
+})();
+
+// تجزئة سريعة (غير أمنية) لبناء مفاتيح قصيرة آمنة لـ Firebase (لا تحوي . $ # [ ] /)
+function hash53(str, seed){
+  seed = seed||0;
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for(let i=0;i<str.length;i++){
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1>>>0)).toString(36);
+}
+function regEsc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function sleepMs(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+/* ---- التفعيل التلقائي للتسجيل الجديد (يُتحكَّم به من واجهة المشرف العام) ---- */
+function autoActivateOn(kind){ // kind: "Students" | "Teachers"
+  return !(DB.settings && DB.settings["autoActivate"+kind] === false);
+}
+
+/* ---- تتبّع حذف المستخدمين (شواهد حذف) حتى لا يعود مستخدم محذوف عند الدمج مع السحابة ---- */
+const USER_KINDS = ["students","teachers","parents"];
+let knownUserKeys = null;
+function userKeyOf(r){ return Sec.norm(r && r.username); }
+function tombKey(kind, key){ return kind+"::"+hash53(key); }
+// ملاحظة: تتبّع الحذف يشمل مستخدمي كل المؤسسات معًا (المفاتيح فريدة على مستوى المنصة)،
+// لذا يعمل على ROOT مباشرة وليس عبر DB المعزولة بمؤسسة واحدة.
+function snapshotKnownUsers(){
+  knownUserKeys = {};
+  USER_KINDS.forEach(k=>{ knownUserKeys[k] = new Set((ROOT[k]||[]).filter(Boolean).map(userKeyOf)); });
+}
+function trackUserDeletions(){
+  if(!knownUserKeys) snapshotKnownUsers();
+  ROOT.deletedUsers = ROOT.deletedUsers || {};
+  const now = Date.now();
+  USER_KINDS.forEach(k=>{
+    const list = (ROOT[k]||[]).filter(Boolean);
+    const cur = new Set(list.map(userKeyOf));
+    knownUserKeys[k].forEach(key=>{ if(!cur.has(key)) ROOT.deletedUsers[tombKey(k,key)] = now; });
+    list.forEach(r=>{
+      const key = userKeyOf(r);
+      if(!knownUserKeys[k].has(key)){ if(!r.createdAt) r.createdAt = now; delete ROOT.deletedUsers[tombKey(k,key)]; }
+    });
+    knownUserKeys[k] = cur;
+  });
+  // تنظيف الشواهد الأقدم من 60 يومًا
+  Object.keys(ROOT.deletedUsers).forEach(t=>{ if(now - ROOT.deletedUsers[t] > 60*86400000) delete ROOT.deletedUsers[t]; });
+}
+
+/* ---- ترحيل كلمات المرور النصّية إلى تجزئات مشفّرة (تلقائيًا وبصمت) — عبر كل المؤسسات ---- */
+const CRED_KINDS = ["admins","orgAdmins","coordinators","teachers","students","parents"];
+function hasPlainPasswords(){
+  return CRED_KINDS.some(k=>(ROOT[k]||[]).some(r=>r && typeof r.password==="string"));
+}
+let credMigrating = false, credMigrateAgain = false;
+async function migrateCredentials(){
+  if(!Sec.available) return false;
+  if(credMigrating){ credMigrateAgain = true; return false; }
+  credMigrating = true;
+  let changed = false;
+  try{
+    for(const k of CRED_KINDS){
+      const list = ROOT[k] || [];
+      for(const r of list){
+        if(!r || typeof r.password!=="string") continue;
+        if(r.password===""){ delete r.password; changed = true; continue; }
+        const pw = r.password;
+        const h = await Sec.hashPassword(pw);
+        if(r.password===pw){ Object.assign(r, h); delete r.password; changed = true; }
+      }
+    }
+  }catch(e){ console.error("تعذّر ترحيل كلمات المرور إلى التشفير:", e); }
+  finally{ credMigrating = false; }
+  if(changed){ try{ saveDB(); }catch(e){} }
+  if(credMigrateAgain){ credMigrateAgain = false; migrateCredentials(); }
+  return changed;
+}
+
+/* ---- ربط session.user بسجل قاعدة البيانات الحالي بعد أي استبدال للبيانات من السحابة ---- */
+function relinkSession(){
+  try{
+    if(!session || !session.user || session.user.builtin) return;
+    const key = Sec.norm(session.user.username);
+    const m = tableFor(session.role).find(r=>r && Sec.norm(r.username)===key);
+    if(m) session.user = m;
+  }catch(e){}
+}
+
 const DEFAULT_ABOUT_HTML = `<p>نحن الأستاذ/ أحمد أبوذكري، صنعنا هذا البرنامج، ولا نحل استخدامه أو التعديل عليه أو الاستفادة منه ماديًا أو معنويًا دون إذن منا، وهذه بياناتنا للتواصل:</p>
     <p>الرقم السعودي: +9660564125716</p>
     <p>الرقم المصري: +201030587285</p>
@@ -1084,21 +1600,118 @@ const FIREBASE_CONFIG = {
 
 let storageReady = false;
 let firebaseDB = null; // مرجع Firebase Realtime Database إن نجح الاتصال
-let diagInfo = { firebaseStatus:"لم تبدأ المحاولة بعد", firebaseError:"", cloudHasData:null, usedLocalOnly:true };
 
 function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.apiKey);
 }
 
 function sanitizeLoadedModels(){
+  // ترحيل/تهيئة تعدد المؤسسات أولًا: يضمن وجود مؤسسة افتراضية ويسم كل سجل قديم بمؤسسته
+  // قبل أي عملية تنظيف أخرى تعتمد على وجود هذه المصفوفات على مستوى الجذر (ROOT).
+  ensureTenancy();
   // عناصر DOM المخزّنة داخل model.blocks لا يمكن أن تنجو من التخزين/الاسترجاع (JSON)،
   // لذلك تُصبح مراجع "ميتة" بعد كل إعادة تحميل للصفحة. نحذفها هنا فورًا بعد التحميل
   // كي لا تتسبب لاحقًا في كسر فتح النموذج أو حفظه (وهو السبب الجذري لمسح البيانات
   // الوهمي ولعدم ظهور النماذج/الأسئلة عند الطالب). البيانات الحقيقية محفوظة في model.data
   // وسيُعاد بناء الكتل التفاعلية منها تلقائيًا عند فتح النموذج (انظر rebuildBlocksFromData).
-  (DB.models||[]).forEach(m=>{ m.blocks = []; });
-  (DB.banks||[]).forEach(m=>{ m.blocks = []; });
-  migrateSubjectsIfNeeded();
+  // ملاحظة: هذه عملية عامة تشمل نماذج كل المؤسسات، لذا تعمل مباشرة على ROOT (المخزن الحقيقي)
+  // وليس على DB (الواجهة المعزولة بمؤسسة واحدة فقط).
+  (ROOT.models||[]).forEach(m=>{ m.blocks = []; });
+  (ROOT.banks||[]).forEach(m=>{ m.blocks = []; });
+  ["parents","students","teachers","coordinators","admins","orgAdmins"].forEach(k=>{ if(!Array.isArray(ROOT[k])) ROOT[k] = []; });
+  if(!ROOT.deletedUsers || typeof ROOT.deletedUsers!=="object") ROOT.deletedUsers = {};
+  seedRestoredTeacher();
+  restoreAhmedIntoOwnOrg();
+  snapshotKnownUsers();
+  relinkSession();
+  if(hasPlainPasswords()) migrateCredentials();
+}
+
+/* استعادة حساب المعلم "أحمد أبوذكري" (مرة واحدة): يُضاف إن لم يكن موجودًا، بكل الصفوف والمواد ليرى كل نماذجه المحفوظة في قاعدة البيانات. */
+function seedRestoredTeacher(){
+  try{
+    if(ROOT.seededTeacherAhmed) return;
+    ROOT.seededTeacherAhmed = true;
+    const name = "أحمد أبوذكري";
+    withScope(DEFAULT_ORG_ID, ()=>{
+      if(DB.teachers.some(t=>t && Sec.norm(t.username)===Sec.norm(name))) return;
+      DB.teachers.push({
+        username:name, passSalt:"XsCtZO43ZofNFcZ/C9rVSQ==", passHash:"Nb7olSNycGqg4j9H9Wcy5Qg33vEhftwhRVA7Bri9qfs=", passIter:120000,
+        grades:ALL_GRADES.slice(), classes:["1","2","3","4","5","6","7","8","9","10"], subjects:subjectNamesList().slice(),
+        active:true, createdAt:Date.now(), restored:true
+      });
+    });
+    try{ saveDB(); }catch(e){}
+  }catch(e){ console.error(e); }
+}
+
+/* نقل المعلم "أحمد أبوذكري" (مرة واحدة تلقائيًا، وبلا رجعة) إلى مؤسسة جديدة خاصة به باسم "مدارس التعلم
+   النموذجية" بصفته موظفًا فيها، مع نقل نماذجه في "الصف الأول" معه. تُنشأ المؤسسة إن لم تكن موجودة، وتبقى
+   نشطة بلا تاريخ انتهاء (يمكن للمشرف العام لاحقًا ضبط مدة اشتراكها من شاشة "المؤسسات والاشتراكات").
+   ملاحظة: بنية النماذج (DB.models) لا تحمل حقل "معلم" صريحًا لكل نموذج — الرؤية تُحدَّد بمطابقة الصف/المادة
+   المسندين للمعلم — لذلك حُدِّدت "نماذجه" هنا بمطابقة الصف "الأول" تحديدًا كما طلب صاحب المنصة. */
+function restoreAhmedIntoOwnOrg(){
+  try{
+    if(ROOT.ahmedOrgMigrated) return;
+    ROOT.ahmedOrgMigrated = true;
+    const ORG_NAME = "مدارس التعلم النموذجية", TEACHER_NAME = "أحمد أبوذكري", TARGET_GRADE = "الأول";
+    const key = Sec.norm(TEACHER_NAME);
+    const teacher = (ROOT.teachers||[]).find(t=>t && Sec.norm(t.username)===key);
+    if(!teacher) return; // لا يوجد حساب لهذا المعلم بعد في هذه النسخة من البيانات
+    let org = (ROOT.organizations||[]).find(o=>o && o.name===ORG_NAME);
+    if(!org){
+      const now = Date.now();
+      org = { id:genOrgId(), name:ORG_NAME, code:genOrgCode(), subscriptionStatus:"active", subscriptionExpiry:"", createdAt:now, updatedAt:now,
+        statusLog:[{at:now, action:"إنشاء المؤسسة تلقائيًا لاستعادة حساب المعلم "+TEACHER_NAME+" ونماذجه", by:"النظام"}] };
+      ROOT.organizations.push(org);
+      orgMetaFor(org.id);
+    }
+    const oldOrgId = teacher.orgId;
+    teacher.orgId = org.id;
+    if(oldOrgId && oldOrgId!==org.id){
+      (ROOT.models||[]).forEach(m=>{ if(m && m.orgId===oldOrgId && m.grade===TARGET_GRADE) m.orgId = org.id; });
+    }
+    try{ saveDB(); }catch(e){}
+  }catch(e){ console.error(e); }
+}
+
+/* دمج نسخة السحابة الواردة مع النسخة المحلية بدل استبدالها كليًا:
+   أي نموذج/بنك/مستخدم موجود محليًا فقط (لم يصل للسحابة بعد) ولم يُحذف عمدًا يبقى محفوظًا، وإلا كان
+   يختفي "شبحيًا" عند فتح المنصة إن كتب جهاز آخر نسخة أحدث فوقه. النموذج الأحدث تعديلًا يفوز. */
+// هذه الدالة تدمج لقطة سحابية كاملة تشمل كل المؤسسات معًا (organizations, orgAdmins, orgMeta,
+// وكل مصفوفات المستخدمين/النماذج بمعرّف orgId داخل كل سجل)، لذا تعمل على ROOT مباشرة لا عبر DB.
+function applyCloudSnapshot(saved){
+  const localLists = { models:ROOT.models, banks:ROOT.banks, students:ROOT.students, teachers:ROOT.teachers, parents:ROOT.parents };
+  const localDelModels = Object.assign({}, ROOT.deletedModelIds||{});
+  const localTombs = Object.assign({}, ROOT.deletedUsers||{});
+  Object.keys(saved).forEach(k=>{ ROOT[k]=saved[k]; });
+  ROOT.deletedModelIds = Object.assign({}, localDelModels, ROOT.deletedModelIds||{});
+  const tombs = Object.assign({}, localTombs);
+  Object.keys(ROOT.deletedUsers||{}).forEach(t=>{ tombs[t] = Math.max(tombs[t]||0, ROOT.deletedUsers[t]||0); });
+  ROOT.deletedUsers = tombs;
+  ["models","banks"].forEach(k=>{
+    const cur = Array.isArray(ROOT[k]) ? ROOT[k].filter(Boolean) : [];
+    const byId = new Map(cur.map(m=>[m.id, m]));
+    (localLists[k]||[]).forEach(m=>{
+      if(!m || !m.id || ROOT.deletedModelIds[m.id]) return;
+      const c = byId.get(m.id);
+      if(!c || (m.updatedAt||0) > (c.updatedAt||0)) byId.set(m.id, m);
+    });
+    ROOT[k] = Array.from(byId.values());
+  });
+  USER_KINDS.forEach(k=>{
+    const cur = Array.isArray(ROOT[k]) ? ROOT[k].filter(Boolean) : [];
+    const have = new Set(cur.map(userKeyOf));
+    (localLists[k]||[]).forEach(u=>{
+      if(!u || !u.username) return;
+      const key = userKeyOf(u);
+      if(have.has(key)) return;
+      const ts = ROOT.deletedUsers[tombKey(k,key)];
+      if(ts && ts >= (u.createdAt||0)) return; // حُذف من جهاز آخر بعد إنشائه
+      cur.push(u); have.add(key);
+    });
+    ROOT[k] = cur;
+  });
 }
 
 // بند 11 — إصلاح جذري لمصيبة "فقدان النماذج والبيانات عند تحديث الصفحة":
@@ -1141,7 +1754,7 @@ function applyLocalSnapshotInstantly(){
   let localSaved = null;
   try{ if(localRaw) localSaved = JSON.parse(localRaw); }catch(e){}
   if(localSaved){
-    Object.keys(localSaved).forEach(k=>{ DB[k]=localSaved[k]; });
+    Object.keys(localSaved).forEach(k=>{ ROOT[k]=localSaved[k]; });
     lastLocalSnapshot = localRaw;
   }
   sanitizeLoadedModels();
@@ -1156,20 +1769,9 @@ async function syncFromCloudInBackground(){
       firebaseDB = firebase.database();
       await ensureFirebaseAuth();
       const snap = await firebaseDB.ref("platform-db").get();
-      if(snap.exists()){
-        cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase";
-        diagInfo.firebaseStatus = "متصل بنجاح"; diagInfo.cloudHasData = true;
-      } else {
-        diagInfo.firebaseStatus = "متصل بنجاح، لكن لا توجد بيانات محفوظة في السحابة إطلاقًا"; diagInfo.cloudHasData = false;
-      }
-    }catch(e){
-      diagInfo.firebaseStatus = "فشل الاتصال"; diagInfo.firebaseError = (e && (e.message||e.code||String(e))) || "خطأ غير معروف";
-      console.error("تعذّر الاتصال بـ Firebase:", e);
-    }
-  } else {
-    diagInfo.firebaseStatus = "غير مُهيَّأ (لا توجد إعدادات Firebase صالحة في الكود)";
+      if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase"; }
+    }catch(e){ console.error("تعذّر الاتصال بـ Firebase:", e); }
   }
-  diagInfo.usedLocalOnly = !(cloudSource==="firebase" && cloudSaved);
   if(cloudSource===null){
     try{
       if(typeof window.storage !== "undefined"){
@@ -1180,9 +1782,9 @@ async function syncFromCloudInBackground(){
   }
 
   const cloudTs = (cloudSaved && cloudSaved.updatedAt) || 0;
-  if(cloudSaved && cloudTs > (DB.updatedAt||0) && saveTimer===null && !saveInFlight){
+  if(cloudSaved && cloudTs > (ROOT.updatedAt||0) && saveTimer===null && !saveInFlight){
     // نتجنّب استبدال أي تعديل يجريه المستخدم الآن محليًا ولم يُحفظ بعد (saveTimer/saveInFlight)
-    Object.keys(cloudSaved).forEach(k=>{ DB[k]=cloudSaved[k]; });
+    applyCloudSnapshot(cloudSaved);
     sanitizeLoadedModels();
     lastSavedSnapshot = cloudRaw;
     persistLocalNow();
@@ -1194,6 +1796,8 @@ async function syncFromCloudInBackground(){
     persistDBNow();
   }
   attachRealtimeSync();
+  cloudSynced = true;
+  if(!session){ try{ tryRestoreSession(); }catch(e){} }
 }
 
 /* ================================================================
@@ -1220,12 +1824,12 @@ function persistLocalNow(){
   // أُغلق التبويب/المتصفح خلال تلك المهلة قبل أن يُنفَّذ الحفظ الفعلي —
   // وهو السبب الجذري لاختفاء ما يصنعه المعلم/الطالب بعد إغلاق الموقع وإعادة فتحه.
   try{
-    const snapshot = JSON.stringify(DB);
+    const snapshot = JSON.stringify(ROOT);
     if(snapshot === lastLocalSnapshot) return snapshot;
     localStorage.setItem("platform-db-local", snapshot);
     lastLocalSnapshot = snapshot;
     return snapshot;
-  }catch(e){ console.error("فشل الحفظ المحلي الفوري:", e); return JSON.stringify(DB); }
+  }catch(e){ console.error("فشل الحفظ المحلي الفوري:", e); return JSON.stringify(ROOT); }
 }
 
 let syncWarningShown = false;
@@ -1253,12 +1857,12 @@ function showSyncWarning(){
 async function mergeModelsWithCloud(){
   if(!firebaseDB) return;
   try{
-    const snap = await firebaseDB.ref("platform-db/models").get();
+    const snap = await firebaseROOT.ref("platform-db/models").get();
     if(snap.exists()){
       const cloudModels = snap.val() || [];
-      const deleted = DB.deletedModelIds || {};
+      const deleted = ROOT.deletedModelIds || {};
       const byId = new Map();
-      (DB.models||[]).forEach(m=>{ byId.set(m.id, m); });
+      (ROOT.models||[]).forEach(m=>{ byId.set(m.id, m); });
       cloudModels.forEach(cm=>{
         if(!cm || !cm.id) return;
         if(deleted[cm.id]) return; // محذوف عمدًا محليًا — لا نستعيده
@@ -1266,15 +1870,15 @@ async function mergeModelsWithCloud(){
         const cmTs = cm.updatedAt||0, localTs = (local && local.updatedAt)||0;
         if(!local || cmTs > localTs) byId.set(cm.id, cm); // الأحدث فعليًا يفوز، أيًا كان مصدره
       });
-      DB.models = Array.from(byId.values());
+      ROOT.models = Array.from(byId.values());
     }
-    // نفس منطق الدمج الآمن يُطبَّق أيضًا على بنوك الأسئلة (DB.banks) لتفادي فقدانها في نفس السيناريو
-    const banksSnap = await firebaseDB.ref("platform-db/banks").get();
+    // نفس منطق الدمج الآمن يُطبَّق أيضًا على بنوك الأسئلة (ROOT.banks) لتفادي فقدانها في نفس السيناريو
+    const banksSnap = await firebaseROOT.ref("platform-db/banks").get();
     if(banksSnap.exists()){
       const cloudBanks = banksSnap.val() || [];
-      const deleted = DB.deletedModelIds || {};
+      const deleted = ROOT.deletedModelIds || {};
       const byIdB = new Map();
-      (DB.banks||[]).forEach(m=>{ byIdB.set(m.id, m); });
+      (ROOT.banks||[]).forEach(m=>{ byIdB.set(m.id, m); });
       cloudBanks.forEach(cm=>{
         if(!cm || !cm.id) return;
         if(deleted[cm.id]) return;
@@ -1282,17 +1886,57 @@ async function mergeModelsWithCloud(){
         const cmTs = cm.updatedAt||0, localTs = (local && local.updatedAt)||0;
         if(!local || cmTs > localTs) byIdB.set(cm.id, cm);
       });
-      DB.banks = Array.from(byIdB.values());
+      ROOT.banks = Array.from(byIdB.values());
     }
   }catch(e){ console.error("تعذّر دمج النماذج مع النسخة السحابية قبل الحفظ:", e); }
+}
+
+/* دمج المستخدمين (طلاب/معلمون/أولياء أمور) مع السحابة قبل أي كتابة: يضيف من سجّلوا من أجهزة أخرى، ويطبّق شواهد الحذف،
+   فتنعكس إضافة/حذف المعلم والمشرف العام على بعضهما فورًا ولا يُطيح جهاز بعمل آخر. */
+async function mergeUsersWithCloud(){
+  if(!firebaseDB) return;
+  try{
+    ROOT.deletedUsers = ROOT.deletedUsers || {};
+    const tsnap = await firebaseROOT.ref("platform-db/deletedUsers").get();
+    if(tsnap.exists()){
+      const ct = tsnap.val() || {};
+      Object.keys(ct).forEach(t=>{ ROOT.deletedUsers[t] = Math.max(ROOT.deletedUsers[t]||0, ct[t]||0); });
+    }
+    for(const k of USER_KINDS){
+      if(!Array.isArray(ROOT[k])) ROOT[k] = [];
+      // 1) تطبيق شواهد الحذف الواردة من أجهزة أخرى على القائمة المحلية
+      ROOT[k] = ROOT[k].filter(u=>{
+        if(!u || !u.username) return false;
+        const ts = ROOT.deletedUsers[tombKey(k, userKeyOf(u))];
+        return !(ts && ts >= (u.createdAt||0));
+      });
+      // 2) إضافة من سجّل/أُضيف على جهاز آخر ولم يصل إلينا بعد
+      const snap = await firebaseROOT.ref("platform-db/"+k).get();
+      if(!snap.exists()) continue;
+      const cv = snap.val();
+      const arr = Array.isArray(cv) ? cv : Object.values(cv||{});
+      const have = new Set(ROOT[k].map(userKeyOf));
+      arr.forEach(cu=>{
+        if(!cu || !cu.username) return;
+        const key = userKeyOf(cu);
+        if(have.has(key)) return;
+        const ts = ROOT.deletedUsers[tombKey(k,key)];
+        if(ts && ts >= (cu.createdAt||0)) return;
+        ROOT[k].push(cu); have.add(key);
+      });
+    }
+    snapshotKnownUsers();
+  }catch(e){ console.error("تعذّر دمج المستخدمين مع السحابة:", e); }
 }
 
 async function persistDBNow(){
   // التنفيذ الفعلي لمزامنة السحابة (Firebase أو تخزين الـ Artifact)؛ النسخة
   // المحلية تُكتب فورًا ومنفصلة عبر persistLocalNow() بلا انتظار هذه الدالة.
+  if(hasPlainPasswords()){ await migrateCredentials(); } // لا تصل كلمة مرور نصّية إلى السحابة أبدًا
   if(firebaseDB){
     await ensureFirebaseAuth();
     await mergeModelsWithCloud(); // ندمج قبل الكتابة كي لا نُطيح بعمل الآخرين
+    await mergeUsersWithCloud();
   }
   const snapshot = persistLocalNow();
   if(snapshot === lastSavedSnapshot && !saveInFlight) return; // لا تغيير حقيقي منذ آخر حفظ سحابي ناجح
@@ -1315,8 +1959,10 @@ function saveDB(){
   // وتقليل عدد الكتابات السحابية دون أي تأثير على أمان النسخة المحلية.
   // طابع زمني على كل حفظة فعلية، يُستخدم عند initStorage() للمفاضلة بين النسخة
   // المحلية والسحابية واعتماد الأحدث منهما فعليًا (بدل افتراض تفوّق السحابة دومًا).
-  DB.updatedAt = Date.now();
+  trackUserDeletions();
+  ROOT.updatedAt = Date.now();
   persistLocalNow();
+  if(hasPlainPasswords()) migrateCredentials();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{ saveTimer=null; persistDBNow(); }, 400);
 }
@@ -1333,24 +1979,57 @@ window.addEventListener("pagehide", flushSaveDBNow);
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") flushSaveDBNow(); });
 
 
+let deferredIncoming = null;
+function applyIncomingSnapshot(saved, incomingRaw){
+  applyCloudSnapshot(saved);
+  sanitizeLoadedModels();
+  lastSavedSnapshot = incomingRaw;
+  try{ persistLocalNow(); }catch(e){}
+  try{ refreshCurrentScreen(); }catch(e){}
+}
 function attachRealtimeSync(){
-  // يجعل تعديلات معلّم/مشرف/منسق تصل لبقية الجلسات المفتوحة فعليًا بدل
-  // أن تُكتب كل جلسة نسختها القديمة فوق نسخة غيرها (فقدان صامت للبيانات).
-  // نتجاهل أي تحديث وارد أثناء وجود حفظ محلي معلّق أو نموذج مفتوح للتحرير
-  // الآن، حتى لا يُستبدل عمل جارٍ لم يُحفظ بعد.
+  // يجعل تعديلات معلّم/مشرف/منسق تصل لبقية الجلسات المفتوحة فعليًا وفورًا بدل أن تُكتب كل جلسة
+  // نسختها القديمة فوق نسخة غيرها. الوارد الذي يصل أثناء حفظ محلي معلّق أو نموذج مفتوح للتحرير
+  // لا يُهمَل كما كان، بل يُحتفَظ به ويُطبَّق تلقائيًا بمجرد زوال المانع.
   if(!firebaseDB) return;
   firebaseDB.ref("platform-db").on("value", snap=>{
     if(!snap.exists()) return;
-    const incoming = JSON.stringify(snap.val());
-    if(incoming === lastSavedSnapshot) return;
-    if(saveTimer || saveInFlight) return;
-    if(typeof activeModel !== "undefined" && activeModel) return;
     const saved = snap.val();
-    if(((saved && saved.updatedAt) || 0) < (DB.updatedAt||0)) return; // وارد أقدم من نسختنا الحالية — تجاهله
-    Object.keys(saved).forEach(k=>{ DB[k]=saved[k]; });
-    sanitizeLoadedModels();
-    lastSavedSnapshot = incoming;
+    const incoming = JSON.stringify(saved);
+    if(incoming === lastSavedSnapshot) return;
+    if(((saved && saved.updatedAt) || 0) < (ROOT.updatedAt||0)) return; // وارد أقدم من نسختنا الحالية — تجاهله
+    if(saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)){
+      deferredIncoming = {saved, incoming};
+      return;
+    }
+    deferredIncoming = null;
+    applyIncomingSnapshot(saved, incoming);
   });
+  if(!window._deferredIncomingTimer){
+    window._deferredIncomingTimer = setInterval(()=>{
+      if(!deferredIncoming) return;
+      if(saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)) return;
+      const d = deferredIncoming; deferredIncoming = null;
+      if(((d.saved && d.saved.updatedAt) || 0) < (DB.updatedAt||0)) return;
+      applyIncomingSnapshot(d.saved, d.incoming);
+    }, 2500);
+  }
+}
+
+/* إعادة رسم النافذة الحالية بعد وصول بيانات جديدة من مستخدم آخر (فقط للنوافذ الجدولية الآمنة،
+   وليس أثناء كتابة المستخدم في خلية أو حلّ الطالب لنموذج) */
+function refreshCurrentScreen(){
+  if(!session) return;
+  const ae = document.activeElement, view = document.getElementById("viewArea");
+  if(ae && view && view.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName || "")) return;
+  if(ae && ae.isContentEditable) return;
+  const btn = document.querySelector("#sidenav button.active");
+  const key = btn && btn.dataset.key;
+  try{
+    if(key==="mystudents" && window.__refreshMyStudents) window.__refreshMyStudents();
+    else if(key==="assignments" && window.__refreshAssignTable) window.__refreshAssignTable();
+  }catch(e){ console.error(e); }
+  try{ refreshTaskBell(); refreshAttachBell(); refreshCorrBell(); }catch(e){}
 }
 
 // بند 7: فتح المنصة فورًا دون أي انتظار — نزيل شاشة "جارِ الاتصال بقاعدة
@@ -1368,6 +2047,7 @@ Promise.resolve().then(()=>{
 });
 let currentRole = null;
 let session = null;
+let cloudSynced = false;
 // مؤقّت الاختبار وحاجز "انتهى الوقت" أصبحا على مستوى عام (وليسا محصورين داخل دالة عرض الحل)
 // حتى يمكن إيقافهما فورًا عند تسجيل الخروج، فلا تبقى رسائل/عدادات الاختبار ظاهرة فوق شاشة الدخول.
 let testTimerInterval = null;
@@ -1383,165 +2063,384 @@ function stopTestTimerAndOverlays(){
   if(toast) toast.remove();
 }
 
-const roleBtns = document.querySelectorAll(".role-btn");
-const usernameSelect = document.getElementById("usernameSelect");
+const usernameInput = document.getElementById("usernameInput");
 const passwordInput = document.getElementById("passwordInput");
 const statusMsg = document.getElementById("statusMsg");
+const loginBtn = document.getElementById("loginBtn");
 
 function showMsg(t,type){ statusMsg.textContent=t; statusMsg.className="msg show "+type; }
 function clearMsg(){ statusMsg.className="msg"; }
-function tableFor(role){ return {admin:DB.admins, coordinator:DB.coordinators, teacher:DB.teachers, student:DB.students}[role] || []; }
+// tableFor: تُستخدم فقط داخل جلسة نشطة (SCOPE.orgId مضبوط مسبقًا)، فتُرجع مستخدمي مؤسسة الجلسة الحالية حصرًا.
+function tableFor(role){ return {admin:DB.admins, orgadmin:DB.orgAdmins, coordinator:DB.coordinators, teacher:DB.teachers, student:DB.students, parent:DB.parents||[]}[role] || []; }
+// allTableFor: تُستخدم قبل تسجيل الدخول (عند لا توجد جلسة/مؤسسة بعد)، فتبحث في كل المؤسسات معًا مباشرة عبر ROOT
+// لتحديد هوية المستخدم ومؤسسته من اسم المستخدم وحده (الأسماء فريدة على مستوى المنصة كلها).
+function allTableFor(role){ return {admin:ROOT.admins||[], orgadmin:ROOT.orgAdmins||[], coordinator:ROOT.coordinators||[], teacher:ROOT.teachers||[], student:ROOT.students||[], parent:ROOT.parents||[]}[role] || []; }
+const LOGIN_ROLE_ORDER = ["admin","orgadmin","coordinator","teacher","student","parent"];
 
-// بند 5: تحويل خانة "اسم المستخدم" في لوحة الدخول الرئيسة من قائمة منسدلة إلى مربع نص
-// قابل للبحث (مع قائمة اقتراحات تلقائية datalist)، حتى يتمكن المستخدم من كتابة جزء من
-// اسمه للبحث عنه بدل تصفح قائمة طويلة يدويًا، مع إبقاء نفس آلية الدخول القائمة تمامًا.
-const usernameDatalist = document.getElementById("usernameDatalist");
-function refreshUsernameList(){
-  usernameSelect.value = "";
-  usernameDatalist.innerHTML = "";
-  const rows = tableFor(currentRole);
-  // مفتاح الدخول الاحتياطي "الأستاذ/100%" يجب أن يبقى متاحًا دائمًا لدور المشرف العام
-  // حتى بعد تسجيل مشرف حقيقي (بحسب المواصفات: "فاجعل الجميع يعمل ويمكن الدخول بأحدهما")
-  const showBackup = currentRole==="admin" && !rows.some(r=>r.username===BACKUP_ADMIN.username);
-  if(!rows.length && !showBackup){
-    usernameSelect.placeholder = "لا يوجد مستخدمون مسجّلون بعد";
-    usernameSelect.disabled = true; return;
-  }
-  const options = rows.map(r=>`<option value="${r.username}">`);
-  if(showBackup) options.push(`<option value="${BACKUP_ADMIN.username}">`);
-  usernameDatalist.innerHTML = options.join("");
-  usernameSelect.placeholder = "اكتب أو اختر اسم المستخدم للبحث";
-  usernameSelect.disabled = false;
-}
-
-function diagEsc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function renderDiagPanel(){
-  const box = document.getElementById("diagBody");
-  const listOf = (rows, roleName)=>{
-    if(!rows || !rows.length) return `<div style="margin:6px 0; color:var(--muted);">${roleName}: لا يوجد أي حساب محفوظ حاليًا.</div>`;
-    const names = rows.map(r=>r.username).join("، ");
-    return `<div style="margin:6px 0;"><b>${roleName}</b> (${rows.length}): ${diagEsc(names)}</div>`;
-  };
-  let html = "";
-  html += `<div style="margin:6px 0;"><b>حالة الاتصال بقاعدة البيانات السحابية (Firebase):</b> ${diagEsc(diagInfo.firebaseStatus)}</div>`;
-  if(diagInfo.firebaseError) html += `<div style="margin:6px 0; color:var(--danger);"><b>تفاصيل الخطأ:</b> ${diagEsc(diagInfo.firebaseError)}</div>`;
-  html += `<div style="margin:6px 0;"><b>مصدر البيانات المعروضة الآن:</b> ${diagInfo.usedLocalOnly ? "محلية من هذا الجهاز/المتصفح فقط (لم تصل بيانات سحابية أحدث بعد)" : "مزامَنة من السحابة (Firebase)"}</div>`;
-  html += `<hr style="border:none; border-top:1px solid #ddd; margin:12px 0;">`;
-  html += `<div style="margin:6px 0; color:var(--muted); font-size:12.5px;">الحسابات المحمَّلة فعليًا الآن (تحقق أن اسم المستخدم مطابق تمامًا لما هو معروض هنا، بما في ذلك المسافات):</div>`;
-  html += listOf(DB.admins, "المشرفون");
-  html += listOf(DB.coordinators, "المنسقون");
-  html += listOf(DB.teachers, "المعلمون");
-  html += listOf(DB.students, "الطلاب");
-  box.innerHTML = html;
-}
-document.getElementById("diagBtn").addEventListener("click", ()=>{
-  renderDiagPanel();
-  openOverlay("diagOverlay");
-});
-
-roleBtns.forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    roleBtns.forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-    currentRole = btn.dataset.role;
-    clearMsg(); passwordInput.value="";
-    refreshUsernameList();
-  });
-});
-
-document.getElementById("loginBtn").addEventListener("click", ()=>{
-  clearMsg();
-  if(!storageReady){ showMsg("جارِ تحميل بياناتك المحفوظة، من فضلك انتظر لحظة ثم أعد المحاولة.", "err"); return; }
-  if(!currentRole){ showMsg("من فضلك اختر صفتك أولًا.", "err"); return; }
-  if(currentRole==="admin" && DB.admins.length===0){ openOverlay("setupOverlay"); return; }
-  const username = usernameSelect.value, password = passwordInput.value;
-  if(!username || !password){ showMsg("من فضلك أدخل اسم المستخدم وكلمة المرور.", "err"); return; }
-  if(currentRole==="admin" && username===BACKUP_ADMIN.username && password===BACKUP_ADMIN.password){
-    enterApp("admin", {username:"الأستاذ"}); return;
-  }
-  const rows = tableFor(currentRole);
-  const match = rows.find(r=>r.username===username && r.password===password);
-  if(!match){ showMsg("اسم المستخدم أو كلمة المرور غير صحيحة.", "err"); return; }
-  if(currentRole==="student" && match.active===false){ showMsg("حسابك بانتظار تفعيل المشرف العام أو أحد المنسقين.", "err"); return; }
-  enterApp(currentRole, match);
-});
-
-// السماح بالدخول بالضغط على Enter من حقل اسم المستخدم أو كلمة المرور
-[usernameSelect, passwordInput].forEach(el=>{
-  el.addEventListener("keydown", (e)=>{
-    if(e.key==="Enter"){ e.preventDefault(); document.getElementById("loginBtn").click(); }
-  });
-});
-
-let pendingResetCode = null, pendingResetAdmin = null;
-
-document.getElementById("forgotBtn").addEventListener("click", ()=>{
-  const text = document.getElementById("forgotText");
-  const codeStep = document.getElementById("forgotCodeStep");
-  codeStep.classList.add("hidden");
-  pendingResetCode = null; pendingResetAdmin = null;
-
-  if(currentRole==="admin"){
-    const username = usernameSelect.value;
-    const admin = DB.admins.find(a=>a.username===username);
-    if(!admin){
-      text.textContent = "من فضلك اختر اسم مستخدم المشرف العام أولًا من القائمة قبل الضغط على 'نسيت كلمة المرور؟'.";
-    } else if(!admin.email){
-      text.textContent = "لا يوجد بريد إلكتروني مسجَّل لهذا الحساب لإرسال كود التحقق إليه.";
-    } else {
-      pendingResetCode = String(Math.floor(100000 + Math.random()*900000));
-      pendingResetAdmin = admin;
-      text.textContent = `تم إرسال كود التحقق إلى ${admin.email}. (محاكاة الإرسال — الكود: ${pendingResetCode})`;
-      codeStep.classList.remove("hidden");
+/* =====================================================================
+   قفل محاولات الدخول الخاطئة (مضاد للتخمين الآلي)
+   - كل 5 محاولات خاطئة متتالية ⇒ إيقاف الدخول: دقيقة، ثم دقيقتان، ثم 4، 8، 16 (تتضاعف المدة وعدد المحاولات ثابت = 5).
+   - عند بلوغ 30 محاولة خاطئة ⇒ لا دخول إلا في اليوم التالي.
+   - يُطبَّق العدّاد على الجهاز كله وعلى اسم المستخدم المستهدف معًا، ويُزامَن مع السحابة (إن سمحت قواعد Firebase)
+     حتى لا يتحايل المهاجم بتبديل الجهاز. النجاح يصفّر عدّاد ذلك المستخدم فقط، أما عدّاد الجهاز فيُصفَّر يوميًا.
+   ===================================================================== */
+const LoginGuard = (function(){
+  const KEY = "platform-login-guard-v1", MAX_TOTAL = 30, PER_BLOCK = 5;
+  const dayKey = ()=>{ const d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); };
+  const nextMidnight = ()=>{ const d=new Date(); d.setHours(24,0,0,0); return d.getTime(); };
+  const fresh = ()=>({total:0, win:0, step:0, lockUntil:0, day:dayKey()});
+  function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||"{}"); return (o && typeof o==="object") ? o : {}; }catch(e){ return {}; } }
+  function save(g){ try{ localStorage.setItem(KEY, JSON.stringify(g)); }catch(e){} }
+  function pick(g,id){ if(!g[id] || g[id].day!==dayKey()) g[id]=fresh(); return g[id]; }
+  function mergeCloud(s,c){
+    if(c && c.day===dayKey()){
+      if((c.total||0) > s.total){ s.total=c.total; s.win=c.win||0; s.step=c.step||0; }
+      if((c.lockUntil||0) > s.lockUntil) s.lockUntil = c.lockUntil;
     }
-  } else if(currentRole){
-    text.textContent = "من فضلك تواصل مع المشرف العام أو المنسق المسؤول لاسترداد كلمة المرور.";
-  } else {
-    text.textContent = "اختر صفتك أولًا لمعرفة طريقة استرداد كلمة المرور المناسبة.";
   }
+  function lockedUntil(ids, cloud){
+    const g = load(); let u = 0;
+    ids.forEach((id,i)=>{ const s=pick(g,id); if(i===1 && cloud) mergeCloud(s,cloud); if(s.lockUntil>u) u=s.lockUntil; });
+    save(g);
+    return u>Date.now() ? u : 0;
+  }
+  function fail(ids, cloud){
+    const g = load(); let lock=0, left=PER_BLOCK;
+    ids.forEach((id,i)=>{
+      const s = pick(g,id);
+      if(i===1 && cloud) mergeCloud(s,cloud);
+      s.total++; s.win++;
+      if(s.total>=MAX_TOTAL){ s.lockUntil = nextMidnight(); }
+      else if(s.win>=PER_BLOCK){ s.win=0; s.step++; s.lockUntil = Date.now() + 60000*Math.pow(2, s.step-1); }
+      if(s.lockUntil>Date.now()) lock = Math.max(lock, s.lockUntil);
+      left = Math.min(left, PER_BLOCK - s.win);
+    });
+    save(g);
+    return {lock, left, userState:g[ids[1]]};
+  }
+  function success(userId){ const g=load(); delete g[userId]; save(g); }
+  return {lockedUntil, fail, success};
+})();
+
+async function cloudGuardRead(uh){
+  if(!firebaseDB) return null;
+  try{
+    const snap = await Promise.race([ firebaseDB.ref("loginGuard/"+uh).get(), sleepMs(1200).then(()=>null) ]);
+    return (snap && snap.exists()) ? snap.val() : null;
+  }catch(e){ return null; }
+}
+function cloudGuardWrite(uh, state){
+  if(!firebaseDB || !state) return;
+  try{ Promise.race([ firebaseDB.ref("loginGuard/"+uh).set(state), sleepMs(3000) ]).catch(()=>{}); }catch(e){}
+}
+
+let lockTicker = null;
+function fmtLeft(ms){
+  const s = Math.ceil(ms/1000);
+  if(s > 3600) return `${Math.floor(s/3600)} ساعة و${Math.floor((s%3600)/60)} دقيقة`;
+  const m = Math.floor(s/60), r = s%60;
+  return m>0 ? `${m} دقيقة و${r} ثانية` : `${r} ثانية`;
+}
+function showLock(until){
+  if(lockTicker){ clearInterval(lockTicker); lockTicker=null; }
+  const tick = ()=>{
+    const left = until - Date.now();
+    if(left<=0){ clearInterval(lockTicker); lockTicker=null; loginBtn.disabled=false; clearMsg(); return; }
+    loginBtn.disabled = true;
+    const midnight = new Date(); midnight.setHours(24,0,0,0);
+    const tillTomorrow = until >= midnight.getTime()-1000;
+    showMsg(tillTomorrow
+      ? "تجاوزت الحد الأقصى للمحاولات الخاطئة. تسجيل الدخول متوقف حتى اليوم التالي."
+      : `تم إيقاف تسجيل الدخول مؤقتًا بسبب كثرة المحاولات الخاطئة. حاول بعد ${fmtLeft(left)}.`, "err");
+  };
+  tick();
+  lockTicker = setInterval(tick, 1000);
+}
+
+// يبحث عن الحساب في كل الصفات (مشرف/منسق/معلم/طالب/ولي أمر) ويتحقق من كلمة المرور؛
+// تُحدَّد الصفة تلقائيًا من الجدول الذي وُجد فيه المستخدم (لا يختارها المستخدم).
+async function authenticate(username, password){
+  const key = Sec.norm(username);
+  const cands = [];
+  if(key === Sec.norm(SUPER_ADMIN.username)) cands.push({role:"admin", rec:SUPER_ADMIN});
+  LOGIN_ROLE_ORDER.forEach(role=>{
+    allTableFor(role).forEach(r=>{ if(r && r.username && Sec.norm(r.username)===key) cands.push({role, rec:r}); });
+  });
+  if(!cands.length){ await Sec.hashPassword(password); return null; } // تسوية زمن الاستجابة حتى لا يُكشف وجود الاسم
+  for(const c of cands){ if(await Sec.verify(password, c.rec)) return c; }
+  return null;
+}
+
+let loginBusy = false;
+async function doLogin(){
+  if(loginBusy) return;
+  loginBusy = true; loginBtn.disabled = true;
+  try{
+    clearMsg();
+    if(!Sec.available){ showMsg("متصفحك لا يدعم التشفير الآمن. افتح المنصة عبر رابط https أو بمتصفح حديث.", "err"); return; }
+    if(!storageReady){ showMsg("جارِ تحميل بياناتك المحفوظة، من فضلك انتظر لحظة ثم أعد المحاولة.", "err"); return; }
+    const username = usernameInput.value.trim(), password = passwordInput.value;
+    if(!username || !password){ showMsg("من فضلك أدخل اسم المستخدم وكلمة المرور.", "err"); return; }
+    const hp = document.getElementById("hpWebsite");
+    if(hp && hp.value){ await sleepMs(1500); showMsg("اسم المستخدم أو كلمة المرور غير صحيحة.", "err"); return; } // فخ للبرمجيات الآلية
+    const uh = await Sec.userHash(username);
+    const ids = ["device", "u:"+uh];
+    const cloud = await cloudGuardRead(uh);
+    const until = LoginGuard.lockedUntil(ids, cloud);
+    if(until){ showLock(until); return; }
+    const found = await authenticate(username, password);
+    if(!found){
+      const r = LoginGuard.fail(ids, cloud);
+      cloudGuardWrite(uh, r.userState);
+      await sleepMs(500 + Math.random()*400);
+      if(r.lock) showLock(r.lock);
+      else showMsg(`اسم المستخدم أو كلمة المرور غير صحيحة. (المتبقي ${r.left} محاولات قبل الإيقاف المؤقت)`, "err");
+      return;
+    }
+    const {role, rec} = found;
+    const orgId = rec.orgId || null;
+    const stCheck = Guard.accountState(role, rec, orgId ? orgById(orgId) : null);
+    if(!stCheck.ok){ showMsg(stCheck.msg, "err"); return; }
+    LoginGuard.success("u:"+uh);
+    passwordInput.value = ""; usernameInput.value = "";
+    enterApp(role, rec.builtin ? {username:rec.username, builtin:true} : rec, orgId);
+  }catch(e){
+    console.error(e);
+    showMsg("حدث خطأ غير متوقع أثناء تسجيل الدخول، حاول مرة أخرى.", "err");
+  }finally{
+    loginBusy = false;
+    if(!lockTicker) loginBtn.disabled = false;
+  }
+}
+loginBtn.addEventListener("click", doLogin);
+[usernameInput, passwordInput].forEach(el=>{
+  el.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); doLogin(); } });
+});
+
+/* استرداد كلمة المرور: لا يوجد خادم بريد فعلي في هذه المنصة، وعرض "كود التحقق" على الشاشة (المحاكاة السابقة)
+   كان يتيح لأي شخص يعرف اسم مشرف أن يغيّر كلمة مروره متجاوزًا قفل المحاولات. لذلك يتم الاسترداد الآن عبر المشرف العام فقط. */
+document.getElementById("forgotBtn").addEventListener("click", ()=>{
+  document.getElementById("forgotText").textContent = "لأسباب أمنية، تُعاد كلمة المرور بواسطة المشرف العام أو المنسق المسؤول فقط: تواصل معه ليعيّن لك كلمة مرور جديدة من جدول بيانات المستخدمين.";
   openOverlay("forgotOverlay");
 });
 
-document.getElementById("forgotConfirmBtn").addEventListener("click", ()=>{
-  const code = document.getElementById("forgotCodeInput").value.trim();
-  const newPass = document.getElementById("forgotNewPassword").value;
-  if(!pendingResetAdmin){ alert("انتهت صلاحية العملية، من فضلك ابدأ من جديد."); return; }
-  if(code!==pendingResetCode){ alert("كود التحقق غير صحيح."); return; }
-  if(!newPass){ alert("من فضلك اكتب كلمة مرور جديدة."); return; }
-  pendingResetAdmin.password = newPass;
-  saveDB();
-  pendingResetCode = null; pendingResetAdmin = null;
-  document.getElementById("forgotCodeStep").classList.add("hidden");
-  closeOverlay("forgotOverlay");
-  showMsg("تم تغيير كلمة المرور بنجاح — يمكنك الدخول بها الآن.", "ok");
+/* =====================================================================
+   التسجيل الجديد: اختيار الصفة (معلم / طالب / ولي أمر) ثم الحقول الخاصة بها
+   ===================================================================== */
+const REG_STAGES = ["الابتدائية","المتوسطة","الثانوية"];
+const REG_CLASSES = ["1","2","3","4","5","6","7","8","9","10"];
+const regFieldsBox = document.getElementById("regFields");
+const regMsgEl = document.getElementById("regMsg");
+const regSaveBtn = document.getElementById("regSaveBtn");
+let regRole = null, regBusy = false, regOpenedAt = 0;
+let regOrgId = null, regOrgObj = null;
+
+function regResetOrgGate(){
+  regOrgId = null; regOrgObj = null;
+  const grp = document.getElementById("regRoleGroup");
+  if(grp) grp.classList.add("locked");
+  const msgEl = document.getElementById("regOrgMsg");
+  if(msgEl){ msgEl.textContent = ""; msgEl.className = "msg"; }
+}
+function checkRegOrgCode(){
+  const codeEl = document.getElementById("regOrgCode");
+  const code = (codeEl ? codeEl.value : "").trim().toUpperCase().replace(/\s+/g,"");
+  const msgEl = document.getElementById("regOrgMsg");
+  if(!code){ msgEl.textContent = "اكتب رمز المؤسسة."; msgEl.className = "msg show err"; regResetOrgGate(); if(codeEl) codeEl.value = ""; return; }
+  const org = (ROOT.organizations||[]).find(o=>o && String(o.code||"").toUpperCase()===code);
+  if(!org){ msgEl.textContent = "لم يُعثر على مؤسسة بهذا الرمز. تأكد منه مع إدارة مؤسستك."; msgEl.className = "msg show err"; regResetOrgGate(); return; }
+  const st = orgStateOf(org);
+  if(!st.ok){ msgEl.textContent = "اشتراك هذه المؤسسة " + (st.code==="expired" ? "منتهٍ" : "موقوف") + " حاليًا. راجع إدارة مؤسستك أو المشرف العام."; msgEl.className = "msg show err"; regResetOrgGate(); return; }
+  regOrgId = org.id; regOrgObj = org;
+  msgEl.textContent = "✔ المؤسسة: " + org.name + " — اختر صفتك الآن.";
+  msgEl.className = "msg show ok";
+  document.getElementById("regRoleGroup").classList.remove("locked");
+}
+document.getElementById("regOrgCheck").addEventListener("click", checkRegOrgCode);
+document.getElementById("regOrgCode").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); checkRegOrgCode(); } });
+document.getElementById("regOrgCode").addEventListener("input", ()=>{ if(regOrgId) regResetOrgGate(); });
+
+function regOptions(list, placeholder){
+  return `<option value="">${placeholder}</option>` + list.map(v=>`<option value="${regEsc(v)}">${regEsc(v)}</option>`).join("");
+}
+function setRegMsg(t, type){ regMsgEl.textContent = t||""; regMsgEl.className = t ? ("msg show "+(type||"err")) : "msg"; }
+
+function addTeachRow(isFirst){
+  withScope(regOrgId, ()=>{
+    const wrap = document.getElementById("regTeachRows");
+    const row = document.createElement("div");
+    row.className = "reg-trow";
+    const coords = (DB.coordinators||[]).map(c=>c.username).filter(Boolean);
+    row.innerHTML = `
+      <select class="rt-subject" aria-label="المادة">${regOptions(subjectNamesList(), "المادة")}</select>
+      <select class="rt-grade" aria-label="الصف">${regOptions(ALL_GRADES, "الصف")}</select>
+      <select class="rt-sup" aria-label="المشرف">${regOptions(coords, "المشرف")}</select>
+      <button type="button" class="reg-plus ${isFirst?"":"reg-minus"}" title="${isFirst?"إضافة مادة/صف/مشرف آخر":"حذف هذا الصف"}">${isFirst?"+":"×"}</button>`;
+    wrap.appendChild(row);
+    row.querySelector("button").addEventListener("click", ()=>{
+      if(isFirst) addTeachRow(false); else row.remove();
+    });
+  });
+}
+
+function renderRegFields(role){
+  if(!regOrgId) return;
+  regRole = role;
+  document.querySelectorAll("#regRoleGroup .role-btn").forEach(b=>b.classList.toggle("active", b.dataset.rrole===role));
+  setRegMsg("");
+  let html = "";
+  if(role!=="parent") html += `<label>المرحلة</label><select id="regStage">${regOptions(REG_STAGES, "اختر المرحلة")}</select>`;
+  html += `<label>اسم المستخدم (رباعي)</label><input type="text" id="regUsername" autocomplete="off" placeholder="مثال: أحمد محمد علي حسن">`;
+  if(role==="teacher"){
+    html += `<label>المادة / الصف / المشرف</label><div id="regTeachRows"></div>`;
+  } else if(role==="student"){
+    html += `<label>الصف</label><select id="regGrade">${regOptions(ALL_GRADES, "اختر الصف")}</select>
+             <label>الفصل</label><select id="regClass">${regOptions(REG_CLASSES, "اختر الفصل")}</select>`;
+  } else if(role==="parent"){
+    html += `<label>اسم المستخدم للطالب (ابنك/ابنتك) كما سُجِّل في المنصة</label><input type="text" id="regChild" autocomplete="off">`;
+  }
+  html += `<label>كلمة المرور (6 أحرف فأكثر)</label><input type="password" id="regPassword" autocomplete="new-password">
+           <label>تأكيد كلمة المرور</label><input type="password" id="regPassword2" autocomplete="new-password">
+           <div style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;" aria-hidden="true"><input type="text" id="regHp" tabindex="-1" autocomplete="off"></div>`;
+  regFieldsBox.innerHTML = html;
+  regFieldsBox.classList.remove("hidden");
+  regSaveBtn.disabled = false;
+  if(role==="teacher") addTeachRow(true);
+}
+document.querySelectorAll("#regRoleGroup .role-btn").forEach(b=>b.addEventListener("click", ()=>{ if(!regOrgId) return; renderRegFields(b.dataset.rrole); }));
+
+document.getElementById("registerBtn").addEventListener("click", ()=>{
+  regRole = null; regFieldsBox.innerHTML = ""; regFieldsBox.classList.add("hidden");
+  document.querySelectorAll("#regRoleGroup .role-btn").forEach(b=>b.classList.remove("active"));
+  regSaveBtn.disabled = true; setRegMsg("");
+  regResetOrgGate();
+  const codeEl = document.getElementById("regOrgCode"); if(codeEl) codeEl.value = "";
+  regOpenedAt = Date.now();
+  openOverlay("registerOverlay");
 });
 
-document.getElementById("registerBtn").addEventListener("click", ()=>openOverlay("registerOverlay"));
-document.getElementById("regSaveBtn").addEventListener("click", ()=>{
-  const username=document.getElementById("regUsername").value.trim();
-  const grade=document.getElementById("regGrade").value;
-  const cls=document.getElementById("regClass").value;
-  const password=document.getElementById("regPassword").value;
-  if(!username||!grade||!cls||!password){ alert("من فضلك أكمل جميع الحقول."); return; }
-  DB.pendingStudents.push({username,grade,cls,password});
-  DB.students.push({username,password,grade,cls,active:false});
-  saveDB();
-  closeOverlay("registerOverlay"); clearMsg();
-  showMsg('تم الحفظ بنجاح، وسيتم التفعيل بعد موافقة المشرف العام أو أحد المنسقين في أقل من 24 ساعة.',"ok");
-  ["regUsername","regGrade","regClass","regPassword"].forEach(id=>document.getElementById(id).value="");
-  if(currentRole==="student") refreshUsernameList();
-});
+// منع التكرار: يقارن الاسم بعد التطبيع بكل الحسابات (كل الصفات) وبحساب المشرف العام المحجوز
+function usernameConflict(username){
+  const key = Sec.norm(username);
+  if(key === Sec.norm(SUPER_ADMIN.username)) return true;
+  return LOGIN_ROLE_ORDER.some(role=>allTableFor(role).some(r=>r && r.username && Sec.norm(r.username)===key));
+}
+function regRateLimited(){
+  try{
+    const now = Date.now();
+    const log = (JSON.parse(localStorage.getItem("platform-reg-log")||"[]")||[]).filter(t=>now-t<3600000);
+    localStorage.setItem("platform-reg-log", JSON.stringify(log));
+    return log.length >= 5;
+  }catch(e){ return false; }
+}
+function regRateNote(){
+  try{
+    const log = JSON.parse(localStorage.getItem("platform-reg-log")||"[]")||[];
+    log.push(Date.now()); localStorage.setItem("platform-reg-log", JSON.stringify(log));
+  }catch(e){}
+}
 
-document.getElementById("setupSaveBtn").addEventListener("click", ()=>{
-  const username=document.getElementById("setupUsername").value.trim();
-  const password=document.getElementById("setupPassword").value;
-  const email=document.getElementById("setupEmail").value.trim();
-  if(!username||!password||!email){ alert("من فضلك أكمل جميع الحقول."); return; }
-  DB.admins.push({username,password,email});
-  saveDB();
-  closeOverlay("setupOverlay");
-  enterApp("admin", {username});
-});
+// يربط المعلم المسجَّل بجدول "تنسيق المواد الدراسية" وبمنسقيه (المشرفين) ليظهر في الجداول والاستعلامات فورًا
+function linkTeacherRelations(rec){
+  try{
+    const row = subjectRow("المعلم");
+    row.cells = row.cells || {};
+    (rec.subjects||[]).forEach(sub=>{
+      const users = subjectCellUsers("المعلم", sub);
+      if(!users.includes(rec.username)){ users.push(rec.username); row.cells[sub] = users.join("\n"); }
+    });
+    (rec.assignments||[]).forEach(a=>{
+      if(!a.supervisor) return;
+      const c = DB.coordinators.find(x=>x.username===a.supervisor);
+      if(c){
+        if(!Array.isArray(c.teachers)) c.teachers = [];
+        if(!c.teachers.includes(rec.username)) c.teachers.push(rec.username);
+      }
+    });
+  }catch(e){ console.error(e); }
+}
+
+async function submitRegistration(){
+  if(regBusy) return;
+  regBusy = true; regSaveBtn.disabled = true;
+  const prevScope = SCOPE.orgId;
+  try{
+    setRegMsg("");
+    if(!regOrgId){ setRegMsg("تحقق من رمز المؤسسة أولًا."); return; }
+    const orgNow = orgById(regOrgId);
+    const stNow = orgStateOf(orgNow);
+    if(!orgNow || !stNow.ok){ setRegMsg("تعذّر التسجيل: اشتراك المؤسسة غير نشط حاليًا. راجع إدارة مؤسستك أو المشرف العام."); return; }
+    SCOPE.orgId = regOrgId;
+    if(!regRole){ setRegMsg("اختر الصفة أولًا: معلم أو طالب أو ولي أمر."); return; }
+    if(!Sec.available){ setRegMsg("متصفحك لا يدعم التشفير الآمن. افتح المنصة عبر رابط https."); return; }
+    const hp = document.getElementById("regHp");
+    if((hp && hp.value) || (Date.now()-regOpenedAt) < 2500){ setRegMsg("يرجى مراجعة البيانات ثم المحاولة مرة أخرى."); return; } // فخ/زمن بشري أدنى
+    if(regRateLimited()){ setRegMsg("تم تجاوز عدد محاولات التسجيل المسموح بها لهذا الجهاز. حاول بعد ساعة."); return; }
+    const val = id=>{ const el=document.getElementById(id); return el ? el.value.trim() : ""; };
+    const institution = regOrgObj.name, stage = val("regStage"), username = val("regUsername").replace(/\s+/g," ");
+    const password = (document.getElementById("regPassword")||{}).value || "", password2 = (document.getElementById("regPassword2")||{}).value || "";
+    if(regRole!=="parent" && !stage){ setRegMsg("من فضلك اختر المرحلة."); return; }
+    const parts = username.split(" ").filter(p=>p.length>=2);
+    if(parts.length<4){ setRegMsg("اسم المستخدم يجب أن يكون رباعيًا (أربع كلمات على الأقل، كل كلمة حرفان فأكثر)."); return; }
+    if(password.length<6){ setRegMsg("كلمة المرور يجب ألا تقل عن 6 أحرف."); return; }
+    if(password!==password2){ setRegMsg("كلمتا المرور غير متطابقتين."); return; }
+    const pwKey = Sec.norm(password);
+    if(pwKey===Sec.norm(username) || parts.some(p=>Sec.norm(p)===pwKey)){ setRegMsg("كلمة المرور ضعيفة: لا تجعلها اسم المستخدم أو جزءًا منه."); return; }
+
+    let extra = {};
+    if(regRole==="teacher"){
+      const rows = [...document.querySelectorAll("#regTeachRows .reg-trow")].map(r=>({
+        subject:r.querySelector(".rt-subject").value, grade:r.querySelector(".rt-grade").value, supervisor:r.querySelector(".rt-sup").value
+      }));
+      const filled = rows.filter(r=>r.subject||r.grade||r.supervisor);
+      if(!filled.length || filled.some(r=>!r.subject||!r.grade)){ setRegMsg("اختر المادة والصف في كل صف من صفوف التدريس (المشرف اختياري)."); return; }
+      const seen = new Set(), assignments = [];
+      filled.forEach(r=>{ const k=r.subject+"|"+r.grade+"|"+r.supervisor; if(!seen.has(k)){ seen.add(k); assignments.push(r); } });
+      extra = {
+        assignments,
+        subjects:[...new Set(assignments.map(a=>a.subject))],
+        grades:[...new Set(assignments.map(a=>a.grade))],
+        classes:[]
+      };
+    } else if(regRole==="student"){
+      const grade = val("regGrade"), cls = val("regClass");
+      if(!grade || !cls){ setRegMsg("من فضلك اختر الصف والفصل."); return; }
+      extra = {grade, cls};
+    }
+
+    // اجلب أحدث المستخدمين من السحابة أولًا لضمان كشف التكرار عبر الأجهزة
+    if(firebaseDB){ try{ await ensureFirebaseAuth(); await mergeUsersWithCloud(); }catch(e){} }
+    if(regRole==="parent"){
+      const child = DB.students.find(s=>s && Sec.norm(s.username)===Sec.norm(val("regChild")));
+      if(!child){ setRegMsg("لم يُعثر على طالب بهذا الاسم. اكتب اسم المستخدم للطالب كما سُجِّل تمامًا."); return; }
+      extra = {childUsername: child.username};
+    }
+    if(usernameConflict(username)){ setRegMsg("اسم المستخدم هذا (أو ما يماثله) مسجَّل مسبقًا، اختر اسمًا آخر."); return; }
+
+    const cred = await Sec.hashPassword(password);
+    const now = Date.now();
+    let activeNow = true;
+    const rec = Object.assign({username, institution, orgId: regOrgId, createdAt:now, selfRegistered:true}, extra, cred);
+    if(regRole!=="parent") rec.stage = stage;
+    if(regRole==="student"){ activeNow = autoActivateOn("Students"); rec.active = activeNow; DB.students.push(rec); }
+    else if(regRole==="teacher"){ activeNow = autoActivateOn("Teachers"); rec.active = activeNow; DB.teachers.push(rec); linkTeacherRelations(rec); }
+    else { rec.active = true; if(!Array.isArray(DB.parents)) DB.parents = []; DB.parents.push(rec); }
+    saveDB(); flushSaveDBNow();
+    regRateNote();
+    closeOverlay("registerOverlay"); clearMsg();
+    showMsg(activeNow ? "تم إنشاء حسابك وتفعيله بنجاح. يمكنك تسجيل الدخول الآن باسم المستخدم وكلمة المرور."
+                      : "تم حفظ بياناتك بنجاح، وحسابك بانتظار التفعيل من المشرف العام أو أحد المنسقين.", "ok");
+    usernameInput.value = username;
+    regFieldsBox.innerHTML = ""; regFieldsBox.classList.add("hidden"); regRole = null;
+  }catch(e){
+    console.error(e);
+    setRegMsg("حدث خطأ غير متوقع أثناء التسجيل، حاول مرة أخرى.");
+  }finally{
+    SCOPE.orgId = prevScope;
+    regBusy = false; if(regRole) regSaveBtn.disabled = false;
+  }
+}
+regSaveBtn.addEventListener("click", submitRegistration);
 
 document.getElementById("aboutBtn").addEventListener("click", ()=>{
   const box = document.getElementById("aboutTextBox");
@@ -1558,27 +2457,24 @@ function closeOverlay(id){ document.getElementById(id).classList.remove("show");
 document.querySelectorAll("[data-close]").forEach(el=>el.addEventListener("click",()=>closeOverlay(el.dataset.close)));
 document.querySelectorAll(".overlay").forEach(ov=>ov.addEventListener("click",(e)=>{ if(e.target===ov) ov.classList.remove("show"); }));
 
-const roleName = {admin:"المشرف العام", coordinator:"المنسق", teacher:"المعلم", student:"الطالب"};
+const roleName = {admin:"المشرف العام", orgadmin:"مدير المؤسسة", coordinator:"المنسق", teacher:"المعلم", student:"الطالب", parent:"ولي الأمر"};
 // كلمة مرور تسجيل الدخول الفعلية للمشرف العام الحالي (لمطابقتها عند طلب فتح قفل جدول بياناته)
-function currentAdminLoginPassword(){
-  if(!session || session.role!=="admin") return null;
-  if(session.user.username===BACKUP_ADMIN.username) return BACKUP_ADMIN.password;
-  return session.user.password || null;
+// التحقق من كلمة مرور المشرف العام الحالي (مقارنة بالتجزئة المشفّرة، لا بنص صريح)
+async function verifyCurrentAdminPassword(entered){
+  if(!session || session.role!=="admin") return false;
+  const rec = session.user.builtin ? SUPER_ADMIN : session.user;
+  return Sec.verify(entered, rec);
 }
 
-function enterApp(role, user){
-  session = {role, user};
-  try{ localStorage.setItem("platform-session", JSON.stringify(session)); }catch(e){}
+function enterApp(role, user, orgId){
+  session = { role, user, orgId: (orgId!==undefined ? orgId : (user.orgId||null)), isSuper: role==="admin", viewOrg:null };
+  SCOPE.orgId = session.orgId;
+  // حفظ الدخول من أول مرة: تُحفظ الصفة ومعرّف مشفّر (SHA-256) للمستخدم فقط — لا اسم ولا كلمة مرور — ويُطلب تخزين دائم من المتصفح
+  Sec.userHash(user.username).then(uh=>{ try{ localStorage.setItem("platform-session", JSON.stringify({role, uh, v:2})); }catch(e){} });
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
-  document.getElementById("whoName").textContent = `${user.username} (${roleName[role]})`;
-  buildSidenav(role);
-  document.getElementById("taskBellWrap").style.display = (role==="student"||role==="coordinator"||role==="teacher") ? "" : "none";
-  document.getElementById("attachBellWrap").style.display = "";
-  document.getElementById("corrBellWrap").style.display = (role==="admin"||role==="coordinator"||role==="teacher") ? "" : "none";
-  refreshTaskBell();
-  refreshAttachBell();
-  refreshCorrBell();
+  applyShell();
 }
 /* بند 2 (تحديث): معرّف فريد للمستخدم الحالي (الصفة + اسم المستخدم) لتتبّع مَن رأى كل مرفق،
    لأن نفس المرفق قد يصل لعدة مستلمين (صف/فصل كامل) فلا يصح تعليمه كمقروء للجميع دفعة واحدة */
@@ -1639,18 +2535,30 @@ function refreshCorrBell(){
 setInterval(refreshCorrBell, 15000);
 /* بند 10: حفظ الجلسة محليًا واستعادتها تلقائيًا حتى لا يُخرَج المستخدم من البرنامج
    عند تنشيط/تبديل المتصفح (وهو ما كان يعيد تحميل الصفحة ويصفّر متغيّر الجلسة في الذاكرة). */
-function tryRestoreSession(){
+async function tryRestoreSession(){
+  if(session) return;
   try{
     const raw = localStorage.getItem("platform-session");
     if(!raw) return;
     const saved = JSON.parse(raw);
-    if(!saved || !saved.role || !saved.user) return;
-    // تأكيد أن الحساب ما زال موجودًا وصالحًا في قاعدة البيانات الحالية قبل استعادة الجلسة
-    if(saved.role==="admin" && saved.user.username===BACKUP_ADMIN.username){ enterApp("admin", saved.user); return; }
-    const rows = tableFor(saved.role);
-    const match = rows.find(r=>r.username===saved.user.username);
-    if(match && !(saved.role==="student" && match.active===false)){ enterApp(saved.role, match); }
-    else { try{ localStorage.removeItem("platform-session"); }catch(e){} }
+    if(!saved || !saved.role) return;
+    let uh = saved.uh;
+    if(!uh && saved.user && saved.user.username) uh = await Sec.userHash(saved.user.username); // جلسة قديمة: نحوّلها للصيغة المشفّرة
+    if(!uh){ localStorage.removeItem("platform-session"); return; }
+    if(saved.role==="admin" && uh === await Sec.userHash(SUPER_ADMIN.username)){
+      if(!session) enterApp("admin", {username:SUPER_ADMIN.username, builtin:true}, null);
+      return;
+    }
+    for(const r of allTableFor(saved.role)){
+      if(r && r.username && (await Sec.userHash(r.username))===uh){
+        const orgId = r.orgId || null;
+        const st = Guard.accountState(saved.role, r, orgId ? orgById(orgId) : null);
+        if(!st.ok){ localStorage.removeItem("platform-session"); return; }
+        if(!session) enterApp(saved.role, r, orgId);
+        return;
+      }
+    }
+    if(cloudSynced) localStorage.removeItem("platform-session"); // قبل اكتمال المزامنة لا نُبطل الجلسة
   }catch(e){}
 }
 document.getElementById("sidenavToggle").addEventListener("click", (e)=>{
@@ -1692,20 +2600,24 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
   try{ localStorage.removeItem("platform-session"); }catch(e){}
   document.getElementById("appShell").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
-  roleBtns.forEach(b=>b.classList.remove("active"));
-  usernameSelect.value=""; usernameSelect.placeholder="اختر الصفة أولًا"; usernameDatalist.innerHTML=""; usernameSelect.disabled=true;
-  passwordInput.value=""; clearMsg();
+  usernameInput.value=""; passwordInput.value=""; clearMsg();
 });
 
 const NAV = {
   admin: [
-    ["assignments","إدارة الإسنادات"],
+    ["orgs","المؤسسات والاشتراكات"],
+    ["aboutedit","تعديل نافذة (من نحن)"],
+  ],
+  orgadmin: [
+    ["orghome","لوحة المؤسسة"],
+    ["fees","الطلاب والرسوم"],
+    ["parentsMgmt","أولياء الأمور"],
+    ["assignments","الهيكل الإداري والمستخدمون"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
     ["attachments","المرفقات"],
     ["tasks","التكليفات الإدارية"],
     ["correspondence","المراسلات الإدارية"],
-    ["aboutedit","تعديل نافذة (من نحن)"],
     ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
     ["mindbank","بنك الخرائط الذهنية"],
@@ -1721,6 +2633,7 @@ const NAV = {
     ["banks","بنوك الأسئلة"],
     ["mindbank","بنك الخرائط الذهنية"],
     ["mystudents","بيانات الطلاب"],
+    ["parentsLink","ربط أولياء الأمور بالطلاب"],
   ],
   teacher: [
     ["forms","النماذج التعليمية"],
@@ -1734,6 +2647,10 @@ const NAV = {
     ["tasksSent","التكليفات المرسلة"],
     ["tasksInbox","التكليفات الواردة"],
     ["correspondence","المراسلات الإدارية"],
+    ["parentsLink","ربط أولياء الأمور بالطلاب"],
+  ],
+  parent: [
+    ["parentscores","نتائج الأبناء"],
   ],
   student: [
     ["allmodels","جميع النماذج"],
@@ -1768,6 +2685,11 @@ function renderView(role,key){
   __currentTableScopeKey = (role||"")+":"+(key||"");
   const view = document.getElementById("viewArea");
   view.innerHTML = "";
+  if(key==="orgs"){ renderOrgsWindow(view); return; }
+  if(key==="orghome"){ renderOrgHomeWindow(view); return; }
+  if(key==="fees"){ renderFeesWindow(view); return; }
+  if(key==="parentsMgmt"){ renderParentsWindow(view, "admin"); return; }
+  if(key==="parentsLink"){ renderParentsWindow(view, role); return; }
   if(key==="forms"){ renderFormsWindow(view, role); return; }
   if(key==="banks"){ renderFormsWindow(view, role, true); return; }
   if(key==="assignments"){ renderAssignmentsWindow(view); return; }
@@ -1782,6 +2704,7 @@ function renderView(role,key){
   if(key==="aboutedit"){ renderAboutEditWindow(view); return; }
   if(key==="mindbank"){ renderMindBankWindow(view); return; }
   if(key==="mystudents"){ renderMyStudentsWindow(view, role); return; }
+  if(key==="parentscores"){ renderParentScores(view); return; }
   if(key==="allmodels"){ renderStudentModelsList(view, "all"); return; }
   if(key==="solved"){ renderStudentModelsList(view, "solved"); return; }
   if(key==="unsolved"){ renderStudentModelsList(view, "unsolved"); return; }
@@ -1792,10 +2715,9 @@ function renderView(role,key){
 function renderAssignmentsWindow(view){
   adminsTableUnlocked = false;
   view.innerHTML = `
-    <h2>إدارة الإسنادات</h2>
-    <p class="sub">أربعة جداول ديناميكية: المشرف العام، المنسقون، المعلمون، الطلاب.</p>
+    <h2>الهيكل الإداري والمستخدمون</h2>
+    <p class="sub">جداول ديناميكية: المنسقون، المعلمون، الطلاب، وتنسيق المواد الدراسية.</p>
     <div class="toolbar">
-      <button class="chip-btn accent" id="tabAdmins">بيانات المشرف العام</button>
       <button class="chip-btn" id="tabSubjects">تنسيق المواد الدراسية</button>
       <button class="chip-btn" id="tabStudents">بيانات الطلاب</button>
       <button class="chip-btn" id="tabTeachers">بيانات المعلمين</button>
@@ -1804,6 +2726,7 @@ function renderAssignmentsWindow(view){
     </div>
     <div class="toolbar" id="tableToolsRow">
       <button class="chip-btn" id="addRowBtn">➕ إضافة صف</button>
+      <button class="chip-btn" id="autoActBtn" style="display:none;"></button>
       <button class="chip-btn" onclick="printSection('assignTableWrap')">طباعة</button>
       <button class="chip-btn" id="exportBtn">تصدير إكسل</button>
       <button class="chip-btn" id="importExcelBtn">📥 استيراد من إكسل</button>
@@ -1814,10 +2737,9 @@ function renderAssignmentsWindow(view){
     <p class="sub" style="margin-bottom:6px;" id="importHint">ترتيب الأعمدة عند الاستيراد أو اللصق: <span id="importHintCols"></span> — يمكن ترك أي عمود فارغًا.</p>
     <div id="assignTableWrap"></div>
   `;
-  let activeTab = "admins";
-  const tabs = {admins:"tabAdmins", subjects:"tabSubjects", coords:"tabCoords", teachers:"tabTeachers", students:"tabStudents"};
+  let activeTab = "students";
+  const tabs = {subjects:"tabSubjects", coords:"tabCoords", teachers:"tabTeachers", students:"tabStudents"};
   const importCols = {
-    admins: ["اسم المستخدم","كلمة المرور","البريد الإلكتروني"],
     subjects: ["المواد"],
     coords: ["اسم المستخدم","كلمة المرور"],
     teachers: ["اسم المستخدم","كلمة المرور"],
@@ -1832,9 +2754,25 @@ function renderAssignmentsWindow(view){
     document.getElementById("filterHint").style.display = "";
     document.getElementById("importHint").style.display = "";
     document.getElementById("importHintCols").textContent = importCols[key].join(" ← ");
+    refreshAutoActBtn();
     drawAssignTable(key);
   }
-  document.getElementById("tabAdmins").onclick=()=>setActive("admins");
+  function refreshAutoActBtn(){
+    const b = document.getElementById("autoActBtn");
+    if(activeTab!=="students" && activeTab!=="teachers"){ b.style.display="none"; return; }
+    const on = autoActivateOn(activeTab==="students" ? "Students" : "Teachers");
+    b.style.display = "";
+    b.textContent = on ? "⏸ إيقاف التفعيل التلقائي" : "▶ تشغيل التفعيل التلقائي";
+    b.title = on ? "التسجيل الجديد يُفعَّل مباشرة الآن" : "التسجيل الجديد ينتظر التفعيل اليدوي الآن";
+    b.classList.toggle("accent", !on);
+  }
+  document.getElementById("autoActBtn").addEventListener("click", ()=>{
+    const kind = activeTab==="students" ? "Students" : "Teachers";
+    DB.settings = DB.settings || {};
+    DB.settings["autoActivate"+kind] = !autoActivateOn(kind);
+    saveDB(); refreshAutoActBtn();
+  });
+  window.__refreshAssignTable = ()=>{ if(document.getElementById("assignTableWrap")) drawAssignTable(activeTab); };
   document.getElementById("tabSubjects").onclick=()=>setActive("subjects");
   document.getElementById("tabCoords").onclick=()=>setActive("coords");
   document.getElementById("tabTeachers").onclick=()=>setActive("teachers");
@@ -1936,7 +2874,7 @@ function renderAssignmentsWindow(view){
     openPasteListModal(importCols[activeTab], (matrix)=>importRowsForTab(activeTab, matrix));
   });
 
-  setActive("admins");
+  setActive("students");
 }
 
 /* نافذة لصق قائمة بيانات جاهزة (من إكسل أو أي جدول آخر) وتحويلها إلى صفوف جديدة داخل الجدول النشط.
@@ -2151,15 +3089,20 @@ function drawAssignTable(key){
     return span;
   }
   /* حقل كلمة مرور قابل للتعديل مباشرة من المشرف العام، مع زر لإظهار/إخفاء القيمة */
+  // حقل كلمة المرور: نضع القيمة الحالية (val) فعليًا داخل input بدل تركه فارغًا، حتى يعمل
+  // زر العين على إظهارها فعلًا عند الضغط (كان يبدّل نوع الحقل فقط دون أن يضع فيه أي قيمة).
   function passwordField(val, onSave){
     const box = document.createElement("div");
     box.style.cssText = "display:flex; align-items:center; gap:4px; width:100%; max-width:100%; box-sizing:border-box;";
     const inp = document.createElement("input");
-    inp.type = "password"; inp.value = val || ""; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
+    inp.type = "password"; inp.value = val||""; inp.placeholder = "اكتب لتعيين كلمة مرور جديدة"; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
     const toggle = document.createElement("button");
-    toggle.type = "button"; toggle.className = "icon-btn"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
-    toggle.addEventListener("click", ()=>{ inp.type = inp.type==="password" ? "text" : "password"; });
-    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); });
+    toggle.type = "button"; toggle.className = "icon-btn"; toggle.title = "إظهار/إخفاء كلمة المرور"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
+    toggle.addEventListener("click", ()=>{
+      inp.type = inp.type==="password" ? "text" : "password";
+      toggle.textContent = inp.type==="password" ? "👁" : "🙈";
+    });
+    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); inp.placeholder="✔ تم الحفظ"; });
     box.appendChild(inp); box.appendChild(toggle);
     return box;
   }
@@ -2197,12 +3140,11 @@ function drawAssignTable(key){
       <div class="msg" id="adminsUnlockMsg" style="margin-top:8px;"></div>
     `;
     wrap.appendChild(lockBox);
-    const doUnlock = ()=>{
+    const doUnlock = async ()=>{
       const entered = document.getElementById("adminsUnlockPass").value;
-      const real = currentAdminLoginPassword();
       const msgEl = document.getElementById("adminsUnlockMsg");
       if(!entered){ msgEl.className="msg show err"; msgEl.textContent="من فضلك أدخل كلمة المرور."; return; }
-      if(real===null || entered!==real){ msgEl.className="msg show err"; msgEl.textContent="كلمة المرور غير صحيحة."; return; }
+      if(!(await verifyCurrentAdminPassword(entered))){ msgEl.className="msg show err"; msgEl.textContent="كلمة المرور غير صحيحة."; return; }
       adminsTableUnlocked = true;
       drawAssignTable("admins");
     };
@@ -2372,7 +3314,7 @@ function drawAssignTable(key){
       tb.appendChild(tr);
     });
   } else if(key==="teachers"){
-    t.innerHTML = `<thead><tr><th>م</th><th>المواد</th><th>اسم المستخدم</th><th>كلمة المرور</th><th>الصفوف المرؤوسة</th><th>الفصول المرؤوسة</th><th></th></tr></thead><tbody></tbody>`;
+    t.innerHTML = `<thead><tr><th>م</th><th>المواد</th><th>اسم المستخدم</th><th>كلمة المرور</th><th>الصفوف المرؤوسة</th><th>الفصول المرؤوسة</th><th>التفعيل</th><th></th></tr></thead><tbody></tbody>`;
     const tb=t.querySelector("tbody");
     // المعلمون المتاحون لكل مادة (بند 4): مأخوذون من خلية "المعلم" لهذه المادة في جدول تنسيق المواد الدراسية
     function teacherUsernameOptions(subjects){
@@ -2392,7 +3334,9 @@ function drawAssignTable(key){
         <td class="c-user"></td><td class="c-pass"></td>
         <td><button class="chip-btn" style="padding:4px 10px; font-size:12px;">${(r.grades||[]).join("، ")||"اختر الصفوف"}</button></td>
         <td><button class="chip-btn" style="padding:4px 10px; font-size:12px;">${(r.classes||[]).join("، ")||"اختر الفصول"}</button></td>
+        <td><button class="chip-btn act-btn ${r.active!==false?'accent':''}" style="padding:4px 10px;">${r.active!==false?'✅ مفعّل':'⛔ تفعيل'}</button></td>
         <td><button class="icon-btn danger">🗑</button></td>`;
+      tr.querySelector(".act-btn").addEventListener("click", ()=>{ r.active = (r.active===false); saveDB(); drawAssignTable("teachers"); });
       // عمود المواد (بند 4): مربعات اختيار متعددة من رؤوس جدول تنسيق المواد الدراسية
       const subjBox = buildSubjectCheckboxes(r.subjects, (vals)=>{
         r.subjects = vals; r.username = ""; saveDB(); drawAssignTable("teachers");
@@ -2407,7 +3351,7 @@ function drawAssignTable(key){
       userSel.addEventListener("change", ()=>{ r.username = userSel.value; saveDB(); drawAssignTable("teachers"); });
       tr.querySelector(".c-user").appendChild(userSel);
       tr.querySelector(".c-pass").appendChild(passwordField(r.password||"", v=>r.password=v));
-      const btns = tr.querySelectorAll(".chip-btn");
+      const btns = tr.querySelectorAll(".chip-btn:not(.act-btn)");
       btns[0].addEventListener("click", ()=>openPickerModal("اختر الصفوف المرؤوسة", ALL_GRADES, r.grades||[], vals=>{ r.grades=vals; saveDB(); drawAssignTable("teachers"); }));
       btns[1].addEventListener("click", ()=>openPickerModal("اختر الفصول المرؤوسة", allClassesInUse(), r.classes||[], vals=>{ r.classes=vals; saveDB(); drawAssignTable("teachers"); }));
       tr.querySelector(".icon-btn.danger").addEventListener("click", ()=>{ pushArrayDeleteUndo(DB.teachers, i, r, ()=>drawAssignTable("teachers")); DB.teachers.splice(i,1); saveDB(); drawAssignTable("teachers"); });
@@ -2561,12 +3505,12 @@ function renderFormsWindow(view, role, bankMode){
   const MKEY = bankMode ? "banks" : "models";
   // بند: تقييد صلاحية إنشاء/عرض/حذف النماذج بالصفوف والمواد المسندة فعليًا للمعلم/المنسق
   // حسب جدولي "بيانات المعلمين" و"بيانات المنسقين" (وليس كل الصفوف وكل المواد كما كان سابقًا).
-  const restrictedGrades = role==="admin" ? ALL_GRADES : assignedGradesFor();
+  const restrictedGrades = (role==="admin"||role==="orgadmin") ? ALL_GRADES : assignedGradesFor();
   // بند: ترتيب القائمة المنسدلة لخلية "المادة" يجب أن يطابق دائمًا ترتيب رؤوس جدول
   // "تنسيق المواد الدراسية" بالضبط (وليس ترتيب مصفوفة الإسناد u.subjects العشوائي)،
   // لذلك نبني القائمة من subjectNamesList() أولًا ثم نُرشّحها بما هو مسند للمعلم/المنسق
   // بدل الاعتماد مباشرة على ترتيب assignedSubjectsFor().
-  const restrictedSubjects = role==="admin" ? subjectNamesList() : subjectNamesList().filter(s=>assignedSubjectsFor().includes(s));
+  const restrictedSubjects = (role==="admin"||role==="orgadmin") ? subjectNamesList() : subjectNamesList().filter(s=>assignedSubjectsFor().includes(s));
   const isRestricted = role==="teacher"||role==="coordinator";
   view.innerHTML = `
     <div class="forms-layout">
@@ -2593,6 +3537,12 @@ function renderFormsWindow(view, role, bankMode){
             <button class="chip-btn" id="fRename">إعادة تسمية</button>
             <button class="chip-btn" id="fDelete">حذف</button>
             <button class="chip-btn" id="fCopyTo">نسخ إلى</button>
+          </div>
+          <div class="toolbar" style="margin-top:6px;">
+            <button class="chip-btn" id="fExportOne" title="تصدير النموذج المحدد حاليًا كملف JSON">⬇ تصدير المحدد</button>
+            <button class="chip-btn" id="fExportAll" title="تصدير كل ما يطابق الفصل/الصف/المادة الحاليين في ملف واحد">⬇ تصدير الكل (الفلتر الحالي)</button>
+            <button class="chip-btn accent" id="fImportModels" title="استيراد ملف JSON (نموذج واحد أو عدة نماذج) تم تصديره من هذه المنصة">📥 استيراد نماذج</button>
+            <input type="file" id="fImportModelsFile" accept=".json" style="display:none;">
           </div>
           <div id="fCopyToBox"></div>
         </div>
@@ -2691,6 +3641,33 @@ function renderFormsWindow(view, role, bankMode){
         else m.title = "بنك " + (i+1);
       });
     });
+  }
+  // نسخ نموذج/اختبار إلى صف آخر نسخة حقيقية كاملة: المحتوى يُؤخذ من data المحفوظة (أو من الواجهة إن كان مفتوحًا الآن)،
+  // ولا تُنسخ blocks (عناصر DOM) إطلاقًا لأنها كانت تجعل النسخة شبحية: اسم بلا أسئلة ثم تختفي عند إعادة الفتح.
+  function cloneModelToGrade(source, targetGrade, term, subject, announce){
+    let data = Array.isArray(source.data) ? source.data : [];
+    try{
+      if(activeModel && activeModel.id===source.id){ data = serializeModel(activeModel); source.data = data; }
+      else if(!data.length && Array.isArray(source.blocks) && source.blocks.length && source.blocks.every(b=>b && b.el && b.el.querySelector)){ data = serializeModel(source); source.data = data; }
+    }catch(err){ console.error(err); }
+    if(!data.length && !confirm(`«${source.title}» لا يحتوي أسئلة محفوظة. هل تريد نسخه فارغًا؟`)) return false;
+    const now = Date.now();
+    const nextNum = matchingModels(term, targetGrade, subject).filter(m=>(m.kind||"model")===(source.kind||"model")).length + 1;
+    const rest = JSON.parse(JSON.stringify(Object.assign({}, source, {blocks:[], data:[]})));
+    const copy = Object.assign(rest, {
+      id: "m"+now+"_"+Math.random().toString(36).slice(2,8), blocks:[], data: JSON.parse(JSON.stringify(data)),
+      grade: targetGrade, subject, term, number: nextNum, createdAt: now, updatedAt: now
+    });
+    delete copy.linkedGroup; // النسخة مستقلة ولا تتأثر بتعديلات الأصل لاحقًا
+    if(!source.customTitle) copy.title = (source.kind==="test" ? "اختبار " : "نموذج ") + nextNum;
+    DB[MKEY].push(copy);
+    if(announce){
+      recomputeGroupNumbers(term, targetGrade, subject);
+      saveDB(); flushSaveDBNow();
+      alert(`تم نسخ «${source.title}» بنجاح إلى الصف: ${targetGrade} (${data.length} سؤالًا).`);
+      refreshNumbers();
+    }
+    return true;
   }
   function refreshNumbers(){
     const term=fTerm.value, grade=fGrade.value, subject=fSubject.value;
@@ -2859,21 +3836,87 @@ function renderFormsWindow(view, role, bankMode){
       if(!checkFormsPermission(targetGrade, subject)){ e.target.value=""; return; }
       const source = DB[MKEY].find(m=>m.id===sel);
       if(!source){ alert("تعذّر العثور على النموذج المحدد."); row.remove(); return; }
-      const nextNum = matchingModels(term, targetGrade, subject).filter(m=>(m.kind||"model")===(source.kind||"model")).length + 1;
-      const copy = {
-        ...JSON.parse(JSON.stringify(source)),
-        id: "m"+Date.now(), grade: targetGrade, subject, term, number: nextNum,
-        title: (source.kind==="test" ? "اختبار " : "نموذج ") + nextNum,
-        createdAt: Date.now(), updatedAt: Date.now()
-      };
-      delete copy.linkedGroup; // النسخة عبر "نسخ إلى" مستقلة ولا تتأثر بتعديلات النموذج الأصلي لاحقًا
-      DB[MKEY].push(copy);
-      recomputeGroupNumbers(term, targetGrade, subject);
-      saveDB();
+      if(!cloneModelToGrade(source, targetGrade, term, subject, true)){ row.remove(); return; }
       alert(`تم نسخ «${source.title}» بنجاح إلى الصف: ${targetGrade}.`);
       row.remove();
       refreshNumbers();
     });
+  });
+
+  // ===== تصدير/استيراد النماذج التعليمية (أو بنوك الأسئلة) كملفات JSON =====
+  // نُصدِّر/نستورد بصيغة JSON لا إكسل، لأن حقل "data" لكل نموذج قد يحوي أنواع أسئلة
+  // خاصة (نحوي، سحب وإدراج، تصنيف، خرائط ذهنية...) بهياكل متداخلة مختلفة عن بعضها،
+  // وJSON يحفظ أي هيكل كما هو دون الحاجة لمعالجة كل نوع سؤال على حدة.
+  const EXPORT_KIND = bankMode ? "gamma7-bank" : "gamma7-model";
+  function modelExportPayload(model){
+    // إن كان النموذج مفتوحًا حاليًا في الورشة نأخذ أحدث بياناته (حتى لو لم تُحفظ بعد)
+    const data = (activeModel && activeModel.id===model.id) ? serializeModel(activeModel) : (model.data||[]);
+    return {
+      __gamma7Export: EXPORT_KIND, __exportVersion: 1,
+      term: model.term, grade: model.grade, subject: model.subject,
+      title: model.title||"", customTitle: !!model.customTitle,
+      kind: model.kind||"model", data
+    };
+  }
+  function downloadJSON(obj, filename){
+    const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }
+  document.getElementById("fExportOne").addEventListener("click", ()=>{
+    const sel = fNumber.value;
+    if(!sel || sel==="__new__" || sel==="__all__" || sel==="__alltests__" || sel==="__everything__"){
+      alert("حدد نموذجًا أو اختبارًا بعينه من القائمة أولًا لتصديره."); return;
+    }
+    const model = DB[MKEY].find(m=>m.id===sel);
+    if(!model){ alert("تعذّر العثور على العنصر المحدد."); return; }
+    downloadJSON(modelExportPayload(model), (model.title||"نموذج").replace(/[\\\/:*?"<>|]/g,"_")+".json");
+  });
+  document.getElementById("fExportAll").addEventListener("click", ()=>{
+    const term=fTerm.value, grade=fGrade.value, subject=fSubject.value;
+    if(!term||!grade||!subject){ alert("من فضلك حدد الفصل الدراسي والصف والمادة أولًا لتحديد ما سيُصدَّر."); return; }
+    const list = matchingModels(term, grade, subject);
+    if(!list.length){ alert("لا توجد عناصر مطابقة للفلتر الحالي لتصديرها."); return; }
+    downloadJSON({__gamma7Export: EXPORT_KIND+"-batch", __exportVersion:1, items: list.map(modelExportPayload)},
+      `${bankMode?"بنوك":"نماذج"}_${grade}_${subject}.json`);
+  });
+  document.getElementById("fImportModels").addEventListener("click", ()=> document.getElementById("fImportModelsFile").click());
+  document.getElementById("fImportModelsFile").addEventListener("change", (e)=>{
+    const file = e.target.files[0]; e.target.value = "";
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      let json;
+      try{ json = JSON.parse(reader.result); }
+      catch(err){ alert("تعذّر قراءة الملف: تأكد أنه ملف JSON صالح تم تصديره من هذه الميزة."); return; }
+      const items = Array.isArray(json && json.items) ? json.items : [json];
+      let ok=0, denied=0, bad=0;
+      items.forEach(it=>{
+        if(!it || typeof it!=="object" || !Array.isArray(it.data)){ bad++; return; }
+        const term = it.term || fTerm.value, grade = it.grade || fGrade.value, subject = it.subject || fSubject.value;
+        if(!term || !grade || !subject){ bad++; return; }
+        if(!checkFormsPermission(grade, subject)){ denied++; return; }
+        const nextNum = matchingModels(term, grade, subject).filter(m=>(m.kind||"model")===(it.kind||"model")).length + 1;
+        const model = {
+          id: "m"+Date.now()+Math.random().toString(36).slice(2,7),
+          term, grade, subject, number: nextNum,
+          title: it.title || `${bankMode?"بنك":"نموذج"} ${nextNum}`,
+          customTitle: !!it.customTitle,
+          kind: it.kind==="test" ? "test" : "model",
+          createdAt: Date.now(), updatedAt: Date.now(), scheduledAt: null, testDuration: null,
+          blocks: [], data: JSON.parse(JSON.stringify(it.data))
+        };
+        DB[MKEY].push(model);
+        recomputeGroupNumbers(term, grade, subject);
+        ok++;
+      });
+      saveDB();
+      refreshNumbers();
+      tnToast(`تم استيراد ${ok} ${bankMode?"بنكًا":"نموذجًا"}.` + (denied?` رُفض ${denied} خارج صلاحياتك.`:"") + (bad?` وتجاهُل ${bad} عنصر غير صالح.`:""), (!ok && (denied||bad)) ? "err" : undefined);
+    };
+    reader.readAsText(file, "utf-8");
   });
 
   let lastAllModelsMode = "everything";
@@ -3015,7 +4058,7 @@ function renderFormsWindow(view, role, bankMode){
     // دفعة واحدة عبر خلايا "الصف" الإضافية)، حتى يبقى محتوى كل النسخ متطابقًا مع كل حفظ.
     if(activeModel.linkedGroup){
       DB[MKEY].filter(m=>m.linkedGroup===activeModel.linkedGroup && m.id!==activeModel.id).forEach(sib=>{
-        sib.blocks = JSON.parse(JSON.stringify(activeModel.blocks||[]));
+        sib.blocks = []; // عناصر DOM لا تُنسخ (كانت تُنتج نسخة شبحية فارغة)؛ تُبنى من data عند الفتح
         sib.data = JSON.parse(JSON.stringify(activeModel.data||[]));
         sib.kind = activeModel.kind; sib.testMode = activeModel.testMode; sib.testDuration = activeModel.testDuration;
         sib.scheduledAt = activeModel.scheduledAt; sib.updatedAt = Date.now();
@@ -3119,6 +4162,7 @@ function renderFormsWindow(view, role, bankMode){
     const scroll = document.getElementById("workshopScroll");
     scroll.innerHTML = "";
     qCounter = 0;
+    if(model.blocks.some(b=>!b || !b.el || !b.el.querySelector)) model.blocks = []; // مراجع DOM ميتة
     if(!model.blocks.length && model.data && model.data.length){
       model.blocks = rebuildBlocksFromData(model.data);
     }
@@ -3261,15 +4305,11 @@ function renderFormsWindow(view, role, bankMode){
       bulkTargetPrompt("النسخ", (targetGrade)=>{
         if(targetGrade===grade){ alert("هذا هو الصف نفسه، اختر صفًا آخر."); return; }
         flushAutosave();
-        DB[MKEY].filter(m=>selected.has(m.id)).forEach(m=>{
-          const nextNum = matchingModels(term, targetGrade, subject).filter(x=>(x.kind||"model")===(m.kind||"model")).length + 1;
-          const copy = { ...JSON.parse(JSON.stringify(m)), id:"m"+Date.now()+Math.random().toString(36).slice(2,7), grade:targetGrade, subject, term, number:nextNum, createdAt:Date.now(), updatedAt:Date.now() };
-          delete copy.linkedGroup;
-          DB[MKEY].push(copy);
-        });
+        let okCount = 0;
+        DB[MKEY].filter(m=>selected.has(m.id)).forEach(m=>{ if(cloneModelToGrade(m, targetGrade, term, subject, false)) okCount++; });
         recomputeGroupNumbers(term, targetGrade, subject);
-        saveDB();
-        alert(`تم نسخ ${selected.size} عنصرًا إلى الصف: ${targetGrade}.`);
+        saveDB(); flushSaveDBNow();
+        alert(`تم نسخ ${okCount} عنصرًا (بمحتواها كاملًا) إلى الصف: ${targetGrade}.`);
         refreshNumbers();
         showAllModelsIcons(term, grade, subject, mode);
       });
@@ -5936,16 +6976,17 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       box.innerHTML += `<span class="hint-bulb" style="cursor:pointer; font-size:15px; float:left;" title="تلميح">💡</span><div class="hint-text" style="display:none; font-size:12px; color:var(--accent); background:#e9f5f0; border-radius:6px; padding:6px 8px; margin-bottom:6px;"></div>`;
     }
     if(q.type==="mcq"){
-      if(q.boxMode){
-        box.innerHTML += `<div class="mcq-box-closed" style="border:2px solid var(--ink); border-radius:10px; padding:20px; text-align:center; cursor:pointer; font-weight:900;">صندوق السؤال ${qNumCounter} — اضغط للفتح</div>
-          <div class="mcq-box-open" style="display:none;">
-            <div style="font-weight:700; margin-bottom:8px;">${q.question}</div>
-            <div class="options-grid">${q.options.map((o,oi)=>o? `<label class="qrow"><input type="radio" name="sq${idx}" data-oi="${oi}"><span>${o}</span></label>`:"").join("")}</div>
-          </div>`;
-      } else {
-        box.innerHTML += `<div style="font-weight:700; margin-bottom:8px;">${q.question}</div>
-          <div class="options-grid">${q.options.map((o,oi)=>o? `<label class="qrow"><input type="radio" name="sq${idx}" data-oi="${oi}"><span>${o}</span></label>`:"").join("")}</div>`;
-      }
+      // وضع الصناديق: السؤال ظاهر دائمًا، وتُغطّى الخيارات فقط (كل خيار صندوق) حتى يضغط الطالب النخلة 🌴 أو الصندوق نفسه.
+      // زر ɇ (حذف إجابتين خاطئتين) يظهر في النماذج فقط لا الاختبارات.
+      const moveBulbIntoHead = ()=>{
+        const head = box.querySelector(".mcq-head"), bulb = box.querySelector(".hint-bulb");
+        if(head && bulb){ bulb.style.float = "none"; head.appendChild(bulb); }
+      };
+      const tools = (q.boxMode || !model.testMode)
+        ? `<span class="mcq-tools">${q.boxMode?'<button type="button" class="mcq-tool-btn mcq-palm" title="فتح جميع الصناديق">🌴</button>':''}${!model.testMode?'<button type="button" class="mcq-tool-btn mcq-fifty" title="حذف إجابتين خاطئتين عشوائيًا">ɇ</button>':''}</span>` : "";
+      box.innerHTML += `<div class="mcq-head"><div class="mcq-qtext">${q.question}</div>${tools}</div>
+        <div class="options-grid${q.boxMode?" mcq-covered":""}">${q.options.map((o,oi)=>o? `<label class="qrow"><input type="radio" name="sq${idx}" data-oi="${oi}"><span>${o}</span>${q.boxMode?'<span class="mcq-opt-cover" title="اضغط لفتح الصندوق">📦</span>':""}</label>`:"").join("")}</div>`;
+      moveBulbIntoHead();
     } else if(q.type==="tf"){
       box.innerHTML += `<div class="qrow" style="align-items:center; justify-content:space-between; gap:12px;">
         <div style="font-weight:700;">${q.statement}</div>
@@ -6028,7 +7069,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   // في الصفحة (وليس تخمينًا) لضمان دقة القرار على كل مقاس شاشة.
   function layoutOptionsGrid(grid){
     if(!grid) return;
-    const labels = [...grid.children].filter(c=>c.classList.contains("qrow"));
+    const labels = [...grid.children].filter(c=>c.classList.contains("qrow") && c.style.display!=="none");
     if(labels.length < 2) return;
     // على الجوال (عرض الشاشة ≤560px) تُفرض الخيارات دائمًا عموديًا (عمود واحد)
     // بصرف النظر عن المساحة المتاحة، فلا يُسمح لحساب "أعمدة متعددة" أدناه
@@ -6071,9 +7112,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   }
   // إعادة القياس أيضًا عند فتح صندوق سؤال في "وضع الصناديق" (mcq-box-open) لأن أبعاده
   // تكون صفرًا قبل الفتح فيتعذّر القياس الصحيح حينها.
-  area.querySelectorAll(".mcq-box-closed").forEach(closedBox=>{
-    closedBox.addEventListener("click", ()=> requestAnimationFrame(layoutAllOptionsGrids), {once:false});
-  });
+
 
   // بند 6: سابقًا كانت الدالة تتوقف هنا (return) فور اكتشاف أن الطالب سبق أن حلّ النموذج،
   // فلا تُنفَّذ أبدًا حلقة الربط أسفل هذا الشرط — وهي الحلقة المسؤولة عن تعبئة بنك الكلمات/
@@ -6155,11 +7194,25 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       });
     }
     if(q.type==="mcq"){
-      if(q.boxMode){
-        const closedBox = box.querySelector(".mcq-box-closed");
-        const openBox = box.querySelector(".mcq-box-open");
-        closedBox.addEventListener("click", ()=>{ closedBox.style.display="none"; openBox.style.display="block"; });
-      }
+      if(already) box.querySelectorAll(".mcq-opt-cover").forEach(c=>c.remove());
+      box.querySelectorAll(".mcq-opt-cover").forEach(c=>c.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); c.remove(); }));
+      const palmBtn = box.querySelector(".mcq-palm");
+      if(palmBtn) palmBtn.addEventListener("click", ()=>{ box.querySelectorAll(".mcq-opt-cover").forEach(c=>c.remove()); requestAnimationFrame(layoutAllOptionsGrids); });
+      const fiftyBtn = box.querySelector(".mcq-fifty");
+      if(fiftyBtn) fiftyBtn.addEventListener("click", ()=>{
+        if(fiftyBtn.disabled) return;
+        const labels = [...box.querySelectorAll(".options-grid label")].filter(l=>l.style.display!=="none");
+        const wrong = labels.filter(l=>Number(l.querySelector("input").dataset.oi)!==q.correct);
+        if(labels.length<=2 || wrong.length<2 || !(q.correct>=0)){ fiftyBtn.disabled = true; return; }
+        wrong.sort(()=>Math.random()-0.5).slice(0, Math.min(2, wrong.length-1)).forEach(l=>{
+          const inp = l.querySelector("input");
+          if(inp.checked){ inp.checked = false; answers[idx] = null; checkAllAnswered(); }
+          l.classList.remove("opt-correct-fill");
+          l.style.display = "none";
+        });
+        fiftyBtn.disabled = true;
+        requestAnimationFrame(layoutAllOptionsGrids);
+      });
       box.querySelectorAll('input[type="radio"]').forEach(r=>{
         r.addEventListener("change", ()=>{
           answers[idx] = Number(r.dataset.oi); checkAllAnswered();
@@ -6167,11 +7220,6 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           box.querySelectorAll(".options-grid label").forEach(l=>l.classList.remove("opt-correct-fill"));
           if(!model.testMode && answers[idx]===q.correct){
             const lbl = r.closest("label"); if(lbl) lbl.classList.add("opt-correct-fill");
-          }
-          if(q.boxMode){
-            const closedBox = box.querySelector(".mcq-box-closed");
-            const openBox = box.querySelector(".mcq-box-open");
-            setTimeout(()=>{ openBox.style.display="none"; closedBox.style.display="block"; closedBox.textContent = "✔ تمت الإجابة — اضغط لإعادة الفتح"; }, 300);
           }
         });
       });
@@ -6797,6 +7845,25 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   }
 }
 
+function renderParentScores(view){
+  const names = parentChildren(session.user);
+  const kids = names.map(u=>DB.students.find(s=>s && Sec.norm(s.username)===Sec.norm(u))).filter(Boolean);
+  let cur = kids[0] ? kids[0].username : null;
+  function draw(){
+    const stu = kids.find(k=>k.username===cur);
+    const rs = stu ? DB.results.filter(r=>r.studentUsername===stu.username) : [];
+    view.innerHTML = `
+      <h2>${kids.length>1 ? "نتائج الأبناء" : "نتائج الابن/الابنة"}</h2>
+      ${kids.length>1 ? `<div class="toolbar"><select id="pcKid" style="width:auto;" aria-label="اختر الابن">${kids.map(k=>`<option value="${regEsc(k.username)}" ${k.username===cur?"selected":""}>${regEsc(k.username)}</option>`).join("")}</select></div>` : ""}
+      <p class="sub">${stu ? regEsc(stu.username)+" — "+regEsc(stu.grade||"")+" / فصل "+regEsc(stu.cls||"") : "لا يوجد طالب مرتبط بحسابك حاليًا. تواصل مع إدارة المؤسسة لربطك بابنك."}</p>
+      ${stu ? tableHTML(["الفصل الدراسي","الصف","المادة","رقم النموذج","الدرجة","من","النسبة","التاريخ"],
+        rs.map(r=>[r.term, r.grade, r.subject||"—", r.modelNumber, r.score, r.total, r.total?Math.round(r.score/r.total*100)+"%":"—", r.date])) : ""}`;
+    const sel = document.getElementById("pcKid");
+    if(sel) sel.addEventListener("change", e=>{ cur = e.target.value; draw(); });
+  }
+  draw();
+}
+
 function renderStudentScores(view){
   const mine = DB.results.filter(r=>r.studentUsername===session.user.username);
   const myInfo = DB.students.find(s=>s.username===session.user.username) || {};
@@ -6887,7 +7954,7 @@ function assignedSubjectsFor(){
   return [];
 }
 function visibleResultsFor(role){
-  if(role==="admin") return DB.results;
+  if((role==="admin"||role==="orgadmin")) return DB.results;
   if(role==="teacher"||role==="coordinator"){
     const grades = assignedGradesFor();
     const classes = assignedClassesFor();
@@ -7025,14 +8092,14 @@ function renderAnalysisWindow(view, role){
   const th = DB.tierThresholds;
   // بند 3 و12: قائمة المواد للترشيح تُبنى من رأس جدول "تنسيق المواد الدراسية"، ولمن ليس مشرفًا
   // تُقيَّد بالمواد المسندة له فقط حسب جدول بيانات المعلمين/المنسقين.
-  const subjectOptions = role==="admin" ? subjectNamesList() : assignedSubjectsFor();
+  const subjectOptions = (role==="admin"||role==="orgadmin") ? subjectNamesList() : assignedSubjectsFor();
   // بند 10-11: قوائم الصفوف والفصول للترشيح تُقيَّد بما هو مسند للمعلم/المنسق فقط.
-  const gradeOptions = role==="admin" ? ALL_GRADES : assignedGradesFor();
-  const classOptions = role==="admin" ? allClassesInUse() : assignedClassesFor();
+  const gradeOptions = (role==="admin"||role==="orgadmin") ? ALL_GRADES : assignedGradesFor();
+  const classOptions = (role==="admin"||role==="orgadmin") ? allClassesInUse() : assignedClassesFor();
 
   view.innerHTML = `
     <h2>تحليل النتائج</h2>
-    <p class="sub">${role==="admin" ? "عرض شامل لجميع الصفوف والفصول والمعلمين والمنسقين." : "عرض مقيَّد بالصفوف والفصول والمادة المسندة إليك فقط حسب جدول الإسنادات."}</p>
+    <p class="sub">${(role==="admin"||role==="orgadmin") ? "عرض شامل لجميع الصفوف والفصول والمعلمين والمنسقين." : "عرض مقيَّد بالصفوف والفصول والمادة المسندة إليك فقط حسب جدول الإسنادات."}</p>
 
     <div class="toolbar">
       <button class="chip-btn" onclick="window.print()">طباعة</button>
@@ -7156,11 +8223,11 @@ function renderAnalysisWindow(view, role){
     // بند 6 و8: يجب أن يُحسب "إجمالي الطلاب" و"الغائبون" ضمن نفس نطاق الفلترة الحالية
     // (الصف/الفصل/المادة المختارين، أو المسندة للمعلم إن لم تُحدَّد)، وليس كل طلاب المدرسة
     // من كل الصفوف — وإلا احتُسب طلاب صف/مادة أخرى ضمن غائبي هذا الصف بالخطأ.
-    const subjForCount = filSubject || (role!=="admin" ? assignedSubjectsFor() : null);
+    const subjForCount = filSubject || ((role!=="admin" && role!=="orgadmin") ? assignedSubjectsFor() : null);
     const scopedStudents = DB.students.filter(s=>{
       if(filGrade && s.grade!==filGrade) return false;
       if(filClass && String(s.cls)!==filClass) return false;
-      if(role!=="admin"){
+      if((role!=="admin" && role!=="orgadmin")){
         if(assignedGradesFor().length && !assignedGradesFor().includes(s.grade)) return false;
         if(assignedClassesFor().length && !assignedClassesFor().includes(String(s.cls))) return false;
       }
@@ -7293,14 +8360,14 @@ function renderChallengesWindow(view, role){
   // ضمن نفس نطاق الصلاحية (visibleResultsFor) — لا تُظهر أي بيانات خارج صلاحية الدور الحالي.
   const TERMS = ["الفصل الأول","الفصل الثاني","الفصل الثالث"];
   // بند 10: قائمة الصفوف تُقيَّد بالصفوف المسندة للمعلم/المنسق فقط.
-  const GRADES = role==="admin" ? ["الأول","الثاني","الثالث","الرابع","الخامس","السادس","أول متوسط","ثاني متوسط","ثالث متوسط","أول ثانوي","ثاني ثانوي","ثالث ثانوي"] : assignedGradesFor();
+  const GRADES = (role==="admin"||role==="orgadmin") ? ["الأول","الثاني","الثالث","الرابع","الخامس","السادس","أول متوسط","ثاني متوسط","ثالث متوسط","أول ثانوي","ثاني ثانوي","ثالث ثانوي"] : assignedGradesFor();
   // بند 12: قائمة المادة: أسماء المواد الموجودة في عمود "المواد" بجدول "تنسيق المواد الدراسية"،
   // مقيَّدة بالمادة المسندة للمعلم/المنسق فقط إن لم يكن مشرفًا.
-  const subjectOptions = role==="admin" ? subjectNamesList() : assignedSubjectsFor();
+  const subjectOptions = (role==="admin"||role==="orgadmin") ? subjectNamesList() : assignedSubjectsFor();
 
   // نطاق الطلاب المسموح لهذا الدور بالاطلاع عليهم (نفس مبدأ أقل الصلاحيات المستخدم في visibleResultsFor)
   function scopedStudents(){
-    if(role==="admin") return DB.students;
+    if((role==="admin"||role==="orgadmin")) return DB.students;
     if(role==="teacher"||role==="coordinator"){
       const grades = assignedGradesFor();
       const classes = assignedClassesFor();
@@ -7412,10 +8479,10 @@ function renderEssayGradingWindow(view, role){
 
   // بند 6: خلايا ترشيح مطابقة تمامًا (شكلًا وعددًا ووظيفةً ومحتوى) لخلايا الترشيح في نافذة "تحليل التحديات"
   const TERMS = ["الفصل الأول","الفصل الثاني","الفصل الثالث"];
-  const GRADES = role==="admin" ? ["الأول","الثاني","الثالث","الرابع","الخامس","السادس","أول متوسط","ثاني متوسط","ثالث متوسط","أول ثانوي","ثاني ثانوي","ثالث ثانوي"] : assignedGradesFor();
-  const subjectOptions = role==="admin" ? subjectNamesList() : assignedSubjectsFor();
+  const GRADES = (role==="admin"||role==="orgadmin") ? ["الأول","الثاني","الثالث","الرابع","الخامس","السادس","أول متوسط","ثاني متوسط","ثالث متوسط","أول ثانوي","ثاني ثانوي","ثالث ثانوي"] : assignedGradesFor();
+  const subjectOptions = (role==="admin"||role==="orgadmin") ? subjectNamesList() : assignedSubjectsFor();
   function scopedStudents(){
-    if(role==="admin") return DB.students;
+    if((role==="admin"||role==="orgadmin")) return DB.students;
     if(role==="teacher"||role==="coordinator"){
       const grades = assignedGradesFor();
       const classes = assignedClassesFor();
@@ -7588,7 +8655,7 @@ function drawAttachSendTable(wrap, role){
       const subjOpts = senderSubjectOptions();
       const subjSel = document.createElement("select"); subjSel.style.width="100%";
       subjSel.innerHTML = `<option value="">—</option>` + subjOpts.map(sv=>`<option value="${sv}" ${a.subject===sv?"selected":""}>${sv}</option>`).join("")
-        + (role!=="admin" ? "" : `<option value="كل المواد" ${a.subject==="كل المواد"?"selected":""}>كل المواد</option>`);
+        + ((role!=="admin" && role!=="orgadmin") ? "" : `<option value="كل المواد" ${a.subject==="كل المواد"?"selected":""}>كل المواد</option>`);
       subjSel.addEventListener("change", ()=>{ a.subject = subjSel.value; saveDB(); });
       tr.querySelector(".a-subject").appendChild(subjSel);
 
@@ -8105,12 +9172,20 @@ function renderMindBankWindow(view){
    البيانات DB.students، مع تقييد الظهور: كل معلم لا يرى ولا يضيف إلا الطلاب الذين
    أضافهم بنفسه (عبر علامة addedByTeacher)، فلا تظهر له بيانات طلاب معلم آخر.
    ============================================================ */
+function studentBelongsToTeacher(s, t){
+  if(!s || !s.selfRegistered || !t) return false;
+  if(!(t.grades||[]).includes(s.grade)) return false;
+  const classes = (t.classes||[]).map(String);
+  if(classes.length && !classes.includes(String(s.cls))) return false;
+  if(t.institution && s.institution && Sec.norm(t.institution)!==Sec.norm(s.institution)) return false;
+  return true;
+}
 function renderMyStudentsWindow(view, role){
   const teacherUsername = session.user.username;
   // بند 11: يُسمح بالتفعيل (وبعرض/إدارة الطلاب) من هذه النافذة للمعلم والمنسق والمشرف
   // العام معًا، وليس مقصورًا على المشرف وحده. المعلم يرى طلابه الذين أضافهم فقط،
   // بينما يرى المنسق والمشرف العام جميع الطلاب (ليتمكنا من التفعيل والإشراف).
-  const isBroadRole = role==="admin" || role==="coordinator";
+  const isBroadRole = (role==="admin"||role==="orgadmin") || role==="coordinator";
   view.innerHTML = `
     <h2>${isBroadRole ? "بيانات الطلاب" : "بيانات طلابي"}</h2>
     <p class="sub">${isBroadRole ? "بيانات جميع الطلاب المسجّلين في المنصة، ويمكنك من هنا تفعيل أي طالب أو تعديل بياناته." : 'أضف طلابك هنا وستُدرج تلقائيًا في جدول "بيانات الطلاب" العام لدى المشرف العام، مع بقاء بيانات طلاب المعلمين الآخرين مخفية عنك.'}</p>
@@ -8131,7 +9206,11 @@ function renderMyStudentsWindow(view, role){
   // لتسهيل الوصول إلى طالب بعينه بسرعة بدل تصفح كل الصفوف يدويًا.
   function mine(){
     const all = DB.students.map((r,i)=>({r,i}));
-    return isBroadRole ? all : all.filter(x=>x.r.addedByTeacher===teacherUsername);
+    if(isBroadRole) return all;
+    const me = DB.teachers.find(t=>t && t.username===teacherUsername) || session.user || {};
+    // الطالب المسجَّل ذاتيًا يظهر عند المعلم الذي يدرّس صفه (وفصله إن حُدِّدت فصول للمعلم) وفي مؤسسته،
+    // إضافةً إلى من أضافهم المعلم بنفسه. الجدول نفسه DB.students فيتطابق مع واجهة المشرف العام فورًا.
+    return all.filter(x=> x.r.addedByTeacher===teacherUsername || studentBelongsToTeacher(x.r, me));
   }
   function editable(val, onSave, isNewDefault){
     const span = document.createElement("span");
@@ -8147,15 +9226,20 @@ function renderMyStudentsWindow(view, role){
     span.addEventListener("blur", ()=>{ onSave(span.textContent.trim()); saveDB(); });
     return span;
   }
+  // حقل كلمة المرور: نضع القيمة الحالية (val) فعليًا داخل input بدل تركه فارغًا، حتى يعمل
+  // زر العين على إظهارها فعلًا عند الضغط (كان يبدّل نوع الحقل فقط دون أن يضع فيه أي قيمة).
   function passwordField(val, onSave){
     const box = document.createElement("div");
     box.style.cssText = "display:flex; align-items:center; gap:4px; width:100%; max-width:100%; box-sizing:border-box;";
     const inp = document.createElement("input");
-    inp.type = "password"; inp.value = val || ""; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
+    inp.type = "password"; inp.value = val||""; inp.placeholder = "اكتب لتعيين كلمة مرور جديدة"; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
     const toggle = document.createElement("button");
-    toggle.type = "button"; toggle.className = "icon-btn"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
-    toggle.addEventListener("click", ()=>{ inp.type = inp.type==="password" ? "text" : "password"; });
-    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); });
+    toggle.type = "button"; toggle.className = "icon-btn"; toggle.title = "إظهار/إخفاء كلمة المرور"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
+    toggle.addEventListener("click", ()=>{
+      inp.type = inp.type==="password" ? "text" : "password";
+      toggle.textContent = inp.type==="password" ? "👁" : "🙈";
+    });
+    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); inp.placeholder="✔ تم الحفظ"; });
     box.appendChild(inp); box.appendChild(toggle);
     return box;
   }
@@ -8171,7 +9255,7 @@ function renderMyStudentsWindow(view, role){
     wrap.innerHTML = ""; wrap.appendChild(table);
     t._clearAllHandler = ()=>{
       if(isBroadRole) DB.students = [];
-      else DB.students = DB.students.filter(s=>s.addedByTeacher!==teacherUsername);
+      else { const ids = new Set(mine().map(x=>x.r)); DB.students = DB.students.filter(s=>!ids.has(s)); }
       saveDB(); draw();
     };
     const classOptions = allClassesInUse();
@@ -8208,6 +9292,7 @@ function renderMyStudentsWindow(view, role){
     enableColumnResize(t);
   }
   document.getElementById("myStSearch").addEventListener("input", (e)=>{ searchTerm = e.target.value; draw(); });
+  window.__refreshMyStudents = draw;
   document.getElementById("myStAddBtn").addEventListener("click", ()=>{
     DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:"", cls:"", active:false, addedByTeacher:teacherUsername, __isNew:true});
     saveDB(); draw();
@@ -8356,7 +9441,7 @@ function taskDeliveryDateLabel(t){
 
 function renderTasksWindow(view, role, mode){
   processScheduledTaskSends();
-  let canCreate = role==="admin" || role==="coordinator" || role==="teacher";
+  let canCreate = (role==="admin"||role==="orgadmin") || role==="coordinator" || role==="teacher";
   let canReceive = role==="student" || role==="coordinator" || role==="teacher";
   if(mode==="sent"){ canReceive = false; }
   if(mode==="inbox"){ canCreate = false; }
@@ -8437,7 +9522,7 @@ function drawTasksCreateTable(wrap, role){
       const subjOpts = senderSubjectOptions();
       const subjSel = document.createElement("select"); subjSel.style.width="100%";
       subjSel.innerHTML = `<option value="">—</option>` + subjOpts.map(sv=>`<option value="${sv}" ${t.subject===sv?"selected":""}>${sv}</option>`).join("")
-        + (role!=="admin" ? "" : `<option value="كل المواد" ${t.subject==="كل المواد"?"selected":""}>كل المواد</option>`);
+        + ((role!=="admin" && role!=="orgadmin") ? "" : `<option value="كل المواد" ${t.subject==="كل المواد"?"selected":""}>كل المواد</option>`);
       subjSel.addEventListener("change", ()=>{ t.subject = subjSel.value; saveDB(); });
       tr.querySelector(".tk-subject").appendChild(subjSel);
 
@@ -9076,6 +10161,735 @@ document.addEventListener("DOMContentLoaded", ()=>{
     });
   }).observe(view, {childList:true, subtree:true});
 });
+
+
+/* =====================================================================
+   ===== غلاف الجلسة: الشريط الجانبي، التنبيه العلوي، ووضع الدعم =====
+   ===================================================================== */
+function sessionNavKey(){
+  if(!session) return null;
+  if(session.role==="admin") return (session.isSuper && !session.viewOrg) ? "superadmin" : "orgadmin";
+  return session.role;
+}
+function whoLabel(){
+  const u = session.user, key = sessionNavKey();
+  const label = key==="superadmin" ? "المشرف العام" : (key==="orgadmin" ? "مدير المؤسسة" : roleName[session.role]);
+  const org = session.orgId ? orgById(session.orgId) : null;
+  return `${u.username} (${label}${org ? " — " + org.name : ""})`;
+}
+function tnToast(msg, kind){
+  const old = document.getElementById("tnToast"); if(old) old.remove();
+  const el = document.createElement("div");
+  el.id = "tnToast"; el.className = "tn-toast" + (kind==="err" ? " err" : ""); el.setAttribute("role","status");
+  el.textContent = msg; document.body.appendChild(el);
+  setTimeout(()=>{ if(el.parentNode) el.remove(); }, 3800);
+}
+// الدور "الفعّال" لبناء القائمة الجانبية وعناصر الواجهة: يبقى "admin" لوحة المشرف العام
+// طالما لم يفتح مؤسسة بعينها، ويتحول تلقائيًا إلى "orgadmin" فور دخوله وضع الدعم (فتح لوحة
+// مؤسسة)، بخلاف session.role الذي يبقى "admin" دائمًا لأغراض التحقق من صلاحياته الأصلية.
+function effectiveShellRole(){
+  if(!session) return null;
+  if(session.role==="admin" && session.viewOrg) return "orgadmin";
+  return session.role;
+}
+function applyShell(){
+  if(!session) return;
+  const role = effectiveShellRole(), inOrg = !!SCOPE.orgId;
+  document.getElementById("whoName").textContent = whoLabel();
+  buildSidenav(role);
+  document.getElementById("taskBellWrap").style.display   = (role==="student"||role==="coordinator"||role==="teacher") ? "" : "none";
+  document.getElementById("attachBellWrap").style.display = (role==="parent" || !inOrg) ? "none" : "";
+  document.getElementById("corrBellWrap").style.display   = ((role==="orgadmin"||role==="coordinator"||role==="teacher") && inOrg) ? "" : "none";
+  updateOrgBanner();
+  try{ refreshTaskBell(); refreshAttachBell(); refreshCorrBell(); }catch(e){}
+}
+function updateOrgBanner(){
+  const el = document.getElementById("orgBanner");
+  if(!el) return;
+  el.className = "org-banner hidden"; el.innerHTML = "";
+  if(!session) return;
+  if(session.viewOrg){
+    const org = orgById(session.viewOrg);
+    el.className = "org-banner support";
+    el.innerHTML = `<span>وضع الدعم: تدير الآن مؤسسة <b>${regEsc(org ? org.name : "")}</b> بصلاحيات مدير المؤسسة.</span><button type="button" class="chip-btn" id="orgBannerExit">العودة إلى لوحة المشرف العام</button>`;
+    document.getElementById("orgBannerExit").addEventListener("click", exitOrgView);
+    return;
+  }
+  if(session.orgId && session.role==="admin"){
+    const org = orgById(session.orgId);
+    const d = org ? daysUntilISO(org.subscriptionExpiry) : null;
+    if(d!==null && d<=14){
+      el.className = "org-banner warn";
+      el.textContent = d<=0 ? "ينتهي اشتراك المؤسسة اليوم. تواصل مع المشرف العام للتجديد حتى لا يتوقف دخول المنسوبين."
+                            : `ينتهي اشتراك المؤسسة بعد ${d} ${d<=10 ? "أيام" : "يومًا"}. تواصل مع المشرف العام للتجديد.`;
+    }
+  }
+}
+function enterOrgView(orgId){
+  if(!session || !session.isSuper || !orgById(orgId)) return;
+  session.viewOrg = orgId; SCOPE.orgId = orgId;
+  applyShell();
+}
+function exitOrgView(){
+  if(!session) return;
+  session.viewOrg = null; SCOPE.orgId = session.orgId || null;
+  applyShell();
+}
+
+/* حارس دوري + عند العودة للتبويب: يُخرج فورًا كل من أُوقف اشتراك مؤسسته أو حسابه */
+setInterval(()=>{ try{ Guard.verifySession(); }catch(e){} }, 20000);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ try{ Guard.verifySession(); }catch(e){} } });
+
+/* =====================================================================
+   ===== لوحة المشرف العام: المؤسسات والاشتراكات =====
+   ===================================================================== */
+function orgCountsMap(){
+  const m = {};
+  const at = id => (m[id] = m[id] || {students:0, teachers:0, coordinators:0, parents:0, unpaid:0});
+  (ROOT.students||[]).forEach(x=>{ if(x && x.orgId){ const c = at(x.orgId); c.students++; if(x.feeStatus==="unpaid") c.unpaid++; } });
+  (ROOT.teachers||[]).forEach(x=>{ if(x && x.orgId) at(x.orgId).teachers++; });
+  (ROOT.coordinators||[]).forEach(x=>{ if(x && x.orgId) at(x.orgId).coordinators++; });
+  (ROOT.parents||[]).forEach(x=>{ if(x && x.orgId) at(x.orgId).parents++; });
+  return m;
+}
+function orgLog(o, action){
+  o.statusLog = Array.isArray(o.statusLog) ? o.statusLog : [];
+  o.statusLog.push({at:Date.now(), action, by: session ? session.user.username : ""});
+  if(o.statusLog.length>20) o.statusLog = o.statusLog.slice(-20);
+}
+function setOrgStatus(o, status, action){
+  o.subscriptionStatus = status; o.updatedAt = Date.now();
+  orgLog(o, action || (status==="active" ? "تفعيل الاشتراك" : "إيقاف الاشتراك"));
+  saveDB(); flushSaveDBNow();   // الإيقاف يجب أن يصل السحابة فورًا لا بعد مهلة الحفظ المؤجّل
+}
+function renewOrg(o, months){
+  const t = todayLocalISO();
+  const base = (o.subscriptionExpiry && o.subscriptionExpiry > t) ? o.subscriptionExpiry : t;
+  o.subscriptionExpiry = addMonthsISO(base, months);
+  o.subscriptionStatus = "active"; o.updatedAt = Date.now();
+  orgLog(o, "تجديد الاشتراك ("+months+" شهر) حتى "+o.subscriptionExpiry);
+  saveDB(); flushSaveDBNow();
+}
+function deleteOrganization(o){
+  const typed = prompt(`سيُحذف كل ما يخص «${o.name}» نهائيًا: المستخدمون والنماذج والنتائج والمرفقات. للتأكيد اكتب اسم المؤسسة كما هو:`);
+  if(typed===null) return false;
+  if(typed.trim()!==String(o.name).trim()){ tnToast("الاسم غير مطابق، لم يُحذف شيء.", "err"); return false; }
+  const id = o.id, now = Date.now();
+  ROOT.deletedModelIds = ROOT.deletedModelIds || {};
+  (ROOT.models||[]).concat(ROOT.banks||[]).forEach(m=>{ if(m && m.orgId===id && m.id) ROOT.deletedModelIds[m.id] = now; });
+  TENANT_ARRAYS.forEach(k=>{ ROOT[k] = (ROOT[k]||[]).filter(x=>!(x && x.orgId===id)); });
+  ROOT.orgAdmins = (ROOT.orgAdmins||[]).filter(x=>!(x && x.orgId===id));
+  if(ROOT.orgMeta) delete ROOT.orgMeta[id];
+  ROOT.organizations = ROOT.organizations.filter(x=>x && x.id!==id);
+  ROOT.deletedOrgs = ROOT.deletedOrgs || {}; ROOT.deletedOrgs[id] = now;
+  saveDB(); flushSaveDBNow();
+  return true;
+}
+function randomPassword(len){
+  const A = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const u = new Uint8Array(len||10); crypto.getRandomValues(u);
+  return Array.from(u).map(b=>A[b % A.length]).join("");
+}
+
+function renderOrgsWindow(view){
+  view.innerHTML = `
+    <h2>المؤسسات والاشتراكات</h2>
+    <p class="sub">أضف مؤسسة وفعّل اشتراكها. إيقاف الاشتراك أو انتهاؤه يمنع كل منسوبي المؤسسة (إداريين ومعلمين وطلابًا وأولياء أمور) من الدخول فورًا.</p>
+    <div id="orgFlash"></div>
+    <div class="tn-stats" id="orgStats"></div>
+    <div class="toolbar">
+      <button class="chip-btn accent" id="orgAddBtn">➕ مؤسسة جديدة</button>
+      <input type="text" id="orgSearch" placeholder="ابحث باسم المؤسسة أو رمزها" autocomplete="off" style="width:240px; max-width:100%;">
+      <select id="orgFilter" style="width:auto;" aria-label="تصفية حسب حالة الاشتراك">
+        <option value="all">كل الحالات</option><option value="active">النشطة</option><option value="inactive">الموقوفة</option><option value="expired">المنتهية</option>
+      </select>
+      <button class="chip-btn" id="orgExportBtn">تصدير إكسل</button>
+    </div>
+    <div id="orgTableWrap"></div>`;
+  const wrap = document.getElementById("orgTableWrap");
+
+  function drawStats(){
+    const orgs = (ROOT.organizations||[]).filter(Boolean);
+    let act = 0, off = 0, soon = 0;
+    orgs.forEach(o=>{
+      const st = orgStateOf(o);
+      if(st.ok){ act++; const d = daysUntilISO(o.subscriptionExpiry); if(d!==null && d<=30) soon++; } else off++;
+    });
+    document.getElementById("orgStats").innerHTML =
+      `<div class="tn-stat"><div class="n">${orgs.length}</div><div class="l">إجمالي المؤسسات</div></div>
+       <div class="tn-stat"><div class="n">${act}</div><div class="l">اشتراك ساري</div></div>
+       <div class="tn-stat ${off?"bad":""}"><div class="n">${off}</div><div class="l">موقوفة أو منتهية</div></div>
+       <div class="tn-stat ${soon?"warn":""}"><div class="n">${soon}</div><div class="l">تنتهي خلال 30 يومًا</div></div>`;
+  }
+
+  function filtered(){
+    const q = Sec.norm(document.getElementById("orgSearch").value);
+    const f = document.getElementById("orgFilter").value;
+    return (ROOT.organizations||[]).filter(Boolean).filter(o=>{
+      if(q && !(Sec.norm(o.name).includes(q) || Sec.norm(o.code).includes(q))) return false;
+      if(f!=="all" && orgStateOf(o).code!==f) return false;
+      return true;
+    });
+  }
+
+  function drawTable(){
+    drawStats();
+    const list = filtered(), counts = orgCountsMap();
+    if(!(ROOT.organizations||[]).filter(Boolean).length){
+      wrap.innerHTML = `<div class="tn-empty">لا توجد مؤسسات بعد. أضف أول مؤسسة بالزر أعلاه.</div>`; return;
+    }
+    if(!list.length){ wrap.innerHTML = `<div class="tn-empty">لا توجد مؤسسات مطابقة للبحث.</div>`; return; }
+    wrap.innerHTML = "";
+    const box = document.createElement("div"); box.className = "table-wrap";
+    const t = document.createElement("table"); t.className = "data";
+    t.innerHTML = `<thead><tr><th>م</th><th>المؤسسة</th><th>الاشتراك</th><th>تاريخ الانتهاء</th><th>المنسوبون</th><th>مديرو المؤسسة</th><th></th></tr></thead><tbody></tbody>`;
+    const tb = t.querySelector("tbody");
+    list.forEach((o,i)=>{
+      const st = orgStateOf(o), c = counts[o.id] || {students:0,teachers:0,coordinators:0,parents:0,unpaid:0};
+      const admins = (ROOT.orgAdmins||[]).filter(a=>a && a.orgId===o.id);
+      const d = daysUntilISO(o.subscriptionExpiry);
+      const remain = o.subscriptionExpiry ? (d<0 ? `انتهى منذ ${-d} يومًا` : d===0 ? "ينتهي اليوم" : `متبقٍ ${d} يومًا`) : "بلا تاريخ انتهاء";
+      const last = (o.statusLog||[]).slice(-1)[0];
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td>
+          <div class="c-name" contenteditable="true" spellcheck="false" style="font-weight:800; outline:none;" title="اضغط لتعديل الاسم">${regEsc(o.name)}</div>
+          <div class="tn-note">رمز التسجيل: <span class="tn-code">${regEsc(o.code||"")}</span> <button type="button" class="chip-btn tn-mini c-copy">نسخ</button></div>
+        </td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label class="tn-switch" title="${st.ok?"إيقاف الاشتراك":"تفعيل الاشتراك"}"><input type="checkbox" class="c-sw" ${o.subscriptionStatus==="active"?"checked":""} aria-label="اشتراك ${regEsc(o.name)}"><span class="trk"></span></label>
+            <span class="tn-badge ${st.ok?"ok":(st.code==="expired"?"exp":"off")}">${st.label}</span>
+          </div>
+          ${last ? `<div class="tn-note" title="${regEsc(last.action)}">آخر تغيير: ${new Date(last.at).toLocaleDateString("ar-EG")}</div>` : ""}
+        </td>
+        <td>
+          <div class="tn-datewrap">
+            <input type="date" class="c-exp" value="${regEsc(o.subscriptionExpiry||"")}" aria-label="تاريخ انتهاء الاشتراك">
+            <div class="tn-renew">
+              <button type="button" class="chip-btn tn-mini" data-m="1">+ شهر</button>
+              <button type="button" class="chip-btn tn-mini" data-m="3">+ 3 أشهر</button>
+              <button type="button" class="chip-btn tn-mini" data-m="12">+ سنة</button>
+            </div>
+            <div class="tn-note" style="margin:0;">${remain}</div>
+          </div>
+        </td>
+        <td><ul class="tn-list"><li><span>طلاب:</span> ${c.students}${c.unpaid?` <span>(غير مسدد ${c.unpaid})</span>`:""}</li><li><span>معلمون:</span> ${c.teachers}</li><li><span>منسقون:</span> ${c.coordinators}</li><li><span>أولياء أمور:</span> ${c.parents}</li></ul></td>
+        <td>${admins.length ? `<ul class="tn-list">${admins.map(a=>`<li>${regEsc(a.username)}${a.active===false?" <span>(موقوف)</span>":""}</li>`).join("")}</ul>` : `<span class="tn-note">لا يوجد مدير</span>`}</td>
+        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
+
+      tr.querySelector(".c-name").addEventListener("blur", (e)=>{
+        const nv = e.target.textContent.trim().replace(/\s+/g," ");
+        if(!nv){ e.target.textContent = o.name; return; }
+        if(nv!==o.name){ o.name = nv; o.updatedAt = Date.now(); saveDB(); drawTable(); }
+      });
+      tr.querySelector(".c-name").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.target.blur(); } });
+      tr.querySelector(".c-copy").addEventListener("click", ()=>{
+        try{ navigator.clipboard.writeText(o.code||""); tnToast("تم نسخ رمز المؤسسة: "+o.code); }catch(e){ tnToast("الرمز: "+o.code); }
+      });
+      tr.querySelector(".c-sw").addEventListener("change", (e)=>{
+        const want = e.target.checked;
+        if(want && o.subscriptionExpiry && o.subscriptionExpiry < todayLocalISO()){
+          e.target.checked = false;
+          tnToast("تاريخ انتهاء الاشتراك مضى. جدّد الاشتراك أولًا (+ شهر / + سنة) ثم فعّله.", "err"); return;
+        }
+        setOrgStatus(o, want ? "active" : "inactive");
+        drawTable();
+      });
+      tr.querySelector(".c-exp").addEventListener("change", (e)=>{
+        o.subscriptionExpiry = e.target.value || ""; o.updatedAt = Date.now();
+        orgLog(o, o.subscriptionExpiry ? "تعديل تاريخ الانتهاء إلى "+o.subscriptionExpiry : "إزالة تاريخ الانتهاء");
+        saveDB(); flushSaveDBNow(); drawTable();
+      });
+      tr.querySelectorAll(".tn-renew button").forEach(b=>b.addEventListener("click", ()=>{ renewOrg(o, +b.dataset.m); drawTable(); tnToast("تم تجديد الاشتراك حتى "+o.subscriptionExpiry); }));
+      tr.querySelector(".c-open").addEventListener("click", ()=>enterOrgView(o.id));
+      tr.querySelector(".c-del").addEventListener("click", ()=>{ if(deleteOrganization(o)){ drawTable(); tnToast("تم حذف المؤسسة."); } });
+      tb.appendChild(tr);
+    });
+    box.appendChild(t); wrap.appendChild(box);
+  }
+
+  document.getElementById("orgSearch").addEventListener("input", drawTable);
+  document.getElementById("orgFilter").addEventListener("change", drawTable);
+  document.getElementById("orgAddBtn").addEventListener("click", ()=>openAddOrgModal(({org, adminUser, adminPass})=>{
+    document.getElementById("orgFlash").innerHTML = `<div class="tn-flash" role="status">
+      تم إنشاء «${regEsc(org.name)}». رمز التسجيل الذاتي: <span class="tn-code">${regEsc(org.code)}</span><br>
+      مدير المؤسسة: <span class="tn-code">${regEsc(adminUser)}</span> وكلمة المرور: <span class="tn-code">${regEsc(adminPass)}</span><br>
+      <span class="tn-note">احتفظ بكلمة المرور الآن؛ تُخزَّن مشفّرة ولا يمكن عرضها لاحقًا (يمكنك إعادة تعيينها من وضع الدعم).</span>
+      <div style="margin-top:8px;"><button type="button" class="chip-btn tn-mini" id="orgFlashClose">إخفاء</button></div></div>`;
+    document.getElementById("orgFlashClose").addEventListener("click", ()=>{ document.getElementById("orgFlash").innerHTML = ""; });
+    drawTable();
+  }));
+  document.getElementById("orgExportBtn").addEventListener("click", ()=>{
+    const counts = orgCountsMap();
+    exportCSV(["م","المؤسسة","الرمز","الحالة","تاريخ الانتهاء","طلاب","معلمون","منسقون","أولياء أمور"],
+      filtered().map((o,i)=>{ const c = counts[o.id] || {}; return [i+1, o.name, o.code, orgStateOf(o).label, o.subscriptionExpiry||"", c.students||0, c.teachers||0, c.coordinators||0, c.parents||0]; }),
+      "المؤسسات");
+  });
+  drawTable();
+}
+
+/* نافذة إضافة مؤسسة جديدة مع مديرها الأول ومدة الاشتراك */
+function openAddOrgModal(onDone){
+  let ov = document.getElementById("orgAddOverlay");
+  if(ov) ov.remove();
+  ov = document.createElement("div"); ov.className = "overlay"; ov.id = "orgAddOverlay";
+  ov.innerHTML = `<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="naTitle">
+    <button type="button" class="modal-close" id="naClose">إغلاق ✕</button>
+    <h2 id="naTitle">مؤسسة جديدة</h2>
+    <div class="tn-form-grid">
+      <div><label for="naName">اسم المؤسسة</label><input type="text" id="naName" autocomplete="off" placeholder="مثال: مدارس النور الأهلية"></div>
+      <div><label for="naCode">رمز المؤسسة</label>
+        <div class="tn-inline"><input type="text" id="naCode" autocomplete="off" dir="ltr" style="text-align:left; text-transform:uppercase;"><button type="button" class="chip-btn" id="naCodeGen">توليد</button></div></div>
+    </div>
+    <p class="tn-note" style="margin-top:4px;">يستخدم منسوبو المؤسسة هذا الرمز عند «تسجيل جديد» ليُسجَّلوا داخل مؤسستهم فقط.</p>
+    <div class="tn-section-title">الاشتراك</div>
+    <div class="tn-inline">
+      <select id="naDur" aria-label="مدة الاشتراك">
+        <option value="1">شهر واحد</option><option value="3">3 أشهر</option><option value="6">6 أشهر</option><option value="12" selected>سنة</option><option value="24">سنتان</option><option value="0">بلا تاريخ انتهاء</option><option value="custom">تاريخ محدد</option>
+      </select>
+      <input type="date" id="naExp" aria-label="تاريخ الانتهاء">
+    </div>
+    <label class="tn-check"><input type="checkbox" id="naActive" checked> تفعيل الاشتراك عند الإنشاء</label>
+    <div class="tn-section-title">مدير المؤسسة الأول</div>
+    <div class="tn-form-grid">
+      <div><label for="naAdmin">اسم المستخدم</label><input type="text" id="naAdmin" autocomplete="off"></div>
+      <div><label for="naPass">كلمة المرور</label>
+        <div class="tn-inline"><input type="text" id="naPass" autocomplete="off" dir="ltr" style="text-align:left;"><button type="button" class="chip-btn" id="naPassGen">توليد</button></div></div>
+    </div>
+    <div class="msg" id="naMsg" style="margin-top:12px;"></div>
+    <div class="modal-actions"><button type="button" class="primary-btn" id="naSave" style="flex:1;">إنشاء المؤسسة</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.classList.add("show");
+  const $ = id => document.getElementById(id);
+  const setMsg = (t)=>{ $("naMsg").textContent = t||""; $("naMsg").className = t ? "msg show err" : "msg"; };
+  const close = ()=>ov.remove();
+  $("naCode").value = genOrgCode();
+  $("naPass").value = randomPassword(10);
+  const applyDur = ()=>{ const v = $("naDur").value; if(v==="custom") return; $("naExp").value = v==="0" ? "" : addMonthsISO(todayLocalISO(), +v); };
+  applyDur();
+  $("naDur").addEventListener("change", applyDur);
+  $("naExp").addEventListener("input", ()=>{ $("naDur").value = "custom"; });
+  $("naCodeGen").addEventListener("click", ()=>{ $("naCode").value = genOrgCode(); });
+  $("naPassGen").addEventListener("click", ()=>{ $("naPass").value = randomPassword(10); });
+  $("naClose").addEventListener("click", close);
+  ov.addEventListener("click", (e)=>{ if(e.target===ov) close(); });
+  setTimeout(()=>$("naName").focus(), 30);
+
+  $("naSave").addEventListener("click", async ()=>{
+    const btn = $("naSave"); if(btn.disabled) return;
+    setMsg("");
+    const name = $("naName").value.trim().replace(/\s+/g," ");
+    const code = $("naCode").value.trim().toUpperCase().replace(/\s+/g,"");
+    const dur = $("naDur").value, exp = $("naExp").value;
+    const active = $("naActive").checked;
+    const adminUser = $("naAdmin").value.trim().replace(/\s+/g," ");
+    const adminPass = $("naPass").value;
+    if(name.length<2){ setMsg("اكتب اسم المؤسسة."); return; }
+    if(!/^[A-Z0-9]{4,12}$/.test(code)){ setMsg("رمز المؤسسة من 4 إلى 12 حرفًا إنجليزيًا أو رقمًا."); return; }
+    if((ROOT.organizations||[]).some(o=>o && String(o.code||"").toUpperCase()===code)){ setMsg("هذا الرمز مستخدم لمؤسسة أخرى، اضغط «توليد»."); return; }
+    if(dur!=="0" && !/^\d{4}-\d{2}-\d{2}$/.test(exp)){ setMsg("اختر تاريخ انتهاء صحيحًا أو اختر «بلا تاريخ انتهاء»."); return; }
+    if(active && exp && exp < todayLocalISO()){ setMsg("تاريخ الانتهاء سابق لليوم، لا يمكن تفعيل الاشتراك به."); return; }
+    if(adminUser.length<3){ setMsg("اسم مدير المؤسسة لا يقل عن 3 أحرف."); return; }
+    if(usernameTakenAnywhere(adminUser)){ setMsg("اسم المستخدم هذا مسجَّل مسبقًا في المنصة، اختر اسمًا آخر."); return; }
+    if(adminPass.length<6){ setMsg("كلمة المرور لا تقل عن 6 أحرف."); return; }
+    btn.disabled = true;
+    try{
+      const cred = await Sec.hashPassword(adminPass);
+      const now = Date.now(), id = genOrgId();
+      const org = { id, name, code, subscriptionStatus: active ? "active" : "inactive", subscriptionExpiry: dur==="0" ? "" : exp, createdAt:now, updatedAt:now, statusLog:[] };
+      orgLog(org, "إنشاء المؤسسة" + (active ? " وتفعيل الاشتراك" : ""));
+      ROOT.organizations.push(org);
+      ROOT.orgAdmins.push(Object.assign({ username:adminUser, orgId:id, active:true, email:"", createdAt:now }, cred));
+      orgMetaFor(id);
+      saveDB(); flushSaveDBNow();
+      close();
+      onDone({org, adminUser, adminPass});
+    }catch(e){ console.error(e); setMsg("تعذّر إنشاء المؤسسة، حاول مرة أخرى."); }
+    finally{ btn.disabled = false; }
+  });
+}
+
+
+/* =====================================================================
+   ===== واجهات مدير المؤسسة =====
+   ===================================================================== */
+function currentOrgObj(){ return SCOPE.orgId ? orgById(SCOPE.orgId) : null; }
+
+/* ---------- لوحة المؤسسة ---------- */
+function renderOrgHomeWindow(view){
+  const org = currentOrgObj();
+  if(!org){ view.innerHTML = `<div class="tn-empty">لا توجد مؤسسة مرتبطة بهذه الجلسة.</div>`; return; }
+  const st = orgStateOf(org), d = daysUntilISO(org.subscriptionExpiry);
+  const stu = DB.students.filter(Boolean), tea = DB.teachers.filter(Boolean), coo = DB.coordinators.filter(Boolean), par = DB.parents.filter(Boolean);
+  const unpaid = stu.filter(s=>s.feeStatus==="unpaid").length;
+  const inactive = stu.filter(s=>!s.active).length;
+  const linked = par.filter(p=>parentChildren(p).length).length;
+  const subLine = !org.subscriptionExpiry ? "الاشتراك ساري بلا تاريخ انتهاء."
+    : d<0 ? `انتهى الاشتراك بتاريخ ${org.subscriptionExpiry}.`
+    : d===0 ? "ينتهي الاشتراك اليوم."
+    : `الاشتراك ساري حتى ${org.subscriptionExpiry} (متبقٍ ${d} يومًا).`;
+  view.innerHTML = `
+    <h2>${regEsc(org.name)}</h2>
+    <p class="sub">${subLine} <span class="tn-badge ${st.ok?"ok":"off"}">${st.label}</span></p>
+    <div class="tn-flash" style="border-color:var(--ink); background:var(--soft);">
+      رمز المؤسسة للتسجيل الذاتي: <span class="tn-code">${regEsc(org.code||"")}</span>
+      <button type="button" class="chip-btn tn-mini" id="ohCopy">نسخ</button>
+      <div class="tn-note">أعطِ الرمز للمعلمين والطلاب وأولياء الأمور ليكتبوه عند «تسجيل جديد» فيُسجَّلون في مؤسستك وحدها.</div>
+    </div>
+    <div class="tn-stats">
+      <div class="tn-stat"><div class="n">${stu.length}</div><div class="l">طلاب</div></div>
+      <div class="tn-stat ${unpaid?"bad":""}"><div class="n">${unpaid}</div><div class="l">طلاب لم يُسدّدوا (حساباتهم موقوفة)</div></div>
+      <div class="tn-stat ${inactive-unpaid>0?"warn":""}"><div class="n">${inactive}</div><div class="l">طلاب حساباتهم غير مفعّلة</div></div>
+      <div class="tn-stat"><div class="n">${tea.length}</div><div class="l">معلمون</div></div>
+      <div class="tn-stat"><div class="n">${coo.length}</div><div class="l">منسقون</div></div>
+      <div class="tn-stat"><div class="n">${par.length}</div><div class="l">أولياء أمور (${linked} مرتبط بطالب)</div></div>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="chip-btn accent" data-go="fees">إدارة رسوم الطلاب وتفعيل حساباتهم</button>
+      <button type="button" class="chip-btn" data-go="parentsMgmt">أولياء الأمور وربطهم بأبنائهم</button>
+      <button type="button" class="chip-btn" data-go="assignments">الهيكل الإداري والمستخدمون</button>
+    </div>`;
+  document.getElementById("ohCopy").addEventListener("click", ()=>{
+    try{ navigator.clipboard.writeText(org.code||""); tnToast("تم نسخ رمز المؤسسة."); }catch(e){ tnToast("الرمز: "+org.code); }
+  });
+  view.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click", ()=>{
+    const nb = document.querySelector(`#sidenav button[data-key="${b.dataset.go}"]`); if(nb) nb.click();
+  }));
+}
+
+/* ---------- الرسوم وتفعيل الطلاب ---------- */
+function setStudentFee(r, status){
+  r.feeStatus = status; r.feeUpdatedAt = Date.now();
+  r.active = (status==="paid");     // لم يُسدد ⇒ الحساب يُعطَّل تلقائيًا، وعند السداد يُفعَّل
+}
+function parseFeeValue(v){
+  const t = Sec.norm(v);
+  if(!t) return null;
+  if(/^(غير|لم|لا|0$|no|false|unpaid|متاخر|مؤجل)/.test(t)) return "unpaid";
+  if(/(سداد|مسدد|مدفوع|دفع|paid|yes|نعم|^1$|true)/.test(t)) return "paid";
+  return null;
+}
+function readSheetMatrix(file, cb){
+  if(typeof XLSX==="undefined"){ tnToast("مكتبة إكسل غير محمّلة (تحقق من الاتصال بالإنترنت).", "err"); return; }
+  const rd = new FileReader();
+  rd.onload = (ev)=>{
+    try{
+      const wb = XLSX.read(ev.target.result, {type:"array"});
+      cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:""}));
+    }catch(err){ tnToast("تعذّرت قراءة ملف الإكسل. تأكد من صحة الملف.", "err"); }
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+function renderFeesWindow(view){
+  const S = { q:"", grade:"", cls:"", fee:"", sel:new Set() };
+  view.innerHTML = `
+    <h2>الطلاب والرسوم</h2>
+    <p class="sub">حدّد حالة سداد كل طالب. الطالب «لم يُسدد» يُوقَف حسابه تلقائيًا فلا يدخل الاختبارات والتحديات حتى يُسدد؛ وعند تسجيل السداد يُفعَّل حسابه.</p>
+    <div class="tn-stats" id="feStats"></div>
+    <div class="toolbar">
+      <input type="text" id="feQ" placeholder="ابحث باسم الطالب" autocomplete="off" style="width:220px; max-width:100%;">
+      <select id="feGrade" style="width:auto;" aria-label="الصف"></select>
+      <select id="feCls" style="width:auto;" aria-label="الفصل"></select>
+      <select id="feFee" style="width:auto;" aria-label="حالة الرسوم"><option value="">كل حالات الرسوم</option><option value="paid">تم السداد</option><option value="unpaid">لم يُسدد</option></select>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="chip-btn accent" id="feBulkPaid">تم السداد للمحدَّدين</button>
+      <button type="button" class="chip-btn danger" id="feBulkUnpaid">لم يُسدد للمحدَّدين</button>
+      <button type="button" class="chip-btn" id="feImport">📥 استيراد حالة السداد من إكسل</button>
+      <button type="button" class="chip-btn" id="fePaste">📋 لصق قائمة</button>
+      <button type="button" class="chip-btn" id="feExport">تصدير إكسل</button>
+      <input type="file" id="feFile" accept=".xlsx,.xls,.csv" style="display:none;">
+    </div>
+    <p class="tn-note" style="margin:0 0 8px;">ترتيب الأعمدة عند الاستيراد: اسم الطالب ← حالة الرسوم (تم السداد / لم يُسدد).</p>
+    <div id="feWrap"></div>`;
+  const $ = id => document.getElementById(id);
+
+  function fillFilters(){
+    const all = DB.students.filter(Boolean);
+    const grades = ALL_GRADES.filter(g=>all.some(s=>s.grade===g));
+    const cls = [...new Set(all.map(s=>String(s.cls||"")).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar",{numeric:true}));
+    $("feGrade").innerHTML = `<option value="">كل الصفوف</option>` + grades.map(g=>`<option value="${regEsc(g)}">${regEsc(g)}</option>`).join("");
+    $("feCls").innerHTML = `<option value="">كل الفصول</option>` + cls.map(c=>`<option value="${regEsc(c)}">${regEsc(c)}</option>`).join("");
+    $("feGrade").value = S.grade; $("feCls").value = S.cls;
+  }
+  function visible(){
+    const q = Sec.norm(S.q);
+    return DB.students.filter(Boolean).filter(s=>{
+      if(q && !Sec.norm(s.username).includes(q)) return false;
+      if(S.grade && s.grade!==S.grade) return false;
+      if(S.cls && String(s.cls||"")!==S.cls) return false;
+      if(S.fee==="unpaid" && s.feeStatus!=="unpaid") return false;
+      if(S.fee==="paid" && s.feeStatus==="unpaid") return false;
+      return true;
+    });
+  }
+  function draw(){
+    const all = DB.students.filter(Boolean);
+    const unpaid = all.filter(s=>s.feeStatus==="unpaid").length;
+    $("feStats").innerHTML =
+      `<div class="tn-stat"><div class="n">${all.length}</div><div class="l">إجمالي الطلاب</div></div>
+       <div class="tn-stat"><div class="n">${all.length-unpaid}</div><div class="l">تم السداد</div></div>
+       <div class="tn-stat ${unpaid?"bad":""}"><div class="n">${unpaid}</div><div class="l">لم يُسدد</div></div>
+       <div class="tn-stat"><div class="n">${all.filter(s=>s.active).length}</div><div class="l">حسابات مفعّلة</div></div>`;
+    const rows = visible(), wrap = $("feWrap");
+    if(!all.length){ wrap.innerHTML = `<div class="tn-empty">لا يوجد طلاب في المؤسسة بعد. أضفهم من «الهيكل الإداري والمستخدمون» أو يسجّلون بأنفسهم برمز المؤسسة.</div>`; return; }
+    if(!rows.length){ wrap.innerHTML = `<div class="tn-empty">لا يوجد طلاب مطابقون للتصفية.</div>`; return; }
+    wrap.innerHTML = "";
+    const box = document.createElement("div"); box.className = "table-wrap";
+    const t = document.createElement("table"); t.className = "data";
+    t.innerHTML = `<thead><tr><th style="width:38px;"><input type="checkbox" id="feAll" aria-label="تحديد كل المعروض" style="width:auto;"></th><th>م</th><th>الطالب</th><th>الصف</th><th>الفصل</th><th>حالة الرسوم</th><th>حساب الطالب</th></tr></thead><tbody></tbody>`;
+    const tb = t.querySelector("tbody");
+    rows.forEach((r,i)=>{
+      const paid = r.feeStatus!=="unpaid", on = !!r.active;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><input type="checkbox" class="c-sel" style="width:auto;" ${S.sel.has(r.username)?"checked":""} aria-label="تحديد ${regEsc(r.username)}"></td>
+        <td>${i+1}</td><td>${regEsc(r.username)}</td><td>${regEsc(r.grade||"—")}</td><td>${regEsc(r.cls||"—")}</td>
+        <td><select class="c-fee" style="width:auto; ${paid?"":"border-color:var(--danger); color:var(--danger);"}"><option value="paid" ${paid?"selected":""}>تم السداد</option><option value="unpaid" ${paid?"":"selected"}>لم يُسدد</option></select></td>
+        <td><button type="button" class="chip-btn c-act ${on?"accent":""}" style="padding:4px 10px;">${on?"✅ مفعّل":"⛔ موقوف"}</button></td>`;
+      tr.querySelector(".c-sel").addEventListener("change", e=>{ if(e.target.checked) S.sel.add(r.username); else S.sel.delete(r.username); });
+      tr.querySelector(".c-fee").addEventListener("change", e=>{ setStudentFee(r, e.target.value); saveDB(); draw(); });
+      tr.querySelector(".c-act").addEventListener("click", ()=>{
+        if(!r.active && r.feeStatus==="unpaid"){ tnToast("لا يمكن تفعيل طالب لم يسدد الرسوم. غيّر حالة الرسوم إلى «تم السداد» أولًا.", "err"); return; }
+        r.active = !r.active; saveDB(); draw();
+      });
+      tb.appendChild(tr);
+    });
+    box.appendChild(t); wrap.appendChild(box);
+    $("feAll").addEventListener("change", e=>{ rows.forEach(r=>{ if(e.target.checked) S.sel.add(r.username); else S.sel.delete(r.username); }); draw(); });
+    $("feAll").checked = rows.length>0 && rows.every(r=>S.sel.has(r.username));
+  }
+  function bulk(status){
+    const targets = DB.students.filter(s=>s && S.sel.has(s.username));
+    if(!targets.length){ tnToast("حدّد طلابًا من الجدول أولًا.", "err"); return; }
+    targets.forEach(r=>setStudentFee(r, status));
+    saveDB(); draw();
+    tnToast(status==="paid" ? `تم تسجيل السداد وتفعيل ${targets.length} طالبًا.` : `تم إيقاف ${targets.length} طالبًا لعدم السداد.`);
+  }
+  function applyMatrix(matrix){
+    let ok = 0, missing = 0, bad = 0;
+    matrix.forEach((row, idx)=>{
+      if(!row) return;
+      const name = String(row[0]==null ? "" : row[0]).trim();
+      if(!name) return;
+      if(idx===0 && /^(اسم الطالب|اسم المستخدم|الطالب)$/.test(name)) return;
+      const stu = DB.students.find(s=>s && Sec.norm(s.username)===Sec.norm(name));
+      if(!stu){ missing++; return; }
+      const fee = parseFeeValue(row[1]);
+      if(!fee){ bad++; return; }
+      setStudentFee(stu, fee); ok++;
+    });
+    saveDB(); draw();
+    tnToast(`تم تحديث ${ok} طالبًا` + (missing ? `، غير موجود: ${missing}` : "") + (bad ? `، قيمة غير مفهومة: ${bad}` : ""), (missing||bad) && !ok ? "err" : undefined);
+  }
+
+  $("feQ").addEventListener("input", e=>{ S.q = e.target.value; draw(); });
+  $("feGrade").addEventListener("change", e=>{ S.grade = e.target.value; draw(); });
+  $("feCls").addEventListener("change", e=>{ S.cls = e.target.value; draw(); });
+  $("feFee").addEventListener("change", e=>{ S.fee = e.target.value; draw(); });
+  $("feBulkPaid").addEventListener("click", ()=>bulk("paid"));
+  $("feBulkUnpaid").addEventListener("click", ()=>bulk("unpaid"));
+  $("feImport").addEventListener("click", ()=>$("feFile").click());
+  $("feFile").addEventListener("change", e=>{ const f = e.target.files[0]; if(f) readSheetMatrix(f, applyMatrix); e.target.value = ""; });
+  $("fePaste").addEventListener("click", ()=>openPasteListModal(["اسم الطالب","حالة الرسوم"], applyMatrix));
+  $("feExport").addEventListener("click", ()=>{
+    const org = currentOrgObj();
+    exportCSV(["م","الطالب","الصف","الفصل","حالة الرسوم","حالة الحساب"],
+      visible().map((r,i)=>[i+1, r.username, r.grade||"", r.cls||"", r.feeStatus==="unpaid"?"لم يُسدد":"تم السداد", r.active?"مفعّل":"موقوف"]),
+      "الرسوم_" + (org ? org.name : ""));
+  });
+  fillFilters(); draw();
+}
+
+/* ---------- أولياء الأمور وربطهم بالطلاب ---------- */
+function parentChildren(p){
+  const a = [];
+  (Array.isArray(p && p.children) ? p.children : []).concat(p && p.childUsername ? [p.childUsername] : []).forEach(u=>{ if(u && !a.includes(u)) a.push(u); });
+  return a;
+}
+function setParentChildren(p, list){ p.children = list.slice(); p.childUsername = list[0] || ""; }
+function linkableStudentsFor(role){
+  const all = DB.students.filter(Boolean);
+  if(role==="teacher"){
+    const t = session.user, classes = (t.classes||[]).map(String);
+    return all.filter(s=>(t.grades||[]).includes(s.grade) && (!classes.length || classes.includes(String(s.cls))));
+  }
+  return all;
+}
+
+function renderParentsWindow(view, role){
+  const isAdmin = role==="admin";
+  view.innerHTML = `
+    <h2>${isAdmin ? "أولياء الأمور" : "ربط أولياء الأمور بالطلاب"}</h2>
+    <p class="sub">${isAdmin ? "أنشئ حسابات أولياء الأمور واربط كل ولي أمر بأبنائه ضمن مؤسستك ليتابع درجاتهم واختباراتهم. لا يمكن ربط طالب من مؤسسة أخرى." : "اربط ولي الأمر المسجَّل بابنه الطالب ضمن طلابك ليتابع درجاته واختباراته."}</p>
+    ${isAdmin ? `<div class="toolbar">
+      <button type="button" class="chip-btn accent" id="prNew">➕ ولي أمر جديد</button>
+      <button type="button" class="chip-btn" id="prImport">📥 استيراد من إكسل</button>
+      <button type="button" class="chip-btn" id="prPaste">📋 لصق قائمة</button>
+      <button type="button" class="chip-btn" id="prExport">تصدير إكسل</button>
+      <input type="file" id="prFile" accept=".xlsx,.xls,.csv" style="display:none;">
+    </div>
+    <p class="tn-note" style="margin:0 0 8px;">ترتيب الأعمدة عند الاستيراد: اسم ولي الأمر ← كلمة المرور ← أسماء الأبناء (مفصولة بفاصلة).</p>
+    <div id="prAddBox" class="hidden" style="border:2px solid var(--ink); border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div class="tn-form-grid">
+        <div><label for="prName">اسم ولي الأمر</label><input type="text" id="prName" autocomplete="off"></div>
+        <div><label for="prPass">كلمة المرور</label><input type="text" id="prPass" autocomplete="off" dir="ltr" style="text-align:left;"></div>
+      </div>
+      <label for="prKid">الأبناء (اكتب اسم الطالب واضغط إضافة)</label>
+      <div class="tn-inline"><input type="text" id="prKid" list="prStuList" autocomplete="off"><button type="button" class="chip-btn" id="prKidAdd">إضافة</button></div>
+      <div class="tn-chips" id="prKidChips" style="margin-top:8px;"></div>
+      <div class="msg" id="prMsg"></div>
+      <div class="modal-actions" style="margin-top:8px;"><button type="button" class="primary-btn" id="prSave" style="flex:1;">حفظ ولي الأمر</button></div>
+    </div>` : ""}
+    <div style="border:1.5px solid #d8d8d8; border-radius:10px; padding:12px; margin-bottom:14px;">
+      <b style="font-size:14px;">ربط سريع</b>
+      <div class="tn-inline" style="margin-top:8px;">
+        <input type="text" id="lkPar" list="prParList" placeholder="اسم ولي الأمر" autocomplete="off">
+        <input type="text" id="lkStu" list="prStuList" placeholder="اسم الطالب" autocomplete="off">
+        <button type="button" class="chip-btn accent" id="lkBtn" style="flex:0 0 auto;">ربط</button>
+      </div>
+    </div>
+    <div class="toolbar"><input type="text" id="prQ" placeholder="ابحث باسم ولي الأمر أو الطالب" autocomplete="off" style="width:260px; max-width:100%;"></div>
+    <datalist id="prStuList"></datalist><datalist id="prParList"></datalist>
+    <div id="prWrap"></div>`;
+  const $ = id => document.getElementById(id);
+  const stuList = ()=>linkableStudentsFor(role);
+  const findStu = name => stuList().find(s=>Sec.norm(s.username)===Sec.norm(name));
+  let newKids = [];
+
+  function fillLists(){
+    $("prStuList").innerHTML = stuList().map(s=>`<option value="${regEsc(s.username)}">${regEsc((s.grade||"")+" / "+(s.cls||""))}</option>`).join("");
+    $("prParList").innerHTML = DB.parents.filter(Boolean).map(p=>`<option value="${regEsc(p.username)}"></option>`).join("");
+  }
+  function linkPair(p, stu){
+    const kids = parentChildren(p);
+    if(kids.includes(stu.username)) return false;
+    kids.push(stu.username); setParentChildren(p, kids); return true;
+  }
+  function draw(){
+    fillLists();
+    const q = Sec.norm($("prQ").value);
+    const parents = DB.parents.filter(Boolean).filter(p=>!q || Sec.norm(p.username).includes(q) || parentChildren(p).some(k=>Sec.norm(k).includes(q)));
+    const wrap = $("prWrap");
+    if(!DB.parents.filter(Boolean).length){ wrap.innerHTML = `<div class="tn-empty">لا يوجد أولياء أمور بعد.${isAdmin ? " أضف أول ولي أمر بالزر أعلاه، أو ينشئون حساباتهم بأنفسهم برمز المؤسسة." : ""}</div>`; return; }
+    if(!parents.length){ wrap.innerHTML = `<div class="tn-empty">لا نتائج مطابقة.</div>`; return; }
+    wrap.innerHTML = "";
+    const box = document.createElement("div"); box.className = "table-wrap";
+    const t = document.createElement("table"); t.className = "data";
+    t.innerHTML = `<thead><tr><th>م</th><th>ولي الأمر</th><th>الأبناء المرتبطون</th>${isAdmin?"<th>كلمة مرور جديدة</th><th>الحساب</th><th></th>":""}</tr></thead><tbody></tbody>`;
+    const tb = t.querySelector("tbody");
+    const visibleNames = new Set(stuList().map(s=>s.username));
+    parents.forEach((p,i)=>{
+      const kids = parentChildren(p);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${i+1}</td><td>${regEsc(p.username)}</td>
+        <td><div class="tn-chips">${kids.length ? kids.map(k=>`<span class="tn-chip">${regEsc(k)}${(isAdmin||visibleNames.has(k))?`<button type="button" data-k="${regEsc(k)}" aria-label="فك ربط ${regEsc(k)}">×</button>`:""}</span>`).join("") : `<span class="tn-note">غير مرتبط بأي طالب</span>`}</div>
+          <div class="tn-inline"><input type="text" class="c-kid" list="prStuList" placeholder="ربط ابن آخر" autocomplete="off" style="font-size:13px; padding:5px 8px;"><button type="button" class="chip-btn tn-mini c-add" style="flex:0 0 auto;">ربط</button></div></td>
+        ${isAdmin ? `<td><input type="password" class="c-pw" placeholder="اكتب لتعيين كلمة جديدة" autocomplete="new-password" style="font-size:13px; padding:5px 8px;"></td>
+        <td><label class="tn-switch"><input type="checkbox" class="c-on" ${p.active===false?"":"checked"} aria-label="تفعيل حساب ${regEsc(p.username)}"><span class="trk"></span></label></td>
+        <td><button type="button" class="icon-btn danger c-del" title="حذف">🗑</button></td>` : ""}`;
+      tr.querySelectorAll(".tn-chip button").forEach(b=>b.addEventListener("click", ()=>{
+        setParentChildren(p, parentChildren(p).filter(k=>k!==b.dataset.k)); saveDB(); draw();
+      }));
+      tr.querySelector(".c-add").addEventListener("click", ()=>{
+        const stu = findStu(tr.querySelector(".c-kid").value);
+        if(!stu){ tnToast("لم يُعثر على هذا الطالب ضمن طلابك.", "err"); return; }
+        if(!linkPair(p, stu)){ tnToast("الطالب مرتبط بهذا الولي مسبقًا.", "err"); return; }
+        saveDB(); draw(); tnToast("تم الربط.");
+      });
+      if(isAdmin){
+        tr.querySelector(".c-pw").addEventListener("change", async (e)=>{
+          const v = e.target.value; if(!v) return;
+          if(v.length<6){ tnToast("كلمة المرور لا تقل عن 6 أحرف.", "err"); return; }
+          Object.assign(p, await Sec.hashPassword(v)); delete p.password;
+          saveDB(); e.target.value = ""; e.target.placeholder = "✔ تم التعيين (مشفّرة)";
+        });
+        tr.querySelector(".c-on").addEventListener("change", e=>{ p.active = e.target.checked; saveDB(); });
+        tr.querySelector(".c-del").addEventListener("click", ()=>{
+          if(!confirm(`حذف حساب ولي الأمر «${p.username}»؟`)) return;
+          const idx = DB.parents.indexOf(p); if(idx>=0) DB.parents.splice(idx,1);
+          saveDB(); draw();
+        });
+      }
+      tb.appendChild(tr);
+    });
+    box.appendChild(t); wrap.appendChild(box);
+  }
+
+  $("prQ").addEventListener("input", draw);
+  $("lkBtn").addEventListener("click", ()=>{
+    const p = DB.parents.find(x=>x && Sec.norm(x.username)===Sec.norm($("lkPar").value));
+    const s = findStu($("lkStu").value);
+    if(!p){ tnToast("لم يُعثر على ولي أمر بهذا الاسم.", "err"); return; }
+    if(!s){ tnToast("لم يُعثر على هذا الطالب ضمن طلابك.", "err"); return; }
+    if(!linkPair(p, s)){ tnToast("الطالب مرتبط بهذا الولي مسبقًا.", "err"); return; }
+    saveDB(); $("lkPar").value = ""; $("lkStu").value = ""; draw(); tnToast("تم ربط ولي الأمر بالطالب.");
+  });
+
+  if(isAdmin){
+    const showChips = ()=>{
+      $("prKidChips").innerHTML = newKids.map(k=>`<span class="tn-chip">${regEsc(k)}<button type="button" data-k="${regEsc(k)}" aria-label="إزالة">×</button></span>`).join("");
+      $("prKidChips").querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>{ newKids = newKids.filter(k=>k!==b.dataset.k); showChips(); }));
+    };
+    const setMsg = t=>{ $("prMsg").textContent = t||""; $("prMsg").className = t ? "msg show err" : "msg"; };
+    $("prNew").addEventListener("click", ()=>{ $("prAddBox").classList.toggle("hidden"); $("prPass").value = randomPassword(8); });
+    $("prKidAdd").addEventListener("click", ()=>{
+      const s = findStu($("prKid").value);
+      if(!s){ setMsg("لم يُعثر على هذا الطالب ضمن طلاب المؤسسة."); return; }
+      setMsg(""); if(!newKids.includes(s.username)) newKids.push(s.username);
+      $("prKid").value = ""; showChips();
+    });
+    $("prSave").addEventListener("click", async ()=>{
+      const name = $("prName").value.trim().replace(/\s+/g," "), pw = $("prPass").value;
+      if(name.length<3){ setMsg("اكتب اسم ولي الأمر (3 أحرف فأكثر)."); return; }
+      if(usernameTakenAnywhere(name)){ setMsg("اسم المستخدم هذا مسجَّل مسبقًا في المنصة."); return; }
+      if(pw.length<6){ setMsg("كلمة المرور لا تقل عن 6 أحرف."); return; }
+      const btn = $("prSave"); btn.disabled = true;
+      try{
+        const cred = await Sec.hashPassword(pw);
+        const org = currentOrgObj();
+        const rec = Object.assign({ username:name, institution: org ? org.name : "", active:true, createdAt:Date.now(), addedByAdmin:true }, cred);
+        setParentChildren(rec, newKids);
+        DB.parents.push(rec);
+        saveDB(); newKids = []; showChips(); setMsg("");
+        $("prName").value = ""; $("prPass").value = randomPassword(8);
+        draw(); tnToast(`تمت إضافة «${name}». كلمة المرور: ${pw}`);
+      }finally{ btn.disabled = false; }
+    });
+    async function importRows(matrix){
+      let ok = 0, dup = 0, bad = 0;
+      for(let idx=0; idx<matrix.length; idx++){
+        const row = matrix[idx]; if(!row) continue;
+        const name = String(row[0]==null ? "" : row[0]).trim();
+        if(!name) continue;
+        if(idx===0 && /^(اسم ولي الأمر|اسم المستخدم|ولي الأمر)$/.test(name)) continue;
+        const pw = String(row[1]==null ? "" : row[1]).trim() || randomPassword(8);
+        if(usernameTakenAnywhere(name)){ dup++; continue; }
+        if(pw.length<6){ bad++; continue; }
+        const kids = [];
+        row.slice(2).join("،").split(/[,،\n]/).map(s=>s.trim()).filter(Boolean).forEach(k=>{ const s = findStu(k); if(s && !kids.includes(s.username)) kids.push(s.username); });
+        const org = currentOrgObj();
+        const rec = Object.assign({ username:name, institution: org ? org.name : "", active:true, createdAt:Date.now(), addedByAdmin:true }, await Sec.hashPassword(pw));
+        setParentChildren(rec, kids); DB.parents.push(rec); ok++;
+      }
+      saveDB(); draw();
+      tnToast(`تم استيراد ${ok} ولي أمر` + (dup ? `، مكرر: ${dup}` : "") + (bad ? `، كلمة مرور قصيرة: ${bad}` : ""), !ok && (dup||bad) ? "err" : undefined);
+    }
+    $("prImport").addEventListener("click", ()=>$("prFile").click());
+    $("prFile").addEventListener("change", e=>{ const f = e.target.files[0]; if(f) readSheetMatrix(f, importRows); e.target.value = ""; });
+    $("prPaste").addEventListener("click", ()=>openPasteListModal(["اسم ولي الأمر","كلمة المرور","أسماء الأبناء"], importRows));
+    $("prExport").addEventListener("click", ()=>{
+      exportCSV(["م","ولي الأمر","الأبناء","الحالة"], DB.parents.filter(Boolean).map((p,i)=>[i+1, p.username, parentChildren(p).join("، "), p.active===false?"موقوف":"مفعّل"]), "أولياء_الأمور");
+    });
+  }
+  draw();
+}
+
+/* ملاحظة: renderParentScores مدمجة مباشرة في مكانها الأصلي داخل الملف الرئيسي (تدعم تعدد الأبناء). */
+
 </script>
 </body>
 </html>
