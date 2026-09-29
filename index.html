@@ -1815,7 +1815,8 @@ let resyncing = false;         // إعادة مزامنة كاملة جارية:
 let writeBlocked = null;       // سبب إيقاف الرفع بواسطة حارس الانكماش
 let allowShrinkOnce = false;   // تجاوز مقصود لمرة واحدة
 let pendingResave = false;
-let skipAbsorbOnce = false;   // الاستعادة تكتب فوق الحالة الحالية بدل دمجها مع الوارد
+let skipAbsorbOnce = false;
+let persistRetryTimer = null;   // الاستعادة تكتب فوق الحالة الحالية بدل دمجها مع الوارد
 let baseHashes = null;         // {مفتاح: بصمة} لآخر حالة معروفة للسحابة؛ null = جهاز بلا خط أساس
 let lastCloudCounts = null, lastCloudRaw = "", latestCloud = null;
 let hydrateTimer = null, hydrateAttempts = 0;
@@ -2159,6 +2160,21 @@ function downloadBackupFile(){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
 }
 
+
+/* كشف «المسح الجماعي»: إن وصلتنا بيانات سحابية أقل بكثير مما لدينا دون أن تنمو شواهد الحذف (الحذف المشروع من مشرف يترك شواهد)،
+   فهذا مسح غير مقصود (مثلًا صفحة قديمة ما زالت مفتوحة بالكود الأصلي تكتب العقدة كلها). لا نتبنّاه؛ نُعيد رفع ما لدينا. */
+function tombCount(o){ return Object.keys((o&&o.deletedUsers)||{}).length + Object.keys((o&&o.deletedModelIds)||{}).length + Object.keys((o&&o.deletedOrgs)||{}).length; }
+function looksLikeWipe(incoming){
+  try{ return !!detectShrinkCounts(countsOf(incoming), countsOf(ROOT)) && tombCount(incoming) <= tombCount(ROOT); }catch(e){ return false; }
+}
+function healFromLocal(){
+  try{ LocalBackup.save(JSON.stringify(ROOT), "قبل إصلاح مسح السحابة", true); }catch(e){}
+  latestCloud = null; baseHashes = {}; lastCloudCounts = countsOf(ROOT);      // كل ما لدينا يُعاد رفعه
+  safetyBar("healBar","warn",'اكتُشف مسح غير معتاد لبيانات السحابة من جهاز آخر (غالبًا نسخة قديمة من الصفحة مفتوحة عليه)، وأُعيد رفع بياناتك تلقائيًا. حدّث الصفحة على كل الأجهزة. <button type="button">حسنًا</button>')
+    .querySelector("button").addEventListener("click", e=>e.target.parentNode.remove());
+  saveDB();
+}
+
 /* ---------- المزامنة الأولية مع السحابة ---------- */
 async function waitUntil(fn, ms){ const t0 = Date.now(); while(!fn() && Date.now()-t0 < ms) await sleepMs(120); return fn(); }
 async function syncFromCloudInBackground(){
@@ -2198,7 +2214,16 @@ async function syncFromCloudInBackground(){
   await waitUntil(()=>!(saveTimer || saveInFlight), 10000);
 
   const localTs = ROOT.updatedAt || 0, cloudTs = cloudSaved ? (cloudSaved.updatedAt||0) : 0;
-  if(cloudSaved){
+  if(cloudSaved && baseHashes){
+    const dirty = Object.keys(ROOT).filter(k=>k!=="updatedAt" && hashKey(ROOT[k]) !== (baseHashes[k]||""));
+    if(dirty.length){ try{ await LocalBackup.save(JSON.stringify(ROOT), "تعديلات محلية غير متزامنة ("+dirty.join("،")+")", true); }catch(e){} }
+  }
+  let healed = false;
+  if(cloudSaved && baseHashes && looksLikeWipe(cloudSaved)){ healed = true; }
+  if(healed){
+    console.warn("سحابة ممسوحة على الأرجح: لن تُتبنّى، وستُعاد تغذيتها من هذا الجهاز.");
+    lastSavedSnapshot = ""; persistLocalNow();
+  } else if(cloudSaved){
     if(baseHashes){
       absorbCloud(cloudSaved);                                   // دمج ثلاثي آمن
     } else {
@@ -2226,6 +2251,7 @@ async function syncFromCloudInBackground(){
     await Promise.race([ Backup.daily(cloudRaw), sleepMs(15000) ]);
   }
   cloudHydrated = true;
+  if(healed) healFromLocal();
   await runMigrations();
   persistDBNow();                                                  // يرفع فروق هذا الجهاز فقط (إن وُجدت)
 }
@@ -2374,13 +2400,15 @@ async function persistDBNow(){
   // التنفيذ الفعلي لمزامنة السحابة. النسخة المحلية تُكتب فورًا عبر persistLocalNow() دون انتظار هذه الدالة.
   if(resyncing || schemaLocked) return;
   if(firebaseDB && !cloudHydrated){ persistLocalNow(); return; }        // قاعدة ذهبية: لا كتابة سحابية قبل قراءة ناجحة
+  // كتابة سابقة لم تُؤكَّد بعد: حدث المستمع الذي يصلنا حينها هو «صدى متفائل» من الـSDK لما كتبناه نحن، وليس حالة الخادم.
+  // دمجه واعتباره خط أساس كان يجعل تعديلات فاشلة تبدو «متزامنة» ثم تُمسح عند التحميل التالي. لذلك ننتظر.
+  if(saveInFlight){ persistLocalNow(); pendingResave = true; return; }
   if(hasPlainPasswords()){ await migrateCredentials(); }                 // لا تصل كلمة مرور نصّية إلى السحابة أبدًا
   // تعديلات الآخرين التي وصلت ولم تُدمج بعد (مؤجّلة) تُدمج الآن قبل الكتابة كي لا نمسحها
   if(firebaseDB && baseHashes && latestCloud && !skipAbsorbOnce && !(typeof activeModel !== "undefined" && activeModel) && cloudDiffersFromBase(latestCloud)){
     try{ absorbCloud(latestCloud); sanitizeLoadedModels(); }catch(e){ console.error("تعذّر دمج تعديلات الآخرين قبل الحفظ:", e); }
   }
   const snapshot = persistLocalNow();
-  if(saveInFlight){ pendingResave = true; return; }
   let up = null;
   if(firebaseDB){ up = buildUpdates(); if(!up){ persistBase(); return; } }   // لا تغيير حقيقي: لا كتابة
   else if(snapshot === lastSavedSnapshot) return;
@@ -2404,7 +2432,12 @@ async function persistDBNow(){
       await window.storage.set("platform-db", snapshot, true);
     }
     lastSavedSnapshot = snapshot;
-  }catch(e){ console.error("فشل الحفظ السحابي (تم الاحتفاظ بنسخة محلية):", e); showSyncWarning(); }
+  }catch(e){
+    console.error("فشل الحفظ السحابي (تم الاحتفاظ بنسخة محلية):", e);
+    latestCloud = null;                                  // قد يكون صدى لكتابة فاشلة؛ سيصل الحدث الحقيقي بعد تراجع الـSDK
+    showSyncWarning();
+    clearTimeout(persistRetryTimer); persistRetryTimer = setTimeout(persistDBNow, 8000);   // إعادة المحاولة حتى تصل التعديلات فعلًا
+  }
   finally{
     saveInFlight = false;
     if(pendingResave){ pendingResave = false; setTimeout(persistDBNow, 50); }
@@ -2457,6 +2490,7 @@ function attachRealtimeSync(){
     latestCloud = saved;
     try{ Guard.checkIncoming(saved); }catch(e){}                 // إيقاف اشتراك المؤسسة يسري فورًا حتى لو أُجّل الدمج
     if(!cloudHydrated || !cloudDiffersFromBase(saved)) return;   // صدى لما كتبناه/دمجناه نحن
+    if(!saveInFlight && looksLikeWipe(saved)){ healFromLocal(); return; }   // مسح غير مقصود من جهاز آخر: لا نتبنّاه
     if(saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)){ deferredIncoming = {saved}; return; }
     deferredIncoming = null;
     applyIncomingSnapshot(saved);
