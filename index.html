@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <title>منصة أنت ونحن التعليمية</title>
 <meta name="description" content="منصة أنت ونحن التعليمية — منصة تدريب على المهارات اللغوية للمعلمين والمنسقين والطلاب.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -667,6 +667,34 @@
   td .tn-renew{ display:flex; gap:4px; flex-wrap:wrap; }
 
 </style>
+<style id="fixStyles">
+  /* ===== إصلاح شاشة الدخول: كان حقل الفخ مُزاحًا إلى left:-9999px، وفي صفحة RTL يمتدّ التمرير إلى اليسار
+     فيصير عرض المستند ~10000px فيصغّر الجوال كل شيء. الفخ الآن مخفي بلا أي إزاحة خارج الشاشة. ===== */
+  .hp-trap{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; border:0; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; opacity:0; pointer-events:none; }
+  html{ overflow-x:hidden; }
+  #loginScreen{ width:100%; max-width:100%; overflow-x:hidden; }
+
+  /* ===== زر العين لكل حقول كلمة المرور ===== */
+  .pw-eye-wrap{ position:relative; display:block; flex:1 1 auto; min-width:0; width:100%; }
+  .tn-inline > .pw-eye-wrap{ flex:1 1 140px; width:auto; }
+  .pw-eye-wrap > input{ padding-inline-end:44px !important; }
+  .pw-eye-btn{ position:absolute; top:50%; inset-inline-end:6px; transform:translateY(-50%); width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:transparent; border:0; border-radius:6px; cursor:pointer; color:var(--muted); padding:0; }
+  .pw-eye-btn:hover{ background:var(--soft); color:var(--ink); }
+  .pw-eye-btn:focus-visible{ outline:3px solid #2563eb; outline-offset:1px; }
+  .pw-eye-btn svg{ width:20px; height:20px; pointer-events:none; }
+  .pw-field{ display:flex; align-items:center; gap:4px; width:100%; max-width:100%; box-sizing:border-box; }
+  .pw-field > input{ flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px; }
+  .pw-field > button{ flex:0 0 auto; height:26px; min-width:26px; padding:0 6px; font-size:11.5px; display:inline-flex; align-items:center; justify-content:center; }
+  .pw-field > button svg{ width:16px; height:16px; pointer-events:none; }
+
+  /* ===== نوافذ النسخ الاحتياطي وتنبيهات سلامة البيانات ===== */
+  .safety-bar{ position:fixed; top:0; left:0; right:0; z-index:100001; padding:10px 14px; font-size:13.5px; font-weight:700; text-align:center; line-height:1.8; border-bottom:2px solid; }
+  .safety-bar.err{ background:#fbeae7; color:var(--danger); border-color:var(--danger); }
+  .safety-bar.warn{ background:#fff4d6; color:#5c3b06; border-color:var(--warn); }
+  .safety-bar button{ margin:0 6px; padding:4px 12px; font-family:inherit; font-size:12.5px; font-weight:800; border:1.5px solid currentColor; border-radius:8px; background:#fff; color:inherit; cursor:pointer; }
+  .bk-kind{ display:inline-block; padding:1px 9px; border-radius:999px; font-size:12px; font-weight:800; border:1.5px solid currentColor; }
+  .bk-kind.daily{ color:var(--accent); } .bk-kind.event{ color:var(--warn); } .bk-kind.local{ color:#2f6fdb; }
+</style>
 </head>
 <body>
 
@@ -685,7 +713,7 @@
       <input type="text" id="usernameInput" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="اكتب اسم المستخدم">
       <label for="passwordInput">كلمة المرور</label>
       <input type="password" id="passwordInput" autocomplete="current-password" placeholder="••••••••">
-      <div style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;" aria-hidden="true"><label for="hpWebsite">الموقع</label><input type="text" id="hpWebsite" name="website" tabindex="-1" autocomplete="off"></div>
+      <div class="hp-trap" aria-hidden="true"><label for="hpWebsite">الموقع</label><input type="text" id="hpWebsite" name="website" tabindex="-1" autocomplete="off"></div>
       <div class="row-between">
         <button class="link-btn" id="forgotBtn">نسيت كلمة المرور؟</button><span></span>
       </div>
@@ -806,18 +834,30 @@
       return arr;
     }catch(e){ return []; }
   }
+  // آخر نشاط للمستخدم: لا نُعيد تحميل الصفحة تلقائيًا وهو يعمل عليها (كان ذلك يقطع الكتابة/الحفظ).
+  let lastActivity = Date.now();
+  ["pointerdown","keydown","input","touchstart","wheel"].forEach(ev=>window.addEventListener(ev, ()=>{ lastActivity = Date.now(); }, {passive:true, capture:true}));
   function isBusy(){
     try{
       if(typeof activeModel!=="undefined" && activeModel) return true;
       const sub = document.getElementById("solveSubmit");
       if(sub && sub.offsetParent) return true;
+      if(typeof saveTimer!=="undefined" && saveTimer) return true;          // حفظ معلّق
+      if(typeof saveInFlight!=="undefined" && saveInFlight) return true;    // رفع جارٍ
+      const ae = document.activeElement;
+      if(ae && ae.closest && ae.closest("#appShell") && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName||"") || ae.isContentEditable)) return true;
+      if(typeof session!=="undefined" && session && (Date.now()-lastActivity) < 120000) return true;  // مستخدم مسجَّل نشِط خلال آخر دقيقتين
     }catch(e){}
     return false;
   }
   function doReload(){
-    try{ if(typeof flushSaveDBNow==="function") flushSaveDBNow(); }catch(e){}
-    try{ const a=reloadsRecently(); a.push(Date.now()); sessionStorage.setItem("platform-reloads", JSON.stringify(a)); }catch(e){}
-    setTimeout(()=>location.replace(PAGE_URL + "?v=" + Date.now()), 400);
+    // ننتظر اكتمال آخر حفظ سحابي فعليًا (بحدّ أقصى 5 ثوانٍ) قبل إعادة التحميل — بدل التحميل بعد 400ms والرفع لم يكتمل.
+    let p = Promise.resolve();
+    try{ if(typeof flushSaveDBNow==="function") p = Promise.resolve(flushSaveDBNow()).catch(()=>{}); }catch(e){}
+    Promise.race([p, new Promise(r=>setTimeout(r, 5000))]).then(()=>{
+      try{ const a=reloadsRecently(); a.push(Date.now()); sessionStorage.setItem("platform-reloads", JSON.stringify(a)); }catch(e){}
+      location.replace(PAGE_URL + "?v=" + Date.now());
+    });
   }
   function showBanner(){
     if(bannerShown) return; bannerShown = true;
@@ -1105,15 +1145,10 @@ const ROOT = {
     columns: ["لغتي","المهارات","الإملاء","العلوم","الاجتماعيات"],
     rows: [ {role:"المنسق", cells:{}}, {role:"المعلم", cells:{}} ]
   },
-  coordinators: [{ username:"منسق_احمد", password:"1234", teachers:[], grades:[], classes:[], subject:"" }],
-  teachers: [
-    { username:"معلم_سارة", password:"1234", grades:["الخامس"], classes:["1","2"], subject:"" },
-    { username:"معلم_خالد", password:"1234", grades:["أول متوسط"], classes:["1"], subject:"" }
-  ],
-  students: [
-    { username:"طالب_فهد", password:"1234", grade:"الخامس", cls:"1", active:true },
-    { username:"طالب_نورة", password:"1234", grade:"الخامس", cls:"2", active:false }
-  ],
+  // ملاحظة أمنية: لا حسابات تجريبية افتراضية (كانت بكلمة مرور 1234 وتُدمج في بيانات المؤسسة الحقيقية).
+  coordinators: [],
+  teachers: [],
+  students: [],
   pendingStudents: [],
   parents: [], // أولياء الأمور المسجَّلون ذاتيًا
   deletedUsers: {}, // شواهد حذف المستخدمين {kind::hash: وقت الحذف} — تمنع عودة مستخدم محذوف عند الدمج مع السحابة
@@ -1121,17 +1156,7 @@ const ROOT = {
   attachTasks: [], // مرفقات مُسندة لجهة محددة (بند 10)
   deletedModelIds: {}, // بند 18: شواهد حذف النماذج {id: وقت الحذف} — تمنع عودة نموذج محذوف عمدًا أثناء الدمج مع السحابة
   correspondence: [], // {id, subject, assignedRole, assignedName, createdDate, createdISO, sent, senderRole, senderName, reply, seenBy}
-  models: [
-    {
-      id:"demo1", term:"الفصل الأول", grade:"الخامس", subject:"", number:1, title:"نموذج 1 (تجريبي)", kind:"model", createdAt:1, scheduledAt:null, testDuration:null, blocks:[],
-      data:[
-        {type:"mcq", question:"ما جمع كلمة (كتاب)؟", options:["كتب","كاتبون","كتابات",""], correct:0},
-        {type:"mcq", question:"أيّ الكلمات اسم؟", options:["يكتب","مدرسة","في",""], correct:1},
-        {type:"tf", statement:"الفعل المضارع يدل على حدث في الماضي.", correct:false},
-        {type:"tf", statement:"الفاعل مرفوع دائمًا.", correct:true}
-      ]
-    }
-  ],
+  models: [],
   // بنوك الأسئلة: بنية مطابقة تمامًا لـ models (نفس شكل العناصر)، لكنها منفصلة تمامًا ولا تظهر
   // للطالب أبدًا؛ الهدف منها تجميع أسئلة خاصة بمادة/صف محددين يمكن استيرادها لاحقًا داخل أي نموذج.
   banks: [],
@@ -1426,7 +1451,7 @@ const SUPER_ADMIN = {
 };
 
 const Sec = (function(){
-  const ITER = 120000;
+  const ITER = 310000;   // كلمات المرور القديمة (120,000) تُرقّى تلقائيًا عند أول دخول ناجح
   const enc = new TextEncoder();
   const subtle = (window.crypto && window.crypto.subtle) || null;
   function b64(u8){ let s=""; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]); return btoa(s); }
@@ -1478,7 +1503,7 @@ const Sec = (function(){
     if(typeof rec.password==="string" && rec.password!=="") return rec.password===String(pw);
     return false;
   }
-  return { norm, userHash, hashPassword, verify, sha256Hex, available: !!subtle };
+  return { norm, userHash, hashPassword, verify, sha256Hex, ITER, available: !!subtle };
 })();
 
 // تجزئة سريعة (غير أمنية) لبناء مفاتيح قصيرة آمنة لـ Firebase (لا تحوي . $ # [ ] /)
@@ -1557,7 +1582,7 @@ async function migrateCredentials(){
     }
   }catch(e){ console.error("تعذّر ترحيل كلمات المرور إلى التشفير:", e); }
   finally{ credMigrating = false; }
-  if(changed){ try{ saveDB(); }catch(e){} }
+  if(changed){ try{ if(cloudHydrated || !firebaseConfigured()) saveDB(); else persistLocalNow(); }catch(e){} }
   if(credMigrateAgain){ credMigrateAgain = false; migrateCredentials(); }
   return changed;
 }
@@ -1606,7 +1631,17 @@ function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.apiKey);
 }
 
+/* Firebase قد يُعيد مصفوفة فيها فراغات ككائن {"0":..,"2":..}؛ كان الكود يستبدلها بمصفوفة فارغة ثم يحفظها (فقدان صامت).
+   نحوّلها الآن إلى مصفوفة حقيقية بدل مسحها. */
+function normalizeRootArrays(){
+  TENANT_ARRAYS.concat(["organizations","admins","orgAdmins"]).forEach(k=>{
+    const v = ROOT[k];
+    if(v && !Array.isArray(v) && typeof v==="object") ROOT[k] = toArr(v);
+    else if(Array.isArray(v) && v.some(x=>x==null)) ROOT[k] = v.filter(x=>x!=null);
+  });
+}
 function sanitizeLoadedModels(){
+  normalizeRootArrays();
   // ترحيل/تهيئة تعدد المؤسسات أولًا: يضمن وجود مؤسسة افتراضية ويسم كل سجل قديم بمؤسسته
   // قبل أي عملية تنظيف أخرى تعتمد على وجود هذه المصفوفات على مستوى الجذر (ROOT).
   ensureTenancy();
@@ -1621,8 +1656,6 @@ function sanitizeLoadedModels(){
   (ROOT.banks||[]).forEach(m=>{ m.blocks = []; });
   ["parents","students","teachers","coordinators","admins","orgAdmins"].forEach(k=>{ if(!Array.isArray(ROOT[k])) ROOT[k] = []; });
   if(!ROOT.deletedUsers || typeof ROOT.deletedUsers!=="object") ROOT.deletedUsers = {};
-  seedRestoredTeacher();
-  restoreAhmedIntoOwnOrg();
   snapshotKnownUsers();
   relinkSession();
   if(hasPlainPasswords()) migrateCredentials();
@@ -1758,48 +1791,454 @@ function applyLocalSnapshotInstantly(){
     Object.keys(localSaved).forEach(k=>{ ROOT[k]=localSaved[k]; });
     lastLocalSnapshot = localRaw;
   }
-  sanitizeLoadedModels();
+  bootQuiet = true;                       // لا updatedAt جديد ولا رفع سحابي أثناء الإقلاع
+  try{ sanitizeLoadedModels(); } finally { bootQuiet = false; }
+  baseHashes = loadBase();                // آخر حالة سحابية متزامنة على هذا الجهاز (null = لا خط أساس)
   storageReady = true;
 }
 
-async function syncFromCloudInBackground(){
-  let cloudSaved = null, cloudRaw = null, cloudSource = null; // cloudSource: "firebase" | "artifact"
-  if(firebaseConfigured() && typeof firebase !== "undefined"){
+/* =====================================================================
+   ===== طبقة البيانات الآمنة (فصل البيانات عن الكود + ترحيل + نسخ احتياطي) =====
+   القواعد التي تحمي بيانات المستخدمين عند أي تحديث للكود:
+   1) لا كتابة سحابية قبل قراءة ناجحة من السحابة (كانت النسخة الافتراضية الفارغة على جهاز جديد تُكتب فوق كل شيء).
+   2) الكتابة تشمل المفاتيح التي تغيّرت فقط (update) لا العقدة كلها (set)، فلا يمسح جهاز قديم عمل غيره.
+   3) دمج ثلاثي (محلي / سحابي / آخر حالة متزامنة) بدل «الأحدث يفوز» على كل شيء.
+   4) حارس انكماش: أي كتابة تُنقص السجلات بشكل حاد تُوقَف وتُنبَّه لا تُنفَّذ بصمت.
+   5) بنية البيانات مرقّمة (schemaVersion) وكل ترحيل مسجَّل، مسبوق بنسخة احتياطية، وقابل للتراجع.
+   6) نسخ احتياطية: يومية سحابية (تدوير 14 يومًا) + حدثية قبل كل ترحيل/استعادة/انكماش + نسخ محلية على الجهاز + تنزيل يدوي.
+   ===================================================================== */
+const SCHEMA_VERSION = 3;
+let cloudHydrated = false;     // تمّت قراءة السحابة بنجاح ودُمجت (شرط أي كتابة سحابية)
+let schemaLocked = false;      // بيانات السحابة أحدث من هذا الكود: قراءة فقط حتى يُحدَّث
+let bootQuiet = false;         // أثناء الإقلاع: لا نغيّر updatedAt ولا نجدول رفعًا
+let resyncing = false;         // إعادة مزامنة كاملة جارية: لا كتابة إطلاقًا
+let writeBlocked = null;       // سبب إيقاف الرفع بواسطة حارس الانكماش
+let allowShrinkOnce = false;   // تجاوز مقصود لمرة واحدة
+let pendingResave = false;
+let skipAbsorbOnce = false;   // الاستعادة تكتب فوق الحالة الحالية بدل دمجها مع الوارد
+let baseHashes = null;         // {مفتاح: بصمة} لآخر حالة معروفة للسحابة؛ null = جهاز بلا خط أساس
+let lastCloudCounts = null, lastCloudRaw = "", latestCloud = null;
+let hydrateTimer = null, hydrateAttempts = 0;
+const BASE_KEY = "platform-db-base";
+
+/*<PURE-MERGE>*/
+function toArr(v){ return Array.isArray(v) ? v.filter(x=>x!=null) : Object.values(v||{}).filter(x=>x!=null); }
+// صيغة «قانونية» تحاكي ما يفعله Firebase عند التخزين: ترتيب المفاتيح أبجديًا، حذف null/undefined والمصفوفات
+// والكائنات الفارغة تكرارًا، ومعاملة المصفوفة ككائن فهارس. بدونها تظهر «فروق وهمية» بين ما نكتبه وما نقرؤه.
+function canon(v){
+  if(v===undefined || v===null) return undefined;
+  if(Array.isArray(v)){ const o = {}; let n = 0; v.forEach((x,i)=>{ const c = canon(x); if(c!==undefined){ o[i] = c; n++; } }); return n ? o : undefined; }
+  if(typeof v==="object"){ const o = {}; let n = 0; Object.keys(v).sort().forEach(k=>{ const c = canon(v[k]); if(c!==undefined){ o[k] = c; n++; } }); return n ? o : undefined; }
+  if(typeof v==="number" && !isFinite(v)) return undefined;
+  return v;
+}
+function isEmptyVal(v){ return canon(v)===undefined; }
+function hashKey(v){ if(v==="") return ""; const c = canon(v); return c===undefined ? "" : hash53(JSON.stringify(c)); }
+function maxMap(a, b){ const o = Object.assign({}, a||{}); Object.keys(b||{}).forEach(k=>{ o[k] = Math.max(o[k]||0, b[k]||0); }); return o; }
+function userKey(u){ return Sec.norm(u && u.username); }
+function unionById(local, cloud, tombs){
+  const out = new Map(), noId = [];
+  toArr(cloud).forEach(r=>{
+    if(r && typeof r==="object" && r.id!=null){ if(!(tombs && tombs[r.id])) out.set(r.id, r); }
+    else noId.push(r);
+  });
+  toArr(local).forEach(r=>{
+    if(!r || typeof r!=="object") return;
+    if(r.id==null){ const s = JSON.stringify(r); if(!noId.some(x=>JSON.stringify(x)===s)) noId.push(r); return; }
+    if(tombs && tombs[r.id]) return;
+    const c = out.get(r.id);
+    if(!c || (r.updatedAt||0) >= (c.updatedAt||0)) out.set(r.id, r);   // عند التعادل تبقى النسخة المحلية (المفتوحة للتحرير)
+  });
+  return Array.from(out.values()).concat(noId);
+}
+function unionUsers(kind, local, cloud, tombs){
+  const out = [], have = new Set();
+  const add = u=>{
+    if(!u || !u.username) return;
+    const k = userKey(u); if(have.has(k)) return;
+    const ts = tombs[kind+"::"+hash53(k)];
+    if(ts && ts >= (u.createdAt||0)) return;   // حُذف عمدًا بعد إنشائه
+    out.push(u); have.add(k);
+  };
+  toArr(cloud).forEach(add); toArr(local).forEach(add);
+  return out;
+}
+function resolveConflict(k, L, C, ctx){
+  if(k==="deletedModelIds" || k==="deletedUsers" || k==="deletedOrgs") return maxMap(L, C);
+  if(k==="models" || k==="banks") return unionById(L, C, ctx.tombModels);
+  if(k==="organizations") return unionById(L, C, ctx.tombOrgs);
+  if(k==="students" || k==="teachers" || k==="parents") return unionUsers(k, L, C, ctx.tombUsers);
+  const localNewer = ctx.localTs > ctx.cloudTs;
+  if(Array.isArray(L) || Array.isArray(C)){
+    const la = toArr(L), ca = toArr(C);
+    if(la.concat(ca).every(r=>r && typeof r==="object" && r.id!=null)) return unionById(la, ca, null);
+    if(k==="orgAdmins" || k==="coordinators" || k==="admins"){
+      const seen = new Set(), out = [];
+      (localNewer ? la.concat(ca) : ca.concat(la)).forEach(r=>{ const kk = ((r && r.orgId)||"")+"|"+userKey(r); if(!seen.has(kk)){ seen.add(kk); out.push(r); } });
+      return out;
+    }
+    return localNewer ? L : C;
+  }
+  if(L && C && typeof L==="object" && typeof C==="object") return localNewer ? Object.assign({}, C, L) : Object.assign({}, L, C);
+  return localNewer ? L : C;
+}
+// دمج ثلاثي على مستوى المفاتيح: ما لم يغيّره الجهاز محليًا يُؤخذ من السحابة، وما لم تغيّره السحابة يبقى محليًا، والمتعارض يُدمج بمنطق خاص.
+function mergeWithCloud(local, cloud, base){
+  const ctx = {
+    localTs: local.updatedAt||0, cloudTs: cloud.updatedAt||0,
+    tombModels: maxMap(local.deletedModelIds, cloud.deletedModelIds),
+    tombUsers:  maxMap(local.deletedUsers,    cloud.deletedUsers),
+    tombOrgs:   maxMap(local.deletedOrgs,     cloud.deletedOrgs)
+  };
+  const out = {}, keys = new Set(Object.keys(local).concat(Object.keys(cloud)));
+  keys.forEach(k=>{
+    if(k==="updatedAt") return;
+    const L = local[k], C = cloud[k], lh = hashKey(L), ch = hashKey(C);
+    let v;
+    if(lh===ch) v = (L!==undefined ? L : C);
+    else{
+      const bh = (base && base[k]) || "";
+      const localDirty = lh!==bh, cloudChanged = ch!==bh;
+      if(!localDirty) v = C; else if(!cloudChanged) v = L; else v = resolveConflict(k, L, C, ctx);
+    }
+    if(v!==undefined) out[k] = v;
+  });
+  out.updatedAt = Math.max(ctx.localTs, ctx.cloudTs);
+  return out;
+}
+const COUNT_KEYS = ["organizations","orgAdmins","coordinators","teachers","students","parents","models","banks","results","attachments","tasks","correspondence"];
+function countsOf(obj){
+  const c = {}; let total = 0;
+  COUNT_KEYS.forEach(k=>{
+    const v = obj && obj[k];
+    const n = Array.isArray(v) ? v.filter(Boolean).length : (v && typeof v==="object" ? Object.keys(v).length : 0);
+    c[k] = n; total += n;
+  });
+  c.total = total; return c;
+}
+// حارس الانكماش: يُرجع سببًا نصيًا إن كانت الكتابة المرتقبة تُنقص السجلات بشكل حاد عمّا في السحابة
+function detectShrinkCounts(now, was){
+  if(!was || was.total < 10) return null;
+  if(now.total < was.total*0.3) return `عدد السجلات سينخفض من ${was.total} إلى ${now.total}.`;
+  const crit = {students:"الطلاب", teachers:"المعلمين", models:"النماذج", results:"النتائج", orgAdmins:"مديري المؤسسات", organizations:"المؤسسات"};
+  for(const k of Object.keys(crit)){ if(was[k]>=8 && now[k] < was[k]*0.25) return `عدد ${crit[k]} سينخفض من ${was[k]} إلى ${now[k]}.`; }
+  return null;
+}
+/*</PURE-MERGE>*/
+
+function loadBase(){
+  try{ const raw = localStorage.getItem(BASE_KEY); if(!raw) return null; const o = JSON.parse(raw); return (o && typeof o==="object") ? o : null; }catch(e){ return null; }
+}
+function persistBase(){ try{ if(baseHashes) localStorage.setItem(BASE_KEY, JSON.stringify(baseHashes)); }catch(e){} }
+function setBaseFromCloud(cloud){
+  baseHashes = {};
+  Object.keys(cloud||{}).forEach(k=>{ if(k==="updatedAt") return; const h = hashKey(cloud[k]); if(h) baseHashes[k] = h; });
+  lastCloudCounts = countsOf(cloud||{});
+  persistBase();
+}
+function cloudDiffersFromBase(cloud){
+  if(!baseHashes || !cloud) return false;
+  const seen = new Set();
+  for(const k of Object.keys(cloud)){ if(k==="updatedAt") continue; seen.add(k); if(hashKey(cloud[k]) !== (baseHashes[k]||"")) return true; }
+  for(const k of Object.keys(baseHashes)){ if(!seen.has(k) && baseHashes[k]) return true; }
+  return false;
+}
+function replaceRoot(obj){
+  Object.keys(ROOT).forEach(k=>{ if(!(k in obj)) delete ROOT[k]; });
+  Object.keys(obj).forEach(k=>{ ROOT[k] = obj[k]; });
+}
+function absorbCloud(cloud){
+  const merged = mergeWithCloud(ROOT, cloud, baseHashes);
+  replaceRoot(merged);
+  setBaseFromCloud(cloud);
+}
+function buildUpdates(){
+  const up = {}; let any = false;
+  Object.keys(ROOT).forEach(k=>{
+    if(k==="updatedAt") return;
+    const h = hashKey(ROOT[k]);
+    if(h !== (baseHashes[k]||"")){ up[k] = { h, v: (h==="" ? null : JSON.parse(JSON.stringify(ROOT[k]))) }; any = true; }
+  });
+  Object.keys(baseHashes).forEach(k=>{ if(!(k in ROOT) && baseHashes[k]){ up[k] = { h:"", v:null }; any = true; } });
+  return any ? up : null;
+}
+
+/* ---------- النسخ الاحتياطي السحابي ---------- */
+const Backup = (function(){
+  const DATA = "platform-backups", IDX = "platform-backups-index";
+  const CHUNK = 600000, KEEP = { daily:14, event:12 };
+  let lastEventAt = 0;
+  const pad = n=>String(n).padStart(2,"0");
+  function dayId(){ const d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function safe(s){ return String(s||"").replace(/[^A-Za-z0-9_\-]/g,"_").slice(0,40); }
+  function split(str){ const a = []; for(let i=0;i<str.length;i+=CHUNK) a.push(str.slice(i, i+CHUNK)); return a.length ? a : [""]; }
+  async function write(kind, id, raw, note){
+    if(!firebaseDB) return false;
+    await ensureFirebaseAuth();
+    let counts = {}; try{ counts = countsOf(JSON.parse(raw)); }catch(e){}
+    const chunks = split(raw), base = DATA+"/"+kind+"/"+id;
+    await Promise.all(chunks.map((c,i)=>firebaseDB.ref(base+"/data/c"+String(i).padStart(4,"0")).set(c)));
+    const meta = { at:Date.now(), size:raw.length, chunks:chunks.length, note:note||"", schema:SCHEMA_VERSION, counts };
+    await firebaseDB.ref(base+"/meta").set(meta);                               // العلامة الأخيرة: لا تُعدّ النسخة سليمة قبلها
+    await firebaseDB.ref(IDX+"/"+kind+"/"+id).set({ at:meta.at, size:meta.size, note:meta.note, total:counts.total||0, chunks:meta.chunks });
+    await prune(kind);
+    return true;
+  }
+  async function prune(kind){
+    const s = await firebaseDB.ref(IDX+"/"+kind).get(); if(!s.exists()) return;
+    const all = s.val(), ids = Object.keys(all).sort((a,b)=>(all[b].at||0)-(all[a].at||0));
+    for(const id of ids.slice(KEEP[kind])){ await firebaseDB.ref(DATA+"/"+kind+"/"+id).remove(); await firebaseDB.ref(IDX+"/"+kind+"/"+id).remove(); }
+  }
+  // نسخة يومية واحدة على الأكثر (أول جهاز يفتح المنصة في اليوم يحجزها بمعاملة ذرّية)
+  async function daily(raw){
     try{
-      firebase.initializeApp(FIREBASE_CONFIG);
-      firebaseDB = firebase.database();
+      if(!firebaseDB || !raw) return false;
+      let total = 0; try{ total = countsOf(JSON.parse(raw)).total; }catch(e){}
+      if(total < 3) return false;                                              // لا نستهلك نسخة اليوم على قاعدة شبه فارغة
+      await ensureFirebaseAuth();
+      const id = dayId(), ref = firebaseDB.ref(DATA+"/daily/"+id);
+      if((await ref.child("meta").get()).exists()) return false;
+      const claim = await ref.child("claim").transaction(c=> (c && Date.now()-c.at < 600000) ? undefined : { at:Date.now() });
+      if(!claim.committed) return false;
+      return await write("daily", id, raw, "تلقائية يومية");
+    }catch(e){ console.error("فشل النسخ الاحتياطي اليومي:", e); return false; }
+  }
+  async function event(note, raw, force){
+    try{
+      if(!firebaseDB || !raw) return false;
+      if(!force && Date.now()-lastEventAt < 600000) return false;
+      lastEventAt = Date.now();
+      return await write("event", Date.now().toString(36)+"_"+safe(note), raw, note);
+    }catch(e){ console.error("فشل النسخ الحدثي:", e); return false; }
+  }
+  async function list(){
+    if(!firebaseDB) return [];
+    await ensureFirebaseAuth();
+    const out = [];
+    for(const kind of ["daily","event"]){
+      const s = await firebaseDB.ref(IDX+"/"+kind).get();
+      if(s.exists()){ const v = s.val(); Object.keys(v).forEach(id=>out.push(Object.assign({ kind, id }, v[id]))); }
+    }
+    return out.sort((a,b)=>(b.at||0)-(a.at||0));
+  }
+  async function fetchRaw(kind, id){
+    await ensureFirebaseAuth();
+    const m = await firebaseDB.ref(DATA+"/"+kind+"/"+id+"/meta").get();
+    if(!m.exists()) throw new Error("النسخة غير مكتملة أو غير موجودة.");
+    const d = await firebaseDB.ref(DATA+"/"+kind+"/"+id+"/data").get();
+    if(!d.exists()) throw new Error("بيانات النسخة غير موجودة.");
+    const v = d.val(), keys = Object.keys(v).sort();
+    if(keys.length !== (m.val().chunks||keys.length)) throw new Error("النسخة ناقصة (أجزاء مفقودة).");
+    return keys.map(k=>v[k]).join("");
+  }
+  return { daily, event, list, fetchRaw, dayId };
+})();
+
+/* ---------- نسخ محلية على الجهاز (IndexedDB): شبكة أمان مستقلة عن السحابة ---------- */
+const LocalBackup = (function(){
+  const NAME = "platform-local-backups", STORE = "snaps", KEEP = { daily:14, event:8 };
+  function open(){
+    return new Promise((res, rej)=>{
+      if(!window.indexedDB) return rej(new Error("IndexedDB غير متاح"));
+      const r = indexedDB.open(NAME, 1);
+      r.onupgradeneeded = ()=>{ r.result.createObjectStore(STORE, { keyPath:"id" }); };
+      r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error);
+    });
+  }
+  async function tx(mode, fn){
+    const db = await open();
+    return new Promise((res, rej)=>{
+      const t = db.transaction(STORE, mode), st = t.objectStore(STORE), q = fn(st);
+      t.oncomplete = ()=>res(q && q.result); t.onerror = ()=>rej(t.error); t.onabort = ()=>rej(t.error);
+    });
+  }
+  const all = ()=>tx("readonly", st=>st.getAll()).then(a=>a||[]);
+  const put = rec=>tx("readwrite", st=>st.put(rec));
+  const del = id=>tx("readwrite", st=>st.delete(id));
+  async function list(){ try{ return (await all()).map(r=>({ id:r.id, kind:r.kind, at:r.at, note:r.note, total:r.total, size:r.raw.length })).sort((a,b)=>b.at-a.at); }catch(e){ return []; } }
+  async function get(id){ const a = await all(); const r = a.find(x=>x.id===id); if(!r) throw new Error("النسخة المحلية غير موجودة."); return r.raw; }
+  async function save(raw, note, force){
+    try{
+      let obj; try{ obj = JSON.parse(raw); }catch(e){ return false; }
+      const total = countsOf(obj).total;
+      const cur = await all();
+      const maxTotal = cur.reduce((m,r)=>Math.max(m,r.total||0), 0);
+      if(!force){
+        if(total < 3) return false;
+        if(maxTotal >= 10 && total < maxTotal*0.5) return false;               // لا نُخرج نسخًا سليمة بنسخة شبه فارغة
+      }
+      const day = Backup.dayId();
+      const kind = force ? "event" : "daily";
+      const id = force ? "e-"+Date.now() : "d-"+day;
+      const existing = cur.find(r=>r.id===id);
+      if(existing && !force && total < (existing.total||0)*0.9) return false;
+      await put({ id, kind, at:Date.now(), note:note||"", total, raw });
+      const mine = (await all()).filter(r=>r.kind===kind).sort((a,b)=>b.at-a.at);
+      for(const r of mine.slice(KEEP[kind])) await del(r.id);
+      return true;
+    }catch(e){ console.error("فشل النسخ المحلي:", e); return false; }
+  }
+  return { save, list, get };
+})();
+
+/* ---------- ترحيل بنية البيانات (Migrations): مُرقَّم، مرة واحدة، مسبوق بنسخة احتياطية، وقابل للتراجع ---------- */
+const MIGRATIONS = [
+  { v:1, name:"تعدد المؤسسات وتهيئة الجذر",              up(){ ensureTenancy(); } },
+  { v:2, name:"استعادة حسابات المالك (مرة واحدة)",         up(){ seedRestoredTeacher(); restoreAhmedIntoOwnOrg(); } },
+  { v:3, name:"تشفير أي كلمات مرور قديمة نصّية",           async up(){ await migrateCredentials(); } },
+];
+async function runMigrations(){
+  const cur = ROOT.schemaVersion || 0;
+  if(cur > SCHEMA_VERSION){ lockSchema(); return false; }
+  const pending = MIGRATIONS.filter(m=>m.v > cur);
+  if(!pending.length) return true;
+  const before = JSON.stringify(ROOT);
+  try{ await Backup.event("pre-migration-v"+SCHEMA_VERSION, before, true); }catch(e){}
+  try{ await LocalBackup.save(before, "قبل الترحيل إلى v"+SCHEMA_VERSION, true); }catch(e){}
+  try{
+    for(const m of pending){ await m.up(); ROOT.schemaVersion = m.v; }
+    saveDB();
+    return true;
+  }catch(e){
+    console.error("فشل ترحيل البيانات — جرى التراجع الكامل دون حفظ أي شيء:", e);
+    replaceRoot(JSON.parse(before));
+    return false;
+  }
+}
+
+/* ---------- تنبيهات السلامة ---------- */
+function safetyBar(id, cls, html){
+  let el = document.getElementById(id); if(el) el.remove();
+  el = document.createElement("div"); el.id = id; el.className = "safety-bar "+cls; el.setAttribute("role","alert"); el.innerHTML = html;
+  document.body.appendChild(el); return el;
+}
+function lockSchema(){
+  if(schemaLocked) return; schemaLocked = true;
+  const b = safetyBar("schemaLockBar", "warn", 'بيانات المنصة أحدث من نسخة الصفحة المفتوحة عندك، لذا أُوقف الحفظ السحابي حمايةً للبيانات. <button type="button">تحديث الصفحة الآن</button>');
+  b.querySelector("button").addEventListener("click", ()=>location.replace(location.href.split("?")[0].split("#")[0]+"?v="+Date.now()));
+}
+function showWriteBlocked(why){
+  const b = safetyBar("writeBlockBar", "err",
+    'تم إيقاف الرفع السحابي مؤقتًا لحماية البيانات: '+regEsc(why)+' إن كنت حذفت ذلك عمدًا فاختر «متابعة»، وإلا فاختر «مزامنة من السحابة».' +
+    ' <button type="button" data-a="resync">مزامنة من السحابة</button><button type="button" data-a="force">متابعة (حذف مقصود)</button>');
+  b.querySelector('[data-a="resync"]').addEventListener("click", async ()=>{
+    if(!confirm("سيتم حفظ نسخة من بيانات هذا الجهاز أولًا، ثم تحميل آخر بيانات من السحابة. متابعة؟")) return;
+    try{ await LocalBackup.save(JSON.stringify(ROOT), "قبل المزامنة القسرية", true); }catch(e){}
+    resyncing = true;
+    try{ localStorage.removeItem("platform-db-local"); localStorage.removeItem(BASE_KEY); }catch(e){}
+    location.reload();
+  });
+  b.querySelector('[data-a="force"]').addEventListener("click", ()=>{
+    if(!confirm("ستُرفع التعديلات الحالية إلى السحابة وتُنقص السجلات. تؤخذ نسخة احتياطية سحابية تلقائيًا قبل الرفع. متابعة؟")) return;
+    allowShrinkOnce = true; writeBlocked = null; b.remove(); saveDB(); flushSaveDBNow();
+  });
+}
+
+/* ---------- الاستعادة (للمشرف العام) ---------- */
+async function restoreFromRaw(raw){
+  let obj; try{ obj = JSON.parse(raw); }catch(e){ throw new Error("الملف ليس JSON صالحًا."); }
+  if(!obj || typeof obj!=="object" || Array.isArray(obj)) throw new Error("محتوى الملف غير صالح.");
+  if(!obj.organizations && !obj.orgAdmins && !obj.models) throw new Error("الملف لا يبدو نسخة احتياطية لهذه المنصة.");
+  if((obj.schemaVersion||0) > SCHEMA_VERSION) throw new Error("هذه النسخة أحدث من إصدار المنصة المفتوح؛ حدّث الصفحة أولًا.");
+  const before = JSON.stringify(ROOT);
+  await Backup.event("pre-restore", before, true);
+  await LocalBackup.save(before, "قبل الاستعادة", true);
+  replaceRoot(obj);
+  sanitizeLoadedModels();
+  ROOT.updatedAt = Date.now();
+  allowShrinkOnce = true; writeBlocked = null; skipAbsorbOnce = true;
+  saveDB();
+  await waitUntil(()=>!saveInFlight, 15000);
+  await flushSaveDBNow();
+  await waitUntil(()=>!saveInFlight && !saveTimer, 15000);
+  skipAbsorbOnce = false;
+}
+function downloadBackupFile(){
+  const raw = JSON.stringify(ROOT), blob = new Blob([raw], { type:"application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "backup-"+todayLocalISO()+".json";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ---------- المزامنة الأولية مع السحابة ---------- */
+async function waitUntil(fn, ms){ const t0 = Date.now(); while(!fn() && Date.now()-t0 < ms) await sleepMs(120); return fn(); }
+async function syncFromCloudInBackground(){
+  let cloudSaved = null, cloudRaw = null, readOk = false;
+  const useFirebase = firebaseConfigured() && typeof firebase !== "undefined";
+  if(useFirebase){
+    try{
+      if(!firebaseDB){
+        if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        firebaseDB = firebase.database();
+      }
       await ensureFirebaseAuth();
       const snap = await firebaseDB.ref("platform-db").get();
-      if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); cloudSource = "firebase"; }
-    }catch(e){ console.error("تعذّر الاتصال بـ Firebase:", e); }
-  }
-  if(cloudSource===null){
+      readOk = true;
+      if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); }
+    }catch(e){ console.error("تعذّر قراءة قاعدة البيانات السحابية:", e); }
+    if(!readOk){
+      // لا نكتب شيئًا أبدًا قبل قراءة ناجحة؛ نعيد المحاولة تدريجيًا وتبقى التعديلات محفوظة على الجهاز.
+      hydrateAttempts++;
+      clearTimeout(hydrateTimer);
+      hydrateTimer = setTimeout(syncFromCloudInBackground, Math.min(60000, 4000*hydrateAttempts));
+      try{ showSyncWarning(); }catch(e){}
+      return;
+    }
+  } else {
     try{
       if(typeof window.storage !== "undefined"){
         const res = await window.storage.get("platform-db", true);
-        if(res && res.value){ cloudSaved = JSON.parse(res.value); cloudRaw = res.value; cloudSource = "artifact"; }
+        if(res && res.value){ cloudSaved = JSON.parse(res.value); cloudRaw = res.value; }
       }
     }catch(e){ /* لا يوجد تخزين Artifact متاح */ }
+    readOk = true;
   }
 
-  const cloudTs = (cloudSaved && cloudSaved.updatedAt) || 0;
-  if(cloudSaved && cloudTs > (ROOT.updatedAt||0) && saveTimer===null && !saveInFlight){
-    // نتجنّب استبدال أي تعديل يجريه المستخدم الآن محليًا ولم يُحفظ بعد (saveTimer/saveInFlight)
-    applyCloudSnapshot(cloudSaved);
+  if(cloudSaved && (cloudSaved.schemaVersion||0) > SCHEMA_VERSION){ latestCloud = cloudSaved; lockSchema(); cloudHydrated = true; cloudSynced = true; return; }
+  latestCloud = cloudSaved;
+  await waitUntil(()=>!(saveTimer || saveInFlight), 10000);
+
+  const localTs = ROOT.updatedAt || 0, cloudTs = cloudSaved ? (cloudSaved.updatedAt||0) : 0;
+  if(cloudSaved){
+    if(baseHashes){
+      absorbCloud(cloudSaved);                                   // دمج ثلاثي آمن
+    } else {
+      // جهاز بلا خط أساس (جهاز جديد أو أول تشغيل بعد هذا التحديث): القاعدة القديمة للنسخة كاملة
+      if(cloudTs > localTs) applyCloudSnapshot(cloudSaved);
+      if(useFirebase) setBaseFromCloud(cloudSaved);
+    }
     sanitizeLoadedModels();
-    lastSavedSnapshot = cloudRaw;
+    lastSavedSnapshot = cloudRaw || "";
     persistLocalNow();
-    // إعادة رسم الشاشة الحالية إن كان المستخدم مسجَّلًا دخوله بالفعل خلال فترة المزامنة
     try{ if(typeof refreshCurrentScreen === "function") refreshCurrentScreen(); }catch(e){}
-  } else if(!cloudSaved && cloudSource){
-    // لا توجد نسخة سحابية بعد (أول تشغيل) — نرفع نسختنا المحلية الحالية لتأسيسها
+  } else if(useFirebase){
+    baseHashes = {}; persistBase(); lastCloudCounts = countsOf({});   // السحابة فارغة فعلًا (أول تشغيل): نؤسّسها من النسخة المحلية
     lastSavedSnapshot = "";
-    persistDBNow();
-  }
+  } else { lastSavedSnapshot = ""; }
+  lastCloudRaw = cloudRaw || "";
+
   attachRealtimeSync();
   cloudSynced = true;
   if(!session){ try{ tryRestoreSession(); }catch(e){} }
+
+  // نسخة احتياطية لما هو في السحابة قبل أن تلمسه هذه الجلسة (مهلة قصوى حتى لا تُعطّل شيئًا)
+  if(useFirebase && cloudRaw){
+    LocalBackup.save(cloudRaw, "من السحابة");
+    await Promise.race([ Backup.daily(cloudRaw), sleepMs(15000) ]);
+  }
+  cloudHydrated = true;
+  await runMigrations();
+  persistDBNow();                                                  // يرفع فروق هذا الجهاز فقط (إن وُجدت)
 }
+// نسخة يومية أثناء جلسة طويلة (تعبر منتصف الليل) ونسخة محلية دورية — ما لم يكن الرفع موقوفًا
+setInterval(()=>{
+  try{
+    if(!cloudHydrated || writeBlocked || schemaLocked || !firebaseDB) return;
+    if(detectShrinkCounts(countsOf(ROOT), lastCloudCounts)) return;
+    const raw = JSON.stringify(ROOT);
+    Backup.daily(raw); LocalBackup.save(raw, "دورية");
+  }catch(e){}
+}, 30*60*1000);
+
 
 /* ================================================================
    ===== طبقة الحفظ الفعلية =====
@@ -1825,6 +2264,7 @@ function persistLocalNow(){
   // أُغلق التبويب/المتصفح خلال تلك المهلة قبل أن يُنفَّذ الحفظ الفعلي —
   // وهو السبب الجذري لاختفاء ما يصنعه المعلم/الطالب بعد إغلاق الموقع وإعادة فتحه.
   try{
+    if(resyncing) return lastLocalSnapshot;
     const snapshot = JSON.stringify(ROOT);
     if(snapshot === lastLocalSnapshot) return snapshot;
     localStorage.setItem("platform-db-local", snapshot);
@@ -1858,9 +2298,9 @@ function showSyncWarning(){
 async function mergeModelsWithCloud(){
   if(!firebaseDB) return;
   try{
-    const snap = await firebaseROOT.ref("platform-db/models").get();
+    const snap = await firebaseDB.ref("platform-db/models").get();
     if(snap.exists()){
-      const cloudModels = snap.val() || [];
+      const cloudModels = toArr(snap.val());
       const deleted = ROOT.deletedModelIds || {};
       const byId = new Map();
       (ROOT.models||[]).forEach(m=>{ byId.set(m.id, m); });
@@ -1874,9 +2314,9 @@ async function mergeModelsWithCloud(){
       ROOT.models = Array.from(byId.values());
     }
     // نفس منطق الدمج الآمن يُطبَّق أيضًا على بنوك الأسئلة (ROOT.banks) لتفادي فقدانها في نفس السيناريو
-    const banksSnap = await firebaseROOT.ref("platform-db/banks").get();
+    const banksSnap = await firebaseDB.ref("platform-db/banks").get();
     if(banksSnap.exists()){
-      const cloudBanks = banksSnap.val() || [];
+      const cloudBanks = toArr(banksSnap.val());
       const deleted = ROOT.deletedModelIds || {};
       const byIdB = new Map();
       (ROOT.banks||[]).forEach(m=>{ byIdB.set(m.id, m); });
@@ -1898,7 +2338,7 @@ async function mergeUsersWithCloud(){
   if(!firebaseDB) return;
   try{
     ROOT.deletedUsers = ROOT.deletedUsers || {};
-    const tsnap = await firebaseROOT.ref("platform-db/deletedUsers").get();
+    const tsnap = await firebaseDB.ref("platform-db/deletedUsers").get();
     if(tsnap.exists()){
       const ct = tsnap.val() || {};
       Object.keys(ct).forEach(t=>{ ROOT.deletedUsers[t] = Math.max(ROOT.deletedUsers[t]||0, ct[t]||0); });
@@ -1912,7 +2352,7 @@ async function mergeUsersWithCloud(){
         return !(ts && ts >= (u.createdAt||0));
       });
       // 2) إضافة من سجّل/أُضيف على جهاز آخر ولم يصل إلينا بعد
-      const snap = await firebaseROOT.ref("platform-db/"+k).get();
+      const snap = await firebaseDB.ref("platform-db/"+k).get();
       if(!snap.exists()) continue;
       const cv = snap.val();
       const arr = Array.isArray(cv) ? cv : Object.values(cv||{});
@@ -1931,35 +2371,50 @@ async function mergeUsersWithCloud(){
 }
 
 async function persistDBNow(){
-  // التنفيذ الفعلي لمزامنة السحابة (Firebase أو تخزين الـ Artifact)؛ النسخة
-  // المحلية تُكتب فورًا ومنفصلة عبر persistLocalNow() بلا انتظار هذه الدالة.
-  if(hasPlainPasswords()){ await migrateCredentials(); } // لا تصل كلمة مرور نصّية إلى السحابة أبدًا
-  if(firebaseDB){
-    await ensureFirebaseAuth();
-    await mergeModelsWithCloud(); // ندمج قبل الكتابة كي لا نُطيح بعمل الآخرين
-    await mergeUsersWithCloud();
+  // التنفيذ الفعلي لمزامنة السحابة. النسخة المحلية تُكتب فورًا عبر persistLocalNow() دون انتظار هذه الدالة.
+  if(resyncing || schemaLocked) return;
+  if(firebaseDB && !cloudHydrated){ persistLocalNow(); return; }        // قاعدة ذهبية: لا كتابة سحابية قبل قراءة ناجحة
+  if(hasPlainPasswords()){ await migrateCredentials(); }                 // لا تصل كلمة مرور نصّية إلى السحابة أبدًا
+  // تعديلات الآخرين التي وصلت ولم تُدمج بعد (مؤجّلة) تُدمج الآن قبل الكتابة كي لا نمسحها
+  if(firebaseDB && baseHashes && latestCloud && !skipAbsorbOnce && !(typeof activeModel !== "undefined" && activeModel) && cloudDiffersFromBase(latestCloud)){
+    try{ absorbCloud(latestCloud); sanitizeLoadedModels(); }catch(e){ console.error("تعذّر دمج تعديلات الآخرين قبل الحفظ:", e); }
   }
   const snapshot = persistLocalNow();
-  if(snapshot === lastSavedSnapshot && !saveInFlight) return; // لا تغيير حقيقي منذ آخر حفظ سحابي ناجح
+  if(saveInFlight){ pendingResave = true; return; }
+  let up = null;
+  if(firebaseDB){ up = buildUpdates(); if(!up){ persistBase(); return; } }   // لا تغيير حقيقي: لا كتابة
+  else if(snapshot === lastSavedSnapshot) return;
   saveInFlight = true;
   try{
     if(firebaseDB){
+      const why = writeBlocked || detectShrinkCounts(countsOf(ROOT), lastCloudCounts);
+      if(why && !allowShrinkOnce){ writeBlocked = why; showWriteBlocked(why); return; }
       await ensureFirebaseAuth();
-      await firebaseDB.ref("platform-db").set(JSON.parse(snapshot));
+      // قبل أي كتابة تُنقص السجلات بشكل ملحوظ: نسخة احتياطية سحابية لما في السحابة حاليًا
+      if(lastCloudRaw && lastCloudCounts && lastCloudCounts.total >= 10 && countsOf(ROOT).total < lastCloudCounts.total*0.8) await Backup.event("pre-shrink", lastCloudRaw);
+      // كتابة المفاتيح التي تغيّرت فقط (update) — لا استبدال العقدة كلها
+      const payload = {}; Object.keys(up).forEach(k=>{ payload[k] = up[k].v; });
+      payload.updatedAt = ROOT.updatedAt || Date.now();
+      await firebaseDB.ref("platform-db").update(payload);
+      Object.keys(up).forEach(k=>{ if(up[k].h) baseHashes[k] = up[k].h; else delete baseHashes[k]; });
+      persistBase();
+      allowShrinkOnce = false;
+      lastCloudCounts = countsOf(ROOT);
     } else if(typeof window.storage !== "undefined"){
       await window.storage.set("platform-db", snapshot, true);
     }
     lastSavedSnapshot = snapshot;
   }catch(e){ console.error("فشل الحفظ السحابي (تم الاحتفاظ بنسخة محلية):", e); showSyncWarning(); }
-  finally{ saveInFlight = false; }
+  finally{
+    saveInFlight = false;
+    if(pendingResave){ pendingResave = false; setTimeout(persistDBNow, 50); }
+  }
 }
 
 function saveDB(){
-  // الحفظ المحلي فوري دائمًا (بلا أي مخاطرة بالفقدان)، وتبقى مزامنة السحابة
-  // فقط مؤجّلة قليلًا لتجميع التعديلات المتتالية السريعة (أثناء الكتابة مثلًا)
-  // وتقليل عدد الكتابات السحابية دون أي تأثير على أمان النسخة المحلية.
-  // طابع زمني على كل حفظة فعلية، يُستخدم عند initStorage() للمفاضلة بين النسخة
-  // المحلية والسحابية واعتماد الأحدث منهما فعليًا (بدل افتراض تفوّق السحابة دومًا).
+  // أثناء الإقلاع (قبل قراءة السحابة) لا نغيّر updatedAt ولا نجدول رفعًا: النسخة الافتراضية على جهاز جديد
+  // كانت تبدو «أحدث» من السحابة فتُكتب فوقها وتمسح كل شيء.
+  if(bootQuiet){ persistLocalNow(); return; }
   trackUserDeletions();
   ROOT.updatedAt = Date.now();
   persistLocalNow();
@@ -1969,50 +2424,49 @@ function saveDB(){
 }
 
 function flushSaveDBNow(){
-  // يُستخدم عند أي نقطة قد تقطع مهلة الحفظ المؤجّلة: تسجيل الخروج،
-  // تبديل/إغلاق نموذج، إخفاء التبويب أو إغلاقه.
+  // يُستخدم عند أي نقطة قد تقطع مهلة الحفظ المؤجّلة: تسجيل الخروج، تبديل/إغلاق نموذج، إخفاء التبويب أو إغلاقه.
   clearTimeout(saveTimer);
   saveTimer = null;
-  persistDBNow();
+  return persistDBNow();
 }
+
 window.addEventListener("beforeunload", flushSaveDBNow);
 window.addEventListener("pagehide", flushSaveDBNow);
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") flushSaveDBNow(); });
 
 
 let deferredIncoming = null;
-function applyIncomingSnapshot(saved, incomingRaw){
-  applyCloudSnapshot(saved);
+function applyIncomingSnapshot(saved){
+  try{ Guard.checkIncoming(saved); }catch(e){}
+  if(baseHashes){ absorbCloud(saved); }
+  else { applyCloudSnapshot(saved); setBaseFromCloud(saved); }
   sanitizeLoadedModels();
-  lastSavedSnapshot = incomingRaw;
+  try{ lastCloudRaw = JSON.stringify(saved); }catch(e){}
   try{ persistLocalNow(); }catch(e){}
   try{ refreshCurrentScreen(); }catch(e){}
 }
 function attachRealtimeSync(){
-  // يجعل تعديلات معلّم/مشرف/منسق تصل لبقية الجلسات المفتوحة فعليًا وفورًا بدل أن تُكتب كل جلسة
-  // نسختها القديمة فوق نسخة غيرها. الوارد الذي يصل أثناء حفظ محلي معلّق أو نموذج مفتوح للتحرير
-  // لا يُهمَل كما كان، بل يُحتفَظ به ويُطبَّق تلقائيًا بمجرد زوال المانع.
-  if(!firebaseDB) return;
+  // يجعل تعديلات معلّم/مشرف/منسق تصل لبقية الجلسات المفتوحة فعليًا وفورًا. الوارد الذي يصل أثناء حفظ معلّق أو
+  // نموذج مفتوح للتحرير يُحتفَظ به ويُدمج تلقائيًا بمجرد زوال المانع (دمج ثلاثي، لا استبدال).
+  if(!firebaseDB || window._rtAttached) return;
+  window._rtAttached = true;
   firebaseDB.ref("platform-db").on("value", snap=>{
     if(!snap.exists()) return;
     const saved = snap.val();
-    const incoming = JSON.stringify(saved);
-    if(incoming === lastSavedSnapshot) return;
-    if(((saved && saved.updatedAt) || 0) < (ROOT.updatedAt||0)) return; // وارد أقدم من نسختنا الحالية — تجاهله
-    if(saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)){
-      deferredIncoming = {saved, incoming};
-      return;
-    }
+    if(((saved && saved.schemaVersion)||0) > SCHEMA_VERSION){ lockSchema(); return; }
+    latestCloud = saved;
+    try{ Guard.checkIncoming(saved); }catch(e){}                 // إيقاف اشتراك المؤسسة يسري فورًا حتى لو أُجّل الدمج
+    if(!cloudHydrated || !cloudDiffersFromBase(saved)) return;   // صدى لما كتبناه/دمجناه نحن
+    if(saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)){ deferredIncoming = {saved}; return; }
     deferredIncoming = null;
-    applyIncomingSnapshot(saved, incoming);
+    applyIncomingSnapshot(saved);
   });
   if(!window._deferredIncomingTimer){
     window._deferredIncomingTimer = setInterval(()=>{
       if(!deferredIncoming) return;
       if(saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)) return;
-      const d = deferredIncoming; deferredIncoming = null;
-      if(((d.saved && d.saved.updatedAt) || 0) < (DB.updatedAt||0)) return;
-      applyIncomingSnapshot(d.saved, d.incoming);
+      deferredIncoming = null;
+      if(latestCloud && cloudDiffersFromBase(latestCloud)) applyIncomingSnapshot(latestCloud);
     }, 2500);
   }
 }
@@ -2184,12 +2638,20 @@ async function doLogin(){
     if(!username || !password){ showMsg("من فضلك أدخل اسم المستخدم وكلمة المرور.", "err"); return; }
     const hp = document.getElementById("hpWebsite");
     if(hp && hp.value){ await sleepMs(1500); showMsg("اسم المستخدم أو كلمة المرور غير صحيحة.", "err"); return; } // فخ للبرمجيات الآلية
+    if(!cloudSynced){                                   // جهاز جديد: ننتظر وصول البيانات من السحابة بدل «كلمة مرور خاطئة» كاذبة
+      showMsg("جارِ مزامنة بياناتك من قاعدة البيانات، لحظة من فضلك...", "ok");
+      await waitUntil(()=>cloudSynced, 9000);
+      clearMsg();
+    }
     const uh = await Sec.userHash(username);
     const ids = ["device", "u:"+uh];
     const cloud = await cloudGuardRead(uh);
     const until = LoginGuard.lockedUntil(ids, cloud);
     if(until){ showLock(until); return; }
     const found = await authenticate(username, password);
+    if(!found && !cloudSynced && firebaseConfigured()){
+      showMsg("تعذّر الاتصال بقاعدة البيانات الآن، ولا توجد على هذا الجهاز بيانات لهذا الحساب. تحقق من الإنترنت وأعد المحاولة.", "err"); return;
+    }
     if(!found){
       const r = LoginGuard.fail(ids, cloud);
       cloudGuardWrite(uh, r.userState);
@@ -2205,6 +2667,10 @@ async function doLogin(){
     LoginGuard.success("u:"+uh);
     passwordInput.value = ""; usernameInput.value = "";
     enterApp(role, rec.builtin ? {username:rec.username, builtin:true} : rec, orgId);
+    // ترقية تجزئة كلمة المرور القديمة إلى العدد الحالي من الدورات بصمت (لا تؤثر على المستخدم)
+    if(!rec.builtin && rec.passHash && (rec.passIter||0) < Sec.ITER){
+      setTimeout(async ()=>{ try{ Object.assign(rec, await Sec.hashPassword(password)); saveDB(); }catch(e){} }, 1500);
+    }
   }catch(e){
     console.error(e);
     showMsg("حدث خطأ غير متوقع أثناء تسجيل الدخول، حاول مرة أخرى.", "err");
@@ -2302,7 +2768,7 @@ function renderRegFields(role){
   }
   html += `<label>كلمة المرور (6 أحرف فأكثر)</label><input type="password" id="regPassword" autocomplete="new-password">
            <label>تأكيد كلمة المرور</label><input type="password" id="regPassword2" autocomplete="new-password">
-           <div style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;" aria-hidden="true"><input type="text" id="regHp" tabindex="-1" autocomplete="off"></div>`;
+           <div class="hp-trap" aria-hidden="true"><input type="text" id="regHp" tabindex="-1" autocomplete="off"></div>`;
   regFieldsBox.innerHTML = html;
   regFieldsBox.classList.remove("hidden");
   regSaveBtn.disabled = false;
@@ -2607,6 +3073,7 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
 const NAV = {
   admin: [
     ["orgs","المؤسسات والاشتراكات"],
+    ["backup","النسخ الاحتياطي والاستعادة"],
     ["aboutedit","تعديل نافذة (من نحن)"],
   ],
   orgadmin: [
@@ -2687,6 +3154,7 @@ function renderView(role,key){
   const view = document.getElementById("viewArea");
   view.innerHTML = "";
   if(key==="orgs"){ renderOrgsWindow(view); return; }
+  if(key==="backup"){ renderBackupWindow(view); return; }
   if(key==="orghome"){ renderOrgHomeWindow(view); return; }
   if(key==="fees"){ renderFeesWindow(view); return; }
   if(key==="parentsMgmt"){ renderParentsWindow(view, "admin"); return; }
@@ -3092,21 +3560,7 @@ function drawAssignTable(key){
   /* حقل كلمة مرور قابل للتعديل مباشرة من المشرف العام، مع زر لإظهار/إخفاء القيمة */
   // حقل كلمة المرور: نضع القيمة الحالية (val) فعليًا داخل input بدل تركه فارغًا، حتى يعمل
   // زر العين على إظهارها فعلًا عند الضغط (كان يبدّل نوع الحقل فقط دون أن يضع فيه أي قيمة).
-  function passwordField(val, onSave){
-    const box = document.createElement("div");
-    box.style.cssText = "display:flex; align-items:center; gap:4px; width:100%; max-width:100%; box-sizing:border-box;";
-    const inp = document.createElement("input");
-    inp.type = "password"; inp.value = val||""; inp.placeholder = "اكتب لتعيين كلمة مرور جديدة"; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
-    const toggle = document.createElement("button");
-    toggle.type = "button"; toggle.className = "icon-btn"; toggle.title = "إظهار/إخفاء كلمة المرور"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
-    toggle.addEventListener("click", ()=>{
-      inp.type = inp.type==="password" ? "text" : "password";
-      toggle.textContent = inp.type==="password" ? "👁" : "🙈";
-    });
-    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); inp.placeholder="✔ تم الحفظ"; });
-    box.appendChild(inp); box.appendChild(toggle);
-    return box;
-  }
+  function passwordField(val, onSave){ return makePasswordField(val, onSave); }
   // بند 19: نحفظ موضع التمرير الحالي لصندوق الجدول قبل إعادة بنائه بالكامل، ثم نعيده بعد إعادة البناء،
   // حتى لا تُعاد الشاشة لأعلى الجدول عند تعديل بيانات في الصفوف الأخيرة (الذي كان يجبر المستخدم على النزول من جديد)
   const prevTableWrap = wrap.querySelector(".table-wrap");
@@ -9229,21 +9683,7 @@ function renderMyStudentsWindow(view, role){
   }
   // حقل كلمة المرور: نضع القيمة الحالية (val) فعليًا داخل input بدل تركه فارغًا، حتى يعمل
   // زر العين على إظهارها فعلًا عند الضغط (كان يبدّل نوع الحقل فقط دون أن يضع فيه أي قيمة).
-  function passwordField(val, onSave){
-    const box = document.createElement("div");
-    box.style.cssText = "display:flex; align-items:center; gap:4px; width:100%; max-width:100%; box-sizing:border-box;";
-    const inp = document.createElement("input");
-    inp.type = "password"; inp.value = val||""; inp.placeholder = "اكتب لتعيين كلمة مرور جديدة"; inp.style.cssText = "flex:1 1 auto; min-width:0; width:100%; box-sizing:border-box; padding:3px 6px; border:1.5px solid #ccc; border-radius:5px; font-size:12.5px;";
-    const toggle = document.createElement("button");
-    toggle.type = "button"; toggle.className = "icon-btn"; toggle.title = "إظهار/إخفاء كلمة المرور"; toggle.style.cssText = "flex:0 0 auto; width:24px; height:24px; font-size:11px; padding:0;"; toggle.textContent = "👁";
-    toggle.addEventListener("click", ()=>{
-      inp.type = inp.type==="password" ? "text" : "password";
-      toggle.textContent = inp.type==="password" ? "👁" : "🙈";
-    });
-    inp.addEventListener("change", ()=>{ onSave(inp.value); saveDB(); inp.placeholder="✔ تم الحفظ"; });
-    box.appendChild(inp); box.appendChild(toggle);
-    return box;
-  }
+  function passwordField(val, onSave){ return makePasswordField(val, onSave); }
   let searchTerm = "";
   function draw(){
     const wrap = document.getElementById("myStTableWrap");
@@ -10283,9 +10723,71 @@ function deleteOrganization(o){
   if(ROOT.orgMeta) delete ROOT.orgMeta[id];
   ROOT.organizations = ROOT.organizations.filter(x=>x && x.id!==id);
   ROOT.deletedOrgs = ROOT.deletedOrgs || {}; ROOT.deletedOrgs[id] = now;
+  allowShrinkOnce = true;   // حذف مقصود ومؤكَّد؛ تؤخذ نسخة احتياطية سحابية تلقائيًا قبل الرفع
   saveDB(); flushSaveDBNow();
   return true;
 }
+/* ===== زر العين (إظهار/إخفاء كلمة المرور) =====
+   كلمات المرور محفوظة الآن مشفّرة بتجزئة أحادية الاتجاه، فلا يمكن «عرض» القيمة المخزَّنة أبدًا (هذا مقصود لأمان الحسابات).
+   لذلك كان الحقل يظهر فارغًا وزر العين لا يُظهر شيئًا. الحل: العين تُظهر ما يكتبه المستخدم فقط، وزر «توليد»
+   ينشئ كلمة قوية تُعرَض مرة واحدة ليسلّمها المشرف لصاحب الحساب. وأُضيفت العين لكل حقول كلمة المرور في المنصة (الدخول والتسجيل وغيرها). */
+const PW_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const PW_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a19.77 19.77 0 0 1 5.06-5.94M9.9 4.24A10.9 10.9 0 0 1 12 4c7 0 11 7 11 7a19.86 19.86 0 0 1-3.17 4.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+const PwEye = (function(){
+  function attach(inp){
+    if(!inp || !inp.parentNode || inp.dataset.pwEye || inp.dataset.noeye) return;
+    inp.dataset.pwEye = "1";
+    const wrap = document.createElement("span"); wrap.className = "pw-eye-wrap";
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "pw-eye-btn"; btn.title = "إظهار/إخفاء كلمة المرور"; btn.innerHTML = PW_EYE;
+    btn.setAttribute("aria-label", "إظهار كلمة المرور"); btn.setAttribute("aria-pressed", "false");
+    wrap.appendChild(btn);
+    const set = show=>{
+      inp.type = show ? "text" : "password"; btn.innerHTML = show ? PW_EYE_OFF : PW_EYE;
+      btn.setAttribute("aria-pressed", show ? "true" : "false"); btn.setAttribute("aria-label", show ? "إخفاء كلمة المرور" : "إظهار كلمة المرور");
+    };
+    btn.addEventListener("click", ()=>set(inp.type==="password"));
+    inp._pwSet = set;
+  }
+  function scan(root){ if(root && root.querySelectorAll) root.querySelectorAll('input[type="password"]').forEach(attach); }
+  function init(){
+    scan(document);
+    new MutationObserver(muts=>{
+      muts.forEach(m=>m.addedNodes.forEach(n=>{
+        if(n.nodeType!==1) return;
+        if(n.matches && n.matches('input[type="password"]')) attach(n); else scan(n);
+      }));
+    }).observe(document.body, { childList:true, subtree:true });
+  }
+  return { init, attach };
+})();
+PwEye.init();
+
+/* حقل كلمة مرور لجداول المشرفين: يحفظ ما يُكتب مشفّرًا، مع عين وتوليد. (val لا تُملأ إلا لحسابات قديمة ما زالت نصّية) */
+function makePasswordField(val, onSave){
+  const box = document.createElement("div"); box.className = "pw-field";
+  const inp = document.createElement("input");
+  inp.type = "password"; inp.value = val || ""; inp.dataset.noeye = "1"; inp.autocomplete = "new-password";
+  inp.placeholder = val ? "" : "•••••• مشفّرة — اكتب لتعيين جديدة"; inp.setAttribute("aria-label", "كلمة المرور");
+  const eye = document.createElement("button"); eye.type = "button"; eye.className = "icon-btn"; eye.title = "إظهار/إخفاء ما تكتبه"; eye.innerHTML = PW_EYE;
+  const gen = document.createElement("button"); gen.type = "button"; gen.className = "icon-btn"; gen.title = "توليد كلمة مرور قوية وعرضها"; gen.textContent = "توليد";
+  let noted = false;
+  const show = on=>{ inp.type = on ? "text" : "password"; eye.innerHTML = on ? PW_EYE_OFF : PW_EYE; };
+  eye.addEventListener("click", ()=>{
+    const on = inp.type==="password"; show(on);
+    if(on && !inp.value && !noted){ noted = true; tnToast("كلمات المرور محفوظة مشفّرة ولا يمكن عرضها. الزر يُظهر ما تكتبه أنت فقط؛ استخدم «توليد» لإنشاء كلمة جديدة وعرضها."); }
+  });
+  gen.addEventListener("click", ()=>{ inp.value = randomPassword(10); show(true); inp.dispatchEvent(new Event("change")); });
+  inp.addEventListener("change", ()=>{
+    const v = inp.value; if(!v) return;
+    if(v.length < 6){ tnToast("كلمة المرور لا تقل عن 6 أحرف.", "err"); inp.value = ""; return; }
+    onSave(v); saveDB(); inp.placeholder = "✔ تم الحفظ (مشفّرة)";
+  });
+  box.appendChild(inp); box.appendChild(eye); box.appendChild(gen);
+  return box;
+}
+
 function randomPassword(len){
   const A = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const u = new Uint8Array(len||10); crypto.getRandomValues(u);
@@ -10378,7 +10880,7 @@ function renderOrgsWindow(view){
         </td>
         <td><ul class="tn-list"><li><span>طلاب:</span> ${c.students}${c.unpaid?` <span>(غير مسدد ${c.unpaid})</span>`:""}</li><li><span>معلمون:</span> ${c.teachers}</li><li><span>منسقون:</span> ${c.coordinators}</li><li><span>أولياء أمور:</span> ${c.parents}</li></ul></td>
         <td>${admins.length ? `<ul class="tn-list">${admins.map(a=>`<li>${regEsc(a.username)}${a.active===false?" <span>(موقوف)</span>":""}</li>`).join("")}</ul>` : `<span class="tn-note">لا يوجد مدير</span>`}</td>
-        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
+        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn tn-mini c-edit">✏️ تعديل البيانات</button><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
 
       tr.querySelector(".c-name").addEventListener("blur", (e)=>{
         const nv = e.target.textContent.trim().replace(/\s+/g," ");
@@ -10405,6 +10907,14 @@ function renderOrgsWindow(view){
       });
       tr.querySelectorAll(".tn-renew button").forEach(b=>b.addEventListener("click", ()=>{ renewOrg(o, +b.dataset.m); drawTable(); tnToast("تم تجديد الاشتراك حتى "+o.subscriptionExpiry); }));
       tr.querySelector(".c-open").addEventListener("click", ()=>enterOrgView(o.id));
+      tr.querySelector(".c-edit").addEventListener("click", ()=>openEditOrgModal(o, info=>{
+        drawTable();
+        const pw = info.resets.map(r=>`<li>${regEsc(r.user)} — كلمة المرور: <span class="tn-code">${regEsc(r.pass)}</span></li>`).join("");
+        document.getElementById("orgFlash").innerHTML = `<div class="tn-flash" role="status"><b>«${regEsc(o.name)}»:</b> ${info.changes.map(regEsc).join("، ")}.
+          ${pw ? `<ul class="tn-list" style="margin-top:6px;">${pw}</ul><span class="tn-note">احتفظ بكلمات المرور الآن؛ تُخزَّن مشفّرة ولا يمكن عرضها لاحقًا.</span>` : ""}
+          <div style="margin-top:8px;"><button type="button" class="chip-btn tn-mini" id="orgFlashClose2">إخفاء</button></div></div>`;
+        document.getElementById("orgFlashClose2").addEventListener("click", ()=>{ document.getElementById("orgFlash").innerHTML = ""; });
+      }));
       tr.querySelector(".c-del").addEventListener("click", ()=>{ if(deleteOrganization(o)){ drawTable(); tnToast("تم حذف المؤسسة."); } });
       tb.appendChild(tr);
     });
@@ -10511,6 +11021,196 @@ function openAddOrgModal(onDone){
     }catch(e){ console.error(e); setMsg("تعذّر إنشاء المؤسسة، حاول مرة أخرى."); }
     finally{ btn.disabled = false; }
   });
+}
+
+
+/* نافذة تعديل بيانات المؤسسة (اسم/رمز التسجيل/مديرو المؤسسة وكلمات مرورهم) — للمشرف العام */
+function openEditOrgModal(o, onDone){
+  let ov = document.getElementById("orgEditOverlay"); if(ov) ov.remove();
+  ov = document.createElement("div"); ov.className = "overlay"; ov.id = "orgEditOverlay";
+  const admins = (ROOT.orgAdmins||[]).filter(a=>a && a.orgId===o.id);
+  ov.innerHTML = `<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="eoTitle">
+    <button type="button" class="modal-close" id="eoClose">إغلاق ✕</button>
+    <h2 id="eoTitle">تعديل بيانات المؤسسة</h2>
+    <div class="tn-form-grid">
+      <div><label for="eoName">اسم المؤسسة</label><input type="text" id="eoName" autocomplete="off" value="${regEsc(o.name)}"></div>
+      <div><label for="eoCode">رمز التسجيل</label>
+        <div class="tn-inline"><input type="text" id="eoCode" autocomplete="off" dir="ltr" style="text-align:left; text-transform:uppercase;" value="${regEsc(o.code||"")}"><button type="button" class="chip-btn" id="eoCodeGen">توليد</button></div></div>
+    </div>
+    <p class="tn-note" style="margin-top:4px;">تغيير الرمز يُبطل الرمز القديم فورًا (لن يستطيع أحد التسجيل به)؛ أما الحسابات القائمة فلا تتأثر.</p>
+    <div class="tn-section-title">مديرو المؤسسة</div>
+    <div id="eoAdmins">${admins.length ? "" : '<p class="tn-note">لا يوجد مدير لهذه المؤسسة. أضف مديرًا من الأسفل.</p>'}</div>
+    <div class="tn-section-title">إضافة مدير جديد (اختياري)</div>
+    <div class="tn-form-grid">
+      <div><label for="eoNewUser">اسم المستخدم</label><input type="text" id="eoNewUser" autocomplete="off"></div>
+      <div><label for="eoNewPass">كلمة المرور</label>
+        <div class="tn-inline"><input type="text" id="eoNewPass" autocomplete="off" dir="ltr" style="text-align:left;"><button type="button" class="chip-btn" id="eoNewPassGen">توليد</button></div></div>
+    </div>
+    <div class="msg" id="eoMsg" style="margin-top:12px;"></div>
+    <div class="modal-actions"><button type="button" class="primary-btn" id="eoSave" style="flex:1;">حفظ التعديلات</button></div>
+  </div>`;
+  document.body.appendChild(ov); ov.classList.add("show");
+  const $ = id => document.getElementById(id);
+  const setMsg = t=>{ $("eoMsg").textContent = t||""; $("eoMsg").className = t ? "msg show err" : "msg"; };
+  const close = ()=>ov.remove();
+  // صفوف المديرين
+  const box = $("eoAdmins");
+  admins.forEach((a,i)=>{
+    const row = document.createElement("div"); row.className = "ea-row"; row.dataset.i = i;
+    row.style.cssText = "border:1.5px solid #ddd; border-radius:10px; padding:10px 12px; margin:8px 0;";
+    row.innerHTML = `<div class="tn-form-grid">
+        <div><label>اسم المستخدم</label><input type="text" class="ea-user" autocomplete="off" value="${regEsc(a.username)}"></div>
+        <div><label>كلمة مرور جديدة (اتركها فارغة للإبقاء على الحالية)</label>
+          <div class="tn-inline"><input type="password" class="ea-pass" autocomplete="new-password" placeholder="••••••••"><button type="button" class="chip-btn ea-gen">توليد</button></div></div>
+      </div>
+      <label class="tn-check"><input type="checkbox" class="ea-on" ${a.active===false?"":"checked"}> الحساب مفعّل</label>`;
+    row.querySelector(".ea-gen").addEventListener("click", ()=>{ const p = row.querySelector(".ea-pass"); p.value = randomPassword(10); if(p._pwSet) p._pwSet(true); else p.type = "text"; });
+    box.appendChild(row);
+  });
+  $("eoCodeGen").addEventListener("click", ()=>{ $("eoCode").value = genOrgCode(); });
+  $("eoNewPassGen").addEventListener("click", ()=>{ $("eoNewPass").value = randomPassword(10); });
+  $("eoNewPass").value = randomPassword(10);
+  $("eoClose").addEventListener("click", close);
+  ov.addEventListener("click", e=>{ if(e.target===ov) close(); });
+  setTimeout(()=>$("eoName").focus(), 30);
+
+  $("eoSave").addEventListener("click", async ()=>{
+    const btn = $("eoSave"); if(btn.disabled) return;
+    setMsg("");
+    const name = $("eoName").value.trim().replace(/\s+/g," ");
+    const code = $("eoCode").value.trim().toUpperCase().replace(/\s+/g,"");
+    if(name.length<2){ setMsg("اكتب اسم المؤسسة."); return; }
+    if((ROOT.organizations||[]).some(x=>x && x!==o && Sec.norm(x.name)===Sec.norm(name))){ setMsg("توجد مؤسسة أخرى بنفس الاسم."); return; }
+    if(!/^[A-Z0-9]{4,12}$/.test(code)){ setMsg("رمز المؤسسة من 4 إلى 12 حرفًا إنجليزيًا أو رقمًا."); return; }
+    if((ROOT.organizations||[]).some(x=>x && x!==o && String(x.code||"").toUpperCase()===code)){ setMsg("هذا الرمز مستخدم لمؤسسة أخرى، اضغط «توليد»."); return; }
+    const plans = [], names = new Set();
+    for(const row of box.querySelectorAll(".ea-row")){
+      const a = admins[+row.dataset.i];
+      const u = row.querySelector(".ea-user").value.trim().replace(/\s+/g," "), pw = row.querySelector(".ea-pass").value, on = row.querySelector(".ea-on").checked;
+      if(u.length<3){ setMsg("اسم المدير لا يقل عن 3 أحرف."); return; }
+      if(names.has(Sec.norm(u))){ setMsg("اسم مستخدم مكرر بين المديرين: "+u); return; }
+      names.add(Sec.norm(u));
+      if(Sec.norm(u)!==Sec.norm(a.username) && usernameTakenAnywhere(u, a)){ setMsg("اسم المستخدم «"+u+"» مسجَّل مسبقًا في المنصة."); return; }
+      if(pw && pw.length<6){ setMsg("كلمة مرور «"+u+"» لا تقل عن 6 أحرف."); return; }
+      plans.push({ a, u, pw, on });
+    }
+    const nu = $("eoNewUser").value.trim().replace(/\s+/g," "), np = $("eoNewPass").value;
+    if(nu){
+      if(nu.length<3){ setMsg("اسم المدير الجديد لا يقل عن 3 أحرف."); return; }
+      if(usernameTakenAnywhere(nu) || names.has(Sec.norm(nu))){ setMsg("اسم المستخدم «"+nu+"» مسجَّل مسبقًا في المنصة."); return; }
+      if(np.length<6){ setMsg("كلمة مرور المدير الجديد لا تقل عن 6 أحرف."); return; }
+    }
+    btn.disabled = true;
+    try{
+      const creds = await Promise.all(plans.map(p=>p.pw ? Sec.hashPassword(p.pw) : null));
+      const newCred = nu ? await Sec.hashPassword(np) : null;
+      const now = Date.now(), changes = [], resets = [], oldName = o.name;
+      if(o.name!==name){
+        changes.push("تغيير الاسم من «"+oldName+"» إلى «"+name+"»");
+        // الحقل institution في حسابات المنسوبين يحفظ اسم المؤسسة وقت التسجيل؛ نحدّثه ليبقى متسقًا
+        ["students","teachers","parents","coordinators","orgAdmins"].forEach(k=>(ROOT[k]||[]).forEach(r=>{ if(r && r.orgId===o.id && r.institution===oldName) r.institution = name; }));
+        o.name = name;
+      }
+      if(String(o.code||"").toUpperCase()!==code){ changes.push("تغيير رمز التسجيل إلى "+code); o.code = code; }
+      plans.forEach((p,i)=>{
+        const a = p.a, before = a.username;
+        if(Sec.norm(p.u)!==Sec.norm(before) || p.u!==before){ if(p.u!==before) changes.push("تغيير اسم المدير «"+before+"» إلى «"+p.u+"»"); a.username = p.u; }
+        if(creds[i]){ Object.assign(a, creds[i]); delete a.password; changes.push("إعادة تعيين كلمة مرور المدير «"+p.u+"»"); resets.push({ user:p.u, pass:p.pw }); }
+        if((a.active!==false) !== p.on){ a.active = p.on; changes.push((p.on ? "تفعيل" : "إيقاف")+" حساب المدير «"+p.u+"»"); }
+      });
+      if(nu){
+        ROOT.orgAdmins.push(Object.assign({ username:nu, orgId:o.id, active:true, email:"", createdAt:now }, newCred));
+        changes.push("إضافة مدير جديد «"+nu+"»"); resets.push({ user:nu, pass:np });
+      }
+      if(!changes.length){ close(); onDone({ changes:["لا تغييرات للحفظ."], resets:[] }); return; }
+      o.updatedAt = now; orgLog(o, changes.join("، "));
+      saveDB(); flushSaveDBNow();
+      close(); onDone({ changes, resets });
+    }catch(e){ console.error(e); setMsg("تعذّر حفظ التعديلات، حاول مرة أخرى."); }
+    finally{ btn.disabled = false; }
+  });
+}
+
+/* نافذة المشرف العام: النسخ الاحتياطي والاستعادة */
+function renderBackupWindow(view){
+  if(!session || !session.isSuper){ view.innerHTML = '<div class="tn-empty">هذه النافذة للمشرف العام فقط.</div>'; return; }
+  view.innerHTML = `
+    <h2>النسخ الاحتياطي والاستعادة</h2>
+    <p class="sub">حماية بيانات كل المؤسسات: نسخة سحابية تلقائية يوميًا (تُحفظ آخر 14 يومًا)، ونسخة حدثية قبل أي ترحيل أو استعادة أو حذف كبير، ونسخ إضافية على هذا الجهاز.</p>
+    <div class="tn-stats" id="bkStats"></div>
+    <div class="toolbar">
+      <button class="chip-btn accent" id="bkNow">☁️ نسخة سحابية الآن</button>
+      <button class="chip-btn" id="bkDownload">⬇️ تنزيل نسخة كاملة</button>
+      <button class="chip-btn" id="bkUploadBtn">⬆️ استعادة من ملف</button>
+      <button class="chip-btn" id="bkRefresh">تحديث القوائم</button>
+      <input type="file" id="bkFile" accept=".json,application/json" class="hidden">
+    </div>
+    <p class="tn-note">ملف التنزيل يحوي بيانات المستخدمين (كلمات المرور مشفّرة). احفظه في مكان آمن ولا تشاركه. بعد أي استعادة اطلب من المستخدمين إغلاق الصفحة وفتحها من جديد.</p>
+    <h3 style="margin:18px 0 6px;">النسخ السحابية</h3><div id="bkCloud"><div class="tn-note">جارٍ التحميل...</div></div>
+    <h3 style="margin:18px 0 6px;">نسخ هذا الجهاز</h3><div id="bkLocal"><div class="tn-note">جارٍ التحميل...</div></div>`;
+  const $ = id => document.getElementById(id);
+  const fmt = t=> t ? new Date(t).toLocaleString("ar-EG") : "—";
+  const kb = n=> n>1048576 ? (n/1048576).toFixed(1)+" م.ب" : Math.max(1,Math.round(n/1024))+" ك.ب";
+  function drawStats(rows){
+    const c = countsOf(ROOT);
+    const last = rows.find(r=>r.src==="cloud");
+    $("bkStats").innerHTML =
+      `<div class="tn-stat"><div class="n">${c.organizations}</div><div class="l">مؤسسات</div></div>
+       <div class="tn-stat"><div class="n">${c.students+c.teachers+c.coordinators+c.parents+c.orgAdmins}</div><div class="l">مستخدمون</div></div>
+       <div class="tn-stat"><div class="n">${c.models}</div><div class="l">نماذج</div></div>
+       <div class="tn-stat"><div class="n">${c.results}</div><div class="l">نتائج</div></div>
+       <div class="tn-stat ${cloudHydrated?"":"bad"}"><div class="n" style="font-size:16px;">${cloudHydrated?"متصلة":"غير متصلة"}</div><div class="l">السحابة · بنية v${ROOT.schemaVersion||0}/${SCHEMA_VERSION}</div></div>
+       <div class="tn-stat ${last?"":"warn"}"><div class="n" style="font-size:14px;">${last ? fmt(last.at) : "لا توجد"}</div><div class="l">آخر نسخة سحابية</div></div>`;
+  }
+  async function doRestore(getRaw, label){
+    const typed = prompt(`استعادة «${label}» ستستبدل بيانات المنصة كلها بمحتوى هذه النسخة، وتُؤخذ نسخة احتياطية من الوضع الحالي أولًا. للتأكيد اكتب: استعادة`);
+    if(typed===null) return;
+    if(typed.trim()!=="استعادة"){ tnToast("لم يُنفَّذ شيء: كلمة التأكيد غير صحيحة.", "err"); return; }
+    try{
+      tnToast("جارِ الاستعادة، لا تغلق الصفحة...");
+      const raw = await getRaw(); await restoreFromRaw(raw);
+      tnToast("تمت الاستعادة. سيُعاد تحميل الصفحة.");
+      setTimeout(()=>{ try{ localStorage.removeItem("platform-session"); }catch(e){} location.reload(); }, 1500);
+    }catch(e){ console.error(e); tnToast("تعذّرت الاستعادة: "+e.message, "err"); }
+  }
+  function table(el, rows, src){
+    if(!rows.length){ el.innerHTML = '<div class="tn-empty">لا توجد نسخ بعد.</div>'; return; }
+    const box = document.createElement("div"); box.className = "table-wrap";
+    const t = document.createElement("table"); t.className = "data";
+    t.innerHTML = '<thead><tr><th>النوع</th><th>التاريخ</th><th>الوصف</th><th>السجلات</th><th>الحجم</th><th></th></tr></thead><tbody></tbody>';
+    rows.forEach(r=>{
+      const tr = document.createElement("tr");
+      const kindLabel = src==="local" ? '<span class="bk-kind local">جهاز</span>' : (r.kind==="daily" ? '<span class="bk-kind daily">يومية</span>' : '<span class="bk-kind event">حدثية</span>');
+      tr.innerHTML = `<td>${kindLabel}</td><td>${fmt(r.at)}</td><td>${regEsc(r.note||"—")}</td><td>${r.total||0}</td><td>${kb(r.size||0)}</td><td><button type="button" class="chip-btn tn-mini">استعادة</button></td>`;
+      tr.querySelector("button").addEventListener("click", ()=>doRestore(()=> src==="local" ? LocalBackup.get(r.id) : Backup.fetchRaw(r.kind, r.id), fmt(r.at)));
+      t.querySelector("tbody").appendChild(tr);
+    });
+    box.appendChild(t); el.innerHTML = ""; el.appendChild(box);
+  }
+  async function load(){
+    let cloudRows = [];
+    try{ cloudRows = (await Backup.list()).map(r=>Object.assign({ src:"cloud" }, r)); }catch(e){ console.error(e); $("bkCloud").innerHTML = '<div class="tn-empty">تعذّر جلب قائمة النسخ السحابية.</div>'; }
+    if(cloudRows.length || firebaseDB) table($("bkCloud"), cloudRows, "cloud");
+    if(!firebaseDB) $("bkCloud").innerHTML = '<div class="tn-empty">لا يوجد اتصال بقاعدة البيانات السحابية.</div>';
+    const localRows = await LocalBackup.list();
+    table($("bkLocal"), localRows, "local");
+    drawStats(cloudRows);
+  }
+  $("bkNow").addEventListener("click", async ()=>{
+    const b = $("bkNow"); b.disabled = true;
+    try{ const ok = await Backup.event("يدوية", JSON.stringify(ROOT), true); await LocalBackup.save(JSON.stringify(ROOT), "يدوية", true); tnToast(ok ? "تم إنشاء نسخة سحابية." : "تعذّر إنشاء النسخة السحابية.", ok ? undefined : "err"); await load(); }
+    finally{ b.disabled = false; }
+  });
+  $("bkDownload").addEventListener("click", ()=>{ downloadBackupFile(); tnToast("تم تنزيل النسخة. احفظها في مكان آمن."); });
+  $("bkUploadBtn").addEventListener("click", ()=>$("bkFile").click());
+  $("bkFile").addEventListener("change", e=>{
+    const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = ()=>doRestore(async ()=>String(rd.result), f.name);
+    rd.readAsText(f, "utf-8");
+  });
+  $("bkRefresh").addEventListener("click", load);
+  drawStats([]); load();
 }
 
 
