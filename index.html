@@ -350,6 +350,8 @@
   /* بند: عند تفعيل قفل الخريطة الذهنية، نعطّل كل الأزرار الفرعية والتحرير النصي داخل
      الصناديق وبطاقات التعريف والعنوان، بحيث لا يبقى شيء يلتقط الضغط سوى تحريك الصندوق نفسه. */
   .mindmap-area.mm-locked .mindbox .mb-handle .bulb,
+  .mindmap-area.mm-locked .mindbox .mb-handle .screenbtn,
+  .mindmap-area.mm-locked .mindbox .mb-handle .clipbtn,
   .mindmap-area.mm-locked .mindbox .mb-handle .mb-color-slot,
   .mindmap-area.mm-locked .mindbox .mb-handle .mb-del,
   .mindmap-area.mm-locked .mindbox .mb-label,
@@ -697,6 +699,55 @@
   .sync-chip.bad{ color:var(--danger); border-color:var(--danger); background:#fbeae7; }
   .bk-kind{ display:inline-block; padding:1px 9px; border-radius:999px; font-size:12px; font-weight:800; border:1.5px solid currentColor; }
   .bk-kind.daily{ color:var(--accent); } .bk-kind.event{ color:var(--warn); } .bk-kind.local{ color:#2f6fdb; }
+
+  /* ===== زر الشاشة 🖥 وعارض الوسائط ===== */
+  .screenbtn{ cursor:pointer; font-size:15px; line-height:1; flex:0 0 auto; user-select:none; }
+  .screenbtn:hover{ filter:none !important; }
+  /* رمز الشاشة الجديد (SVG أفقي) + زر المشبك للرابط الخارجي */
+  .screenbtn, .clipbtn{ display:inline-flex; align-items:center; justify-content:center; }
+  .screenbtn svg{ width:1.8em; height:1.25em; display:block; overflow:visible; }
+  .clipbtn{ cursor:pointer; font-size:15px; line-height:1; flex:0 0 auto; user-select:none; }
+  .clipbtn svg{ width:1.1em; height:1.2em; display:block; overflow:visible; }
+  .clipbtn:hover{ filter:none !important; }
+  .media-row{ display:inline-flex; align-items:center; gap:5px; flex:0 0 auto; }
+  .bulb-stack{ display:inline-flex; flex-direction:column; align-items:center; gap:2px; flex:0 0 auto; }
+  .qblock-actions .bulb, .qblock-actions .screenbtn, .qblock-actions .clipbtn{ font-size:16px; cursor:pointer; align-self:center; }
+  .hint-tools{ display:inline-flex; gap:6px; align-items:center; }
+  .mcq-head .hint-tools{ flex:0 0 auto; }
+  .match-card .bulb, .match-card .screenbtn, .match-card .clipbtn{ margin-left:4px; vertical-align:middle; }
+  .mindmap-area.mm-locked .mindbox .mb-handle .screenbtn, .mindmap-area.mm-locked .mindbox .mb-handle .clipbtn{ pointer-events:none; opacity:.55; }
+  #studentMediaOverlay{ position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; }
+  #studentMediaOverlay .sm-frame{ position:relative; background:#000; border-radius:12px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; visibility:hidden; }
+  #studentMediaOverlay .sm-frame.sm-ready{ visibility:visible; }
+  #studentMediaOverlay .sm-frame.sm-full{ border-radius:0; }
+  #studentMediaOverlay .sm-err{ color:#fff; font-weight:700; text-align:center; padding:20px; line-height:1.8; max-width:420px; }
+  #studentMediaOverlay .sm-media{ width:100%; height:100%; object-fit:contain; background:#000; display:block; }
+  #studentMediaOverlay .sm-tools{ position:absolute; top:8px; left:8px; display:flex; gap:6px; z-index:2; }
+  #studentMediaOverlay .sm-btn{ border:none; background:rgba(0,0,0,.65); color:#fff; font-size:15px; font-weight:700; border-radius:8px; padding:6px 10px; cursor:pointer; }
+  #studentMediaOverlay .sm-btn:hover{ background:rgba(0,0,0,.85); }
+
+  /* ===== الإملاء السماعي الجماعي (شاشة كبيرة: عدة طلاب معًا) ===== */
+  #saBoardOverlay{ position:fixed; inset:0; z-index:850; background:#f4f6f5; display:flex; flex-direction:column; padding:10px; gap:10px; direction:rtl; }
+  #saBoardOverlay .sab-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:0 0 auto; }
+  #saBoardOverlay .sab-top h3{ margin:0; font-size:20px; flex:1 1 auto; }
+  #saBoardOverlay .sab-grid{ flex:1 1 auto; min-height:0; display:grid; gap:10px; }
+  #saBoardOverlay .sab-panel{ display:flex; flex-direction:column; gap:6px; min-height:0; min-width:0; background:#fff; border:2.5px solid var(--ink); border-radius:12px; padding:8px; outline:none; }
+  #saBoardOverlay .sab-panel:focus{ border-color:var(--accent); }
+  #saBoardOverlay .sab-name{ border:none; border-bottom:2px dashed #bbb; font-weight:900; font-size:clamp(14px,1.8vh,20px); text-align:center; padding:2px; background:transparent; width:100%; }
+  #saBoardOverlay .sab-text{ flex:0 0 auto; min-height:clamp(44px,9vh,90px); border:2px solid var(--ink); border-radius:10px; padding:6px 10px; font-size:clamp(20px,4vh,40px); font-weight:700; line-height:1.6; word-break:break-word; background:#fff; }
+  #saBoardOverlay .sab-text.ok{ background:#d8f3e3; border-color:#1e8e4e; }
+  #saBoardOverlay .sab-text.bad{ background:#fde2e0; border-color:var(--danger); }
+  #saBoardOverlay .sab-caret{ display:inline-block; width:2px; height:1em; background:var(--accent); vertical-align:middle; animation:sabBlink 1s steps(1) infinite; }
+  @keyframes sabBlink{ 50%{ opacity:0; } }
+  #saBoardOverlay .sab-status{ flex:0 0 auto; min-height:1.4em; text-align:center; font-weight:900; font-size:clamp(13px,2vh,18px); }
+  #saBoardOverlay .sab-kb{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:4px; }
+  #saBoardOverlay .sab-row{ flex:1 1 0; min-height:0; display:flex; gap:4px; justify-content:center; }
+  #saBoardOverlay .sab-key{ flex:1 1 0; min-width:0; border:1.5px solid var(--ink); border-radius:8px; background:#fff; font-size:clamp(14px,2.6vh,28px); font-weight:700; cursor:pointer; padding:0; touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+  #saBoardOverlay .sab-key:active{ background:var(--accent); color:#fff; }
+  #saBoardOverlay .sab-key.wide{ flex:2.2 1 0; }
+  #saBoardOverlay .sab-key.act{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  #saBoardOverlay .sab-key.del{ background:#fde2e0; }
+  #saBoardOverlay .sab-key.mark{ background:#f4f6f5; }
 </style>
 </head>
 <body>
@@ -744,7 +795,7 @@
   <h2>تسجيل جديد</h2>
   <p>اكتب رمز مؤسستك أولًا (تحصل عليه من إدارة مؤسستك)، ثم اختر صفتك وأكمل بياناتك. يُفعَّل الحساب مباشرة ما لم توقف إدارة المؤسسة التفعيل التلقائي.</p>
   <label for="regOrgCode">رمز المؤسسة</label>
-  <div class="tn-inline"><input type="text" id="regOrgCode" dir="ltr" style="text-align:left; text-transform:uppercase;" autocomplete="off" placeholder="مثال: AB12CD"><button type="button" class="chip-btn" id="regOrgCheck">تحقق</button></div>
+  <input type="text" id="regOrgCode" dir="rtl" style="text-align:right;" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="إن كنت لا تنتمي لمؤسسة اكتب: AHHA">
   <div class="msg" id="regOrgMsg"></div>
   <label>الصفة</label>
   <div class="roles locked" id="regRoleGroup" style="grid-template-columns:repeat(3,1fr); margin-bottom:6px;">
@@ -1301,11 +1352,13 @@ function ensureTenancy(){
   const now = Date.now();
   if(!ROOT.tenancyMigrated){
     if(!ROOT.organizations.some(o=>o && o.id===DEFAULT_ORG_ID)){
-      ROOT.organizations.push({ id:DEFAULT_ORG_ID, name:"المؤسسة الافتراضية", code:"DEFAULT", subscriptionStatus:"active", subscriptionExpiry:"", createdAt:now, updatedAt:now, statusLog:[], migrated:true });
+      ROOT.organizations.push({ id:DEFAULT_ORG_ID, name:"المؤسسة الافتراضية", code:"AHHA", subscriptionStatus:"active", subscriptionExpiry:"", createdAt:now, updatedAt:now, statusLog:[], migrated:true });
     }
     ROOT.tenancyMigrated = true;
   }
   const def = ROOT.organizations.find(o=>o && o.id===DEFAULT_ORG_ID);
+  // رمز التسجيل العام لغير المنتمين لمؤسسة هو AHHA (يُحدَّث الرمز القديم DEFAULT ما لم يكن AHHA مستخدمًا لمؤسسة أخرى)
+  if(def && String(def.code||"").toUpperCase()==="DEFAULT" && !ROOT.organizations.some(o=>o && o!==def && String(o.code||"").toUpperCase()==="AHHA")) def.code = "AHHA";
   TENANT_ARRAYS.forEach(k=>{ if(!Array.isArray(ROOT[k])) ROOT[k] = []; });
   if(def){
     TENANT_ARRAYS.forEach(k=>{ ROOT[k].forEach(x=>{ if(x && typeof x==="object" && !x.orgId) x.orgId = DEFAULT_ORG_ID; }); });
@@ -2787,25 +2840,71 @@ function regResetOrgGate(){
   if(grp) grp.classList.add("locked");
   const msgEl = document.getElementById("regOrgMsg");
   if(msgEl){ msgEl.textContent = ""; msgEl.className = "msg"; }
+  // تغيّر الرمز ⇒ تُلغى الصفة والحقول المبنية على المؤسسة السابقة
+  if(regRole){
+    regRole = null;
+    const fb = document.getElementById("regFields"); if(fb){ fb.innerHTML = ""; fb.classList.add("hidden"); }
+    document.querySelectorAll("#regRoleGroup .role-btn").forEach(b=>b.classList.remove("active"));
+    if(regSaveBtn) regSaveBtn.disabled = true;
+  }
 }
-function checkRegOrgCode(){
+// الرمز AHHA (ومعه DEFAULT القديم) يشير إلى المؤسسة العامة الافتراضية لمن لا ينتمي لمؤسسة
+function findOrgByRegCode(code){
+  let org = (ROOT.organizations||[]).find(o=>o && String(o.code||"").toUpperCase()===code) || null;
+  if(!org && (code==="AHHA" || code==="DEFAULT")) org = orgById(DEFAULT_ORG_ID);
+  return org;
+}
+let regOrgCheckTimer = null;
+/* تحقق مباشر من الرمز أثناء الكتابة بلا زر: النجاح فوري عند التطابق، أما رسالة "غير موجود" فتظهر بعد توقف الكتابة قليلًا */
+function checkRegOrgCode(mode){ // mode: "typing" | "final"
   const codeEl = document.getElementById("regOrgCode");
   const code = (codeEl ? codeEl.value : "").trim().toUpperCase().replace(/\s+/g,"");
   const msgEl = document.getElementById("regOrgMsg");
-  if(!code){ msgEl.textContent = "اكتب رمز المؤسسة."; msgEl.className = "msg show err"; regResetOrgGate(); if(codeEl) codeEl.value = ""; return; }
-  const org = (ROOT.organizations||[]).find(o=>o && String(o.code||"").toUpperCase()===code);
-  if(!org){ msgEl.textContent = "لم يُعثر على مؤسسة بهذا الرمز. تأكد منه مع إدارة مؤسستك."; msgEl.className = "msg show err"; regResetOrgGate(); return; }
+  const fail = (t)=>{ msgEl.textContent = t; msgEl.className = "msg show err"; if(regOrgId) regResetOrgGate(); msgEl.textContent = t; msgEl.className = "msg show err"; };
+  if(!code){
+    if(mode==="final") fail("اكتب رمز المؤسسة.");
+    else { msgEl.textContent = ""; msgEl.className = "msg"; }
+    return;
+  }
+  const org = findOrgByRegCode(code);
+  if(!org){
+    if(mode==="final" || code.length>=4) fail("لم يُعثر على مؤسسة بهذا الرمز. تأكد منه مع إدارة مؤسستك.");
+    return;
+  }
   const st = orgStateOf(org);
-  if(!st.ok){ msgEl.textContent = "اشتراك هذه المؤسسة " + (st.code==="expired" ? "منتهٍ" : "موقوف") + " حاليًا. راجع إدارة مؤسستك أو المشرف العام."; msgEl.className = "msg show err"; regResetOrgGate(); return; }
+  if(!st.ok){ fail("اشتراك هذه المؤسسة " + (st.code==="expired" ? "منتهٍ" : "موقوف") + " حاليًا. راجع إدارة مؤسستك أو المشرف العام."); return; }
+  if(regOrgId===org.id) return;
   regOrgId = org.id; regOrgObj = org;
   msgEl.textContent = "✔ المؤسسة: " + org.name + " — اختر صفتك الآن.";
   msgEl.className = "msg show ok";
   document.getElementById("regRoleGroup").classList.remove("locked");
 }
-document.getElementById("regOrgCheck").addEventListener("click", checkRegOrgCode);
-document.getElementById("regOrgCode").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); checkRegOrgCode(); } });
-document.getElementById("regOrgCode").addEventListener("input", ()=>{ if(regOrgId) regResetOrgGate(); });
+(function(){
+  const codeInput = document.getElementById("regOrgCode");
+  codeInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); clearTimeout(regOrgCheckTimer); checkRegOrgCode("final"); } });
+  codeInput.addEventListener("input", ()=>{
+    // النص الإرشادي عربي (RTL)، أما الرمز المكتوب فلاتيني (LTR)
+    codeInput.dir = codeInput.value ? "ltr" : "rtl";
+    codeInput.style.textAlign = codeInput.value ? "left" : "right";
+    codeInput.style.textTransform = codeInput.value ? "uppercase" : "none";
+    clearTimeout(regOrgCheckTimer);
+    const prev = regOrgId;
+    if(regOrgId) regResetOrgGate();
+    checkRegOrgCode("typing");               // نجاح فوري عند التطابق
+    if(!regOrgId) regOrgCheckTimer = setTimeout(()=>checkRegOrgCode("final"), 900);
+  });
+  codeInput.addEventListener("blur", ()=>{ clearTimeout(regOrgCheckTimer); if(codeInput.value.trim() && !regOrgId) checkRegOrgCode("final"); });
+})();
 
+/* نافذة تنبيه بسيطة تبقى حتى يضغط المستخدم "حسنًا" */
+function showNoticeModal(text, title){
+  const old = document.getElementById("noticeOverlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.className = "overlay"; ov.id = "noticeOverlay";
+  ov.innerHTML = `<div class="modal" role="alertdialog" aria-modal="true"><h2>${regEsc(title||"تنبيه")}</h2><p style="font-size:16px; font-weight:700; line-height:1.9;">${regEsc(text)}</p><div class="modal-actions"><button type="button" class="primary-btn" id="noticeOk" style="flex:1;">حسنًا</button></div></div>`;
+  document.body.appendChild(ov); ov.classList.add("show");
+  ov.querySelector("#noticeOk").addEventListener("click", ()=>ov.remove());
+  ov.querySelector("#noticeOk").focus();
+}
 function regOptions(list, placeholder){
   return `<option value="">${placeholder}</option>` + list.map(v=>`<option value="${regEsc(v)}">${regEsc(v)}</option>`).join("");
 }
@@ -2860,7 +2959,7 @@ document.getElementById("registerBtn").addEventListener("click", ()=>{
   document.querySelectorAll("#regRoleGroup .role-btn").forEach(b=>b.classList.remove("active"));
   regSaveBtn.disabled = true; setRegMsg("");
   regResetOrgGate();
-  const codeEl = document.getElementById("regOrgCode"); if(codeEl) codeEl.value = "";
+  const codeEl = document.getElementById("regOrgCode"); if(codeEl){ codeEl.value = ""; codeEl.dir = "rtl"; codeEl.style.textAlign = "right"; codeEl.style.textTransform = "none"; }
   regOpenedAt = Date.now();
   openOverlay("registerOverlay");
 });
@@ -2912,7 +3011,7 @@ async function submitRegistration(){
   const prevScope = SCOPE.orgId;
   try{
     setRegMsg("");
-    if(!regOrgId){ setRegMsg("تحقق من رمز المؤسسة أولًا."); return; }
+    if(!regOrgId){ setRegMsg("اكتب رمز مؤسستك الصحيح أولًا (أو AHHA إن كنت لا تنتمي لمؤسسة)."); return; }
     const orgNow = orgById(regOrgId);
     const stNow = orgStateOf(orgNow);
     if(!orgNow || !stNow.ok){ setRegMsg("تعذّر التسجيل: اشتراك المؤسسة غير نشط حاليًا. راجع إدارة مؤسستك أو المشرف العام."); return; }
@@ -2974,8 +3073,10 @@ async function submitRegistration(){
     saveDB(); flushSaveDBNow();
     regRateNote();
     closeOverlay("registerOverlay"); clearMsg();
+    const MSG_PENDING_24H = "سيتم تفعيل حسابك بعد 24 ساعة فاحفظ اسم المستخدم وكلمة المرور اللتان أنشأتهما لتتمكن من الدخول";
     showMsg(activeNow ? "تم إنشاء حسابك وتفعيله بنجاح. يمكنك تسجيل الدخول الآن باسم المستخدم وكلمة المرور."
-                      : "تم حفظ بياناتك بنجاح، وحسابك بانتظار التفعيل من المشرف العام أو أحد المنسقين.", "ok");
+                      : MSG_PENDING_24H, "ok");
+    if(!activeNow) showNoticeModal(MSG_PENDING_24H, "تم إنشاء حسابك");
     usernameInput.value = username;
     regFieldsBox.innerHTML = ""; regFieldsBox.classList.add("hidden"); regRole = null;
   }catch(e){
@@ -4075,8 +4176,8 @@ function renderFormsWindow(view, role, bankMode){
           <div class="toolbar" style="margin-top:6px;">
             <button class="chip-btn" id="fExportOne" title="تصدير النموذج المحدد حاليًا كملف JSON">⬇ تصدير المحدد</button>
             <button class="chip-btn" id="fExportAll" title="تصدير كل ما يطابق الفصل/الصف/المادة الحاليين في ملف واحد">⬇ تصدير الكل (الفلتر الحالي)</button>
-            <button class="chip-btn accent" id="fImportModels" title="استيراد ملف JSON (نموذج واحد أو عدة نماذج) تم تصديره من هذه المنصة">📥 استيراد نماذج</button>
-            <input type="file" id="fImportModelsFile" accept=".json" style="display:none;">
+            <button class="chip-btn accent" id="fImportModels" title="استيراد ملف JSON واحد أو عدة ملفات دفعة واحدة (نموذج واحد أو عدة نماذج) تم تصديرها من هذه المنصة">📥 استيراد نماذج</button>
+            <input type="file" id="fImportModelsFile" accept=".json,application/json" multiple style="display:none;">
           </div>
           <div id="fCopyToBox"></div>
         </div>
@@ -4417,16 +4518,19 @@ function renderFormsWindow(view, role, bankMode){
       `${bankMode?"بنوك":"نماذج"}_${grade}_${subject}.json`);
   });
   document.getElementById("fImportModels").addEventListener("click", ()=> document.getElementById("fImportModelsFile").click());
-  document.getElementById("fImportModelsFile").addEventListener("change", (e)=>{
-    const file = e.target.files[0]; e.target.value = "";
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{
+  document.getElementById("fImportModelsFile").addEventListener("change", async (e)=>{
+    // نأخذ نسخة من قائمة الملفات قبل تفريغ الحقل (تفريغه يمسح القائمة الأصلية في بعض المتصفحات)
+    const files = Array.from(e.target.files || []); e.target.value = "";
+    if(!files.length) return;
+    const readText = f => new Promise((res, rej)=>{
+      const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); r.readAsText(f, "utf-8");
+    });
+    let ok=0, denied=0, bad=0, badFiles=0;
+    for(const file of files){
       let json;
-      try{ json = JSON.parse(reader.result); }
-      catch(err){ alert("تعذّر قراءة الملف: تأكد أنه ملف JSON صالح تم تصديره من هذه الميزة."); return; }
+      try{ json = JSON.parse(await readText(file)); }
+      catch(err){ badFiles++; continue; }
       const items = Array.isArray(json && json.items) ? json.items : [json];
-      let ok=0, denied=0, bad=0;
       items.forEach(it=>{
         if(!it || typeof it!=="object" || !Array.isArray(it.data)){ bad++; return; }
         const term = it.term || fTerm.value, grade = it.grade || fGrade.value, subject = it.subject || fSubject.value;
@@ -4446,11 +4550,14 @@ function renderFormsWindow(view, role, bankMode){
         recomputeGroupNumbers(term, grade, subject);
         ok++;
       });
-      saveDB();
-      refreshNumbers();
-      tnToast(`تم استيراد ${ok} ${bankMode?"بنكًا":"نموذجًا"}.` + (denied?` رُفض ${denied} خارج صلاحياتك.`:"") + (bad?` وتجاهُل ${bad} عنصر غير صالح.`:""), (!ok && (denied||bad)) ? "err" : undefined);
-    };
-    reader.readAsText(file, "utf-8");
+    }
+    if(files.length===1 && badFiles===1){ alert("تعذّر قراءة الملف: تأكد أنه ملف JSON صالح تم تصديره من هذه الميزة."); return; }
+    saveDB();
+    refreshNumbers();
+    const readFiles = files.length - badFiles;
+    tnToast(`تم استيراد ${ok} ${bankMode?"بنكًا":"نموذجًا"}` + (files.length>1 ? ` من ${readFiles} ملف` : "") + "." +
+      (denied?` رُفض ${denied} خارج صلاحياتك.`:"") + (bad?` وتجاهُل ${bad} عنصر غير صالح.`:"") + (badFiles?` وتعذّرت قراءة ${badFiles} ملف (ليس JSON صالحًا).`:""),
+      (!ok && (denied||bad||badFiles)) ? "err" : undefined);
   });
 
   let lastAllModelsMode = "everything";
@@ -4867,7 +4974,7 @@ function serializeModel(model, warnings){
         const options = labels.map(l=>l.querySelectorAll("input")[1].value.trim());
         const correct = labels.findIndex(l=>l.querySelector('input[type="radio"]').checked);
         const hint1 = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
-        if(qtext && options.some(o=>o)) data.push({type:"mcq", question:qtext, options, correct, boxMode, hint:hint1});
+        if(qtext && options.some(o=>o)) data.push(Object.assign({type:"mcq", question:qtext, options, correct, boxMode, hint:hint1}, mediaOf(qi.querySelector(".bulb"))));
       });
     }
     const tfList = el.querySelector(".tf-list");
@@ -4877,7 +4984,7 @@ function serializeModel(model, warnings){
         const selT = qi.querySelector(".tf-mark.selT"), selF = qi.querySelector(".tf-mark.selF");
         const correct = selT ? true : (selF ? false : null);
         const hint2 = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
-        if(stmt) data.push({type:"tf", statement:stmt, correct, hint:hint2});
+        if(stmt) data.push(Object.assign({type:"tf", statement:stmt, correct, hint:hint2}, mediaOf(qi.querySelector(".bulb"))));
         if(stmt && correct===null) warnings.push(`سؤال "صواب/خطأ" بعبارة: "${stmt}" — تم حفظه، لكن لم يُحدَّد الجواب الصحيح بعد (✓ أو ✗) فلن يُحتسب له تصحيح آلي حتى تحدّده.`);
       });
     }
@@ -4889,7 +4996,7 @@ function serializeModel(model, warnings){
         const correctIdx = marks.map((m,i)=>m.classList.contains("selected")?i:null).filter(i=>i!==null);
         const hint3 = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
         if(cells.some(c=>c)){
-          data.push({type:"spellchoice", options:cells, correct:correctIdx, hint:hint3});
+          data.push(Object.assign({type:"spellchoice", options:cells, correct:correctIdx, hint:hint3}, mediaOf(qi.querySelector(".bulb"))));
           if(!correctIdx.length) warnings.push(`سؤال "خيارات إملاء" بالكلمات: "${cells.filter(c=>c).join("، ")}" — تم حفظه، لكن لم تُحدَّد أي كلمة صحيحة بعد (اضغط "تحديد كصحيحة" تحت الكلمة الصحيحة) فلن يُحتسب له تصحيح آلي حتى تحدّدها.`);
         }
       });
@@ -4901,14 +5008,21 @@ function serializeModel(model, warnings){
         return (t ? t.textContent : c.textContent).trim();
       });
       const roHint = el.querySelector(".ro-toolbar .bulb") ? (el.querySelector(".ro-toolbar .bulb").dataset.hint||"") : "";
-      if(order.some(o=>o)) data.push({type:"reorder", correctOrder: order, hint: roHint});
+      if(order.some(o=>o)) data.push(Object.assign({type:"reorder", correctOrder: order, hint: roHint}, mediaOf(el.querySelector(".ro-toolbar .bulb"))));
     }
     if(typeof el.getMatchPairs === "function"){
       const pairs = el.getMatchPairs().filter(p=>p.right && p.left);
       const matchHint = el.querySelector(".match-toolbar .bulb") ? (el.querySelector(".match-toolbar .bulb").dataset.hint||"") : "";
       const allCards = (typeof el.getMatchAllCards === "function") ? el.getMatchAllCards() : {rightAll:[], leftAll:[]};
       if(pairs.length || allCards.rightAll.length || allCards.leftAll.length){
-        data.push({type:"match", pairs, hint: matchHint, rightAll: allCards.rightAll, leftAll: allCards.leftAll});
+        // بطاقات العمود الأيمن: لكل بطاقة لمبة (وشاشة) خاصة بها
+        const rightMeta = [...el.querySelectorAll(".mc-right .match-card")].map(c=>{
+          const t = c.querySelector("input").value.trim(), b = c.querySelector(".bulb");
+          if(!t || !b) return null;
+          const h = b.dataset.hint || "", m = mediaOf(b);
+          return (h || m.media || m.link) ? Object.assign({text:t, hint:h}, m) : null;
+        }).filter(Boolean);
+        data.push(Object.assign({type:"match", pairs, hint: matchHint, rightAll: allCards.rightAll, leftAll: allCards.leftAll, rightMeta}, mediaOf(el.querySelector(".match-toolbar .bulb"))));
       }
     }
     const classifyTable = el.querySelector(".classify-table");
@@ -4928,7 +5042,8 @@ function serializeModel(model, warnings){
           });
         });
       });
-      if(columns.some(c=>c && c!=="عمود جديد")) data.push({type:"classify", columns, columnHints, items});
+      const columnMedia = [...classifyTable.querySelectorAll("thead th:not(.cf-th-space)")].map(th=>mediaOf(th.querySelector(".bulb")));
+      if(columns.some(c=>c && c!=="عمود جديد")) data.push({type:"classify", columns, columnHints, columnMedia, items});
       if(columns.some(c=>c) && !items.length) warnings.push(`سؤال "تصنيف" (أعمدة: ${columns.join("، ")}) — تم حفظه، لكن لا توجد بعد أي بطاقات مسحوبة داخل الجدول.`);
     }
     const saList = el.querySelector(".sa-list");
@@ -4937,7 +5052,7 @@ function serializeModel(model, warnings){
         const ans = qi.querySelector("textarea").value.trim();
         const audioUrl = qi.dataset.audioData || null;
         const hint = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
-        if(ans) data.push({type:"spellaudio", answer:ans, audioUrl, hint});
+        if(ans) data.push(Object.assign({type:"spellaudio", answer:ans, audioUrl, hint}, mediaOf(qi.querySelector(".bulb"))));
       });
     }
     const passageEl = el.querySelector(".gz-passage");
@@ -4971,7 +5086,7 @@ function serializeModel(model, warnings){
             const pencilEl = qRow ? qRow.querySelector(".pencil") : null;
             const hint = bulbEl ? (bulbEl.dataset.hint||"") : "";
             const strict = pencilEl ? pencilEl.classList.contains("on") : false;
-            if(qtext) data.push({type:"grammarreq", passageWords, passageWordsTagged, question:qtext, correctWords, strict, hint, rowId, isEirab, rowSlot: qi});
+            if(qtext) data.push(Object.assign({type:"grammarreq", passageWords, passageWordsTagged, question:qtext, correctWords, strict, hint, rowId, isEirab, rowSlot: qi}, mediaOf(bulbEl)));
             if(qtext && !correctWords.length) warnings.push(`سؤال نحوي: "${qtext}" — تم حفظه، لكن لم تُسحب بعد أي كلمة كإجابة صحيحة في خانة الإجابة المقابلة، فلن يُحتسب له تصحيح آلي حتى تحدّدها.`);
           });
         });
@@ -4990,7 +5105,8 @@ function serializeModel(model, warnings){
           .map(c=>({a:remap[c.a], b:remap[c.b]}));
         const bankCards = (typeof el.getMindmapBankCards === "function") ? el.getMindmapBankCards() : [];
         const bg = (typeof el.getMindmapBg === "function") ? el.getMindmapBg() : "";
-        data.push({type:"mindmap", items, connections, bankCards, bg});
+        const mmQ = (typeof el.getMindmapQuestion === "function") ? el.getMindmapQuestion() : {};
+        data.push(Object.assign({type:"mindmap", items, connections, bankCards, bg}, mmQ));
       }
       const missing = allBoxes.filter(x=>!x.answer && !x.isLabel).length;
       if(missing>0) warnings.push(`خريطة ذهنية: ${missing} من صناديقها بلا إجابة محدَّدة (يجب سحب الكلمة الصحيحة من البنك إلى كل صندوق) — هذه الصناديق تحديدًا لن تظهر عند الطالب.`);
@@ -5013,7 +5129,7 @@ function serializeModel(model, warnings){
       esList.querySelectorAll(".qitem").forEach(qi=>{
         const qtext = qi.querySelector('input[type="text"]').value.trim();
         const hint4 = qi.querySelector(".bulb") ? (qi.querySelector(".bulb").dataset.hint||"") : "";
-        if(qtext) data.push({type:"essay", question:qtext, hint:hint4});
+        if(qtext) data.push(Object.assign({type:"essay", question:qtext, hint:hint4}, mediaOf(qi.querySelector(".bulb"))));
       });
     }
   });
@@ -5500,10 +5616,314 @@ function addBlockQNum(el){
   return badge;
 }
 
+/* ===================== زر الشاشة 🖥 =====================
+   المعلم: يرفع فيديو أو صورة تُحفظ مع السؤال (data URL) بجوار اللمبة. الطالب: يُعرض الوسيط مباشرة داخل المنصة
+   في إطار بثلث مساحة الشاشة تقريبًا (زر توسيع/استعادة)، ويُغلق فور الضغط خارج الإطار — بلا تنزيل ولا فتح خارجي. */
+const MEDIA_MAX_VIDEO = 4 * 1024 * 1024;   // حدّ الفيديو (بايت): الوسائط تُخزَّن داخل قاعدة بيانات المنصة
+/* رمز الشاشة: شاشة عريضة أفقية (SVG) بإطار داكن وشاشة زرقاء وزر تشغيل وقاعدة — أوضح وأجمل من الإيموجي 🖥 */
+const SCREEN_SVG = '<svg viewBox="0 0 32 22" aria-hidden="true" focusable="false"><rect x="1" y="1" width="30" height="16" rx="2.6" fill="#2c3e50"/><rect x="3" y="3" width="26" height="12" rx="1.2" fill="#3aa7e8"/><path d="M3 3h12L8 15H3z" fill="#fff" opacity=".22"/><path d="M13.6 5.9L20.4 9l-6.8 3.1z" fill="#fff"/><rect x="14" y="17" width="4" height="2.6" fill="#2c3e50"/><rect x="9" y="19.4" width="14" height="2.2" rx="1.1" fill="#2c3e50"/></svg>';
+/* رمز المشبك 📎 لإرفاق رابط خارجي */
+const CLIP_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="#e07b00" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+/* تنظيف الرابط: يقبل http/https فقط (أو نطاقًا مجردًا فيُضاف له https://) ويرفض javascript: وdata: وغيرها */
+function normalizeLink(u){
+  u = String(u == null ? "" : u).trim(); if(!u) return "";
+  if(!/^https?:\/\//i.test(u)){
+    if(/^[a-z][a-z0-9+.\-]*:(?!\d)/i.test(u)) return "";
+    u = "https://" + u.replace(/^\/\//, "");
+  }
+  try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") ? x.href : ""; }catch(e){ return ""; }
+}
+function mediaOf(bulb){
+  const d = bulb && bulb.dataset, o = {};
+  if(d && d.media){ o.media = d.media; o.mediaType = d.mediaType || "image"; }
+  if(d && d.link){ o.link = d.link; }
+  return o;
+}
+function restoreMedia(bulb, saved){
+  if(bulb && saved && saved.media){ bulb.dataset.media = saved.media; bulb.dataset.mediaType = saved.mediaType || "image"; }
+  if(bulb && saved && saved.link){ const n = normalizeLink(saved.link); if(n) bulb.dataset.link = n; }
+  refreshScreen(bulb);
+}
+function refreshScreen(bulb){
+  const sc = bulb && bulb._screen; if(!sc) return;
+  const has = !!bulb.dataset.media;
+  sc.style.filter = has ? "none" : "grayscale(1) opacity(.4)";
+  sc.title = has ? ("شاشة العرض: "+(bulb.dataset.mediaType==="video" ? "فيديو" : "صورة")+" محمَّل (اضغط للتعديل)") : "شاشة العرض: تحميل فيديو أو صورة يراها الطالب";
+  const cl = bulb._clip;
+  if(cl){
+    const hl = !!bulb.dataset.link;
+    cl.style.filter = hl ? "none" : "grayscale(1) opacity(.4)";
+    cl.title = hl ? ("رابط خارجي: "+bulb.dataset.link+" (اضغط للتعديل)") : "رابط خارجي: إرفاق رابط يفتحه الطالب";
+  }
+}
+/* يُنشئ زر الشاشة بجوار اللمبة (أو أسفلها إن كانت داخل خانة مطلوبات الجدول النحوي) */
+function ensureScreen(bulb){
+  if(!bulb || bulb._screen || !bulb.parentNode) return;
+  const sc = document.createElement("span");
+  sc.className = "screenbtn"; sc.innerHTML = SCREEN_SVG;
+  const cl = document.createElement("span");
+  cl.className = "clipbtn"; cl.innerHTML = CLIP_SVG;
+  if(bulb.style.visibility === "hidden"){ sc.style.visibility = "hidden"; cl.style.visibility = "hidden"; }
+  bulb._screen = sc; bulb._clip = cl;
+  const p = bulb.parentNode;
+  if(p.classList && p.classList.contains("req-q-row")){
+    const st = document.createElement("span"); st.className = "bulb-stack";
+    const row = document.createElement("span"); row.className = "media-row";
+    p.insertBefore(st, bulb); st.appendChild(bulb); row.appendChild(sc); row.appendChild(cl); st.appendChild(row);
+  } else {
+    p.insertBefore(sc, bulb.nextSibling);
+    p.insertBefore(cl, sc.nextSibling);
+  }
+  sc.addEventListener("click", (e)=>{ e.stopPropagation(); openMediaEditor(bulb); });
+  cl.addEventListener("click", (e)=>{ e.stopPropagation(); openLinkEditor(bulb); });
+  [sc, cl].forEach(x=>{
+    x.addEventListener("mousedown", (e)=>e.stopPropagation());
+    x.addEventListener("touchstart", (e)=>e.stopPropagation(), {passive:true});
+  });
+  refreshScreen(bulb);
+}
+/* نافذة المعلم: إرفاق/تعديل/حذف الرابط الخارجي (المشبك) */
+function openLinkEditor(bulb){
+  const old = document.getElementById("linkEditOverlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.className = "overlay"; ov.id = "linkEditOverlay";
+  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+    <button type="button" class="modal-close" id="leClose">إغلاق ✕</button>
+    <h2>رابط خارجي</h2>
+    <p>ألصق رابطًا (موقع، مقال، فيديو…)؛ يظهر للطالب بجوار رمز الشاشة على شكل مشبك، وعند ضغطه يُفتح الرابط في نافذة جديدة.</p>
+    <input type="text" id="leUrl" dir="ltr" inputmode="url" autocomplete="off" placeholder="https://example.com" style="width:100%; text-align:left;">
+    <div class="msg" id="leMsg"></div>
+    <div class="modal-actions"><button type="button" class="primary-btn" id="leSave" style="flex:1;">حفظ</button><button type="button" class="chip-btn" id="leTest">فتح للتجربة</button><button type="button" class="chip-btn" id="leRemove">حذف الرابط</button></div>
+  </div>`;
+  document.body.appendChild(ov); ov.classList.add("show");
+  const $ = id => ov.querySelector("#"+id);
+  const setMsg = (t)=>{ $("leMsg").textContent = t||""; $("leMsg").className = t ? "msg show err" : "msg"; };
+  const inp = $("leUrl"); inp.value = bulb.dataset.link || "";
+  setTimeout(()=>{ try{ inp.focus(); inp.select(); }catch(e){} }, 50);
+  const close = ()=> ov.remove();
+  $("leClose").addEventListener("click", close);
+  $("leTest").addEventListener("click", ()=>{
+    const n = normalizeLink(inp.value); if(!n){ setMsg("اكتب رابطًا صحيحًا يبدأ بـ http:// أو https://"); return; }
+    window.open(n, "_blank", "noopener,noreferrer");
+  });
+  $("leRemove").addEventListener("click", ()=>{ delete bulb.dataset.link; refreshScreen(bulb); close(); });
+  const save = ()=>{
+    const v = inp.value.trim();
+    if(!v){ delete bulb.dataset.link; refreshScreen(bulb); close(); return; }
+    const n = normalizeLink(v);
+    if(!n){ setMsg("رابط غير صالح: اكتب رابطًا يبدأ بـ http:// أو https://"); return; }
+    bulb.dataset.link = n; refreshScreen(bulb); close();
+  };
+  $("leSave").addEventListener("click", save);
+  inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); save(); } });
+}
+function compressImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const rd = new FileReader();
+    rd.onerror = ()=>reject(new Error("read"));
+    rd.onload = ()=>{
+      if(file.type==="image/svg+xml" || (file.type==="image/gif" && file.size<=2*1024*1024)){ resolve(rd.result); return; }
+      const img = new Image();
+      img.onerror = ()=>reject(new Error("img"));
+      img.onload = ()=>{
+        const max = 1280, r = Math.min(1, max/Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width*r); c.height = Math.round(img.height*r);
+        const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  });
+}
+/* data URL → Blob URL: التشغيل عبر Blob يدعم التقديم/التأخير ويعمل في كل المتصفحات (بما فيها سفاري) بخلاف data URL الكبير */
+function dataUrlToBlobUrl(dataUrl, fallbackMime){
+  try{
+    const m = /^data:([^;,]*)((?:;[^;,]*)*),(.*)$/s.exec(dataUrl);
+    if(!m) return dataUrl;
+    const isB64 = /;base64/i.test(m[2]);
+    let mime = m[1] || fallbackMime || "application/octet-stream";
+    if(fallbackMime && (mime==="application/octet-stream" || mime==="video/quicktime" || mime==="video/x-m4v")) mime = fallbackMime;
+    const bin = isB64 ? atob(m[3]) : decodeURIComponent(m[3]);
+    const u8 = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([u8], {type:mime}));
+  }catch(e){ return dataUrl; }
+}
+/* يتحقق فعليًا أن المتصفح يستطيع فك ترميز الفيديو (وإلا فالفيديو سيُحفظ لكنه لن يعمل عند الطالب) */
+function probeVideo(url){
+  return new Promise((resolve)=>{
+    const v = document.createElement("video"); v.preload = "metadata"; v.muted = true;
+    const done = (r)=>{ clearTimeout(t); v.removeAttribute("src"); try{ v.load(); }catch(e){} resolve(r); };
+    const t = setTimeout(()=>done({ok:false, why:"timeout"}), 10000);
+    v.addEventListener("loadedmetadata", ()=>{
+      if(!v.videoWidth) done({ok:false, why:"novideo"});   // صوت فقط أو ترميز فيديو غير مدعوم
+      else done({ok:true, w:v.videoWidth, h:v.videoHeight});
+    });
+    v.addEventListener("error", ()=>done({ok:false, why:"error"}));
+    v.src = url;
+  });
+}
+const MSG_VIDEO_UNSUPPORTED = "لا يستطيع هذا المتصفح تشغيل هذا الفيديو (ترميزه غير مدعوم، مثل HEVC/H.265 في تسجيلات بعض الهواتف). حوّله إلى MP4 بترميز H.264 أو إلى WebM ثم أعد رفعه.";
+function openMediaEditor(bulb){
+  const old = document.getElementById("mediaEditOverlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.className = "overlay"; ov.id = "mediaEditOverlay";
+  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+    <button type="button" class="modal-close" id="meClose">إغلاق ✕</button>
+    <h2>شاشة العرض</h2>
+    <p>حمّل فيديو أو صورة؛ تُعرض للطالب مباشرة داخل المنصة عند ضغطه رمز الشاشة. (الفيديو حتى 4 ميجابايت بصيغة MP4 H.264 أو WebM، والصور تُضغط تلقائيًا.)</p>
+    <input type="file" id="meFile" accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/*">
+    <div id="mePrev" style="margin-top:12px; min-height:60px; text-align:center;"></div>
+    <div class="msg" id="meMsg"></div>
+    <div class="modal-actions"><button type="button" class="primary-btn" id="meSave" style="flex:1;">حفظ</button><button type="button" class="chip-btn" id="meRemove">حذف الوسيط</button></div>
+  </div>`;
+  document.body.appendChild(ov); ov.classList.add("show");
+  const $ = id => ov.querySelector("#"+id);
+  let cur = {src: bulb.dataset.media || "", type: bulb.dataset.mediaType || ""};
+  let blobUrl = "";
+  const setBlob = (u)=>{ if(blobUrl && blobUrl.startsWith("blob:")) URL.revokeObjectURL(blobUrl); blobUrl = u; };
+  const setMsg = (t, ok)=>{ $("meMsg").textContent = t||""; $("meMsg").className = t ? ("msg show "+(ok?"ok":"err")) : "msg"; };
+  function drawPrev(){
+    const box = $("mePrev");
+    if(!cur.src){ box.innerHTML = '<span class="tn-note">لا يوجد وسيط محمَّل.</span>'; return; }
+    if(cur.type==="video"){
+      if(!blobUrl) setBlob(dataUrlToBlobUrl(cur.src, "video/mp4"));
+      box.innerHTML = `<video controls playsinline preload="metadata" style="max-width:100%; max-height:240px; border-radius:8px; background:#000;"></video>`;
+      const v = box.querySelector("video");
+      v.addEventListener("error", ()=>setMsg(MSG_VIDEO_UNSUPPORTED));
+      v.src = blobUrl;
+    } else {
+      box.innerHTML = `<img alt="" style="max-width:100%; max-height:240px; border-radius:8px;">`;
+      box.querySelector("img").src = cur.src;
+    }
+  }
+  drawPrev();
+  const close = ()=>{ const v = ov.querySelector("video"); if(v){ v.pause(); v.removeAttribute("src"); } setBlob(""); ov.remove(); };
+  $("meClose").addEventListener("click", close);
+  $("meFile").addEventListener("change", async (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    setMsg("");
+    try{
+      const isVideo = f.type.startsWith("video/") || /\.(mp4|webm|ogv|mov|m4v)$/i.test(f.name);
+      if(isVideo){
+        if(f.size > MEDIA_MAX_VIDEO){ setMsg("حجم الفيديو أكبر من 4 ميجابايت. اقطع المقطع أو اضغطه ثم أعد المحاولة."); e.target.value = ""; return; }
+        setMsg("جارٍ فحص الفيديو…", true);
+        const probe = await probeVideo(URL.createObjectURL(f));
+        if(!probe.ok){ setMsg(MSG_VIDEO_UNSUPPORTED); e.target.value = ""; return; }
+        const src = await new Promise((res, rej)=>{ const rd = new FileReader(); rd.onload = ()=>res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
+        setBlob(""); cur = {src, type:"video"}; setMsg("");
+      } else if(f.type.startsWith("image/")){
+        setBlob(""); cur = {src: await compressImageFile(f), type:"image"};
+      } else { setMsg("اختر ملف فيديو أو صورة."); e.target.value = ""; return; }
+      drawPrev();
+    }catch(err){ setMsg("تعذّر قراءة الملف."); }
+  });
+  $("meRemove").addEventListener("click", ()=>{ setBlob(""); cur = {src:"", type:""}; $("meFile").value = ""; setMsg(""); drawPrev(); });
+  $("meSave").addEventListener("click", ()=>{
+    if(cur.src){ bulb.dataset.media = cur.src; bulb.dataset.mediaType = cur.type; }
+    else { delete bulb.dataset.media; delete bulb.dataset.mediaType; }
+    refreshScreen(bulb); close();
+  });
+}
+
+/* ---- عارض الطالب: عرض مباشر داخل المنصة ---- */
+const __mediaReg = [];
+function screenSolveHTML(src, type, extraStyle){
+  __mediaReg.push({src, type: type || "image"});
+  return `<span class="screenbtn screen-solve" data-mref="${__mediaReg.length-1}" title="عرض الشاشة (فيديو/صورة)" style="cursor:pointer; ${extraStyle||""}">${SCREEN_SVG}</span>`;
+}
+/* زر المشبك عند الطالب: يفتح الرابط الخارجي في نافذة جديدة */
+const __linkReg = [];
+function clipSolveHTML(link, extraStyle){
+  const n = normalizeLink(link); if(!n) return "";
+  __linkReg.push(n);
+  return `<span class="clipbtn clip-solve" data-lref="${__linkReg.length-1}" title="فتح الرابط الخارجي" style="cursor:pointer; ${extraStyle||""}">${CLIP_SVG}</span>`;
+}
+/* يجمع زري الشاشة والمشبك (إن وُجد لكل منهما محتوى) في صف واحد */
+function mediaBtnsHTML(o, btnStyle, wrapStyle){
+  if(!o) return "";
+  const a = o.media ? screenSolveHTML(o.media, o.mediaType, btnStyle) : "";
+  const b = o.link ? clipSolveHTML(o.link, btnStyle) : "";
+  if(!a && !b) return "";
+  return `<span class="media-row" style="${wrapStyle||""}">${a}${b}</span>`;
+}
+let __smBlob = "", __smResize = null;
+function closeStudentMedia(){
+  const ov = document.getElementById("studentMediaOverlay");
+  if(ov){
+    const v = ov.querySelector("video"); if(v){ try{ v.pause(); }catch(e){} v.removeAttribute("src"); try{ v.load(); }catch(e){} }
+    ov.remove();
+  }
+  if(__smBlob){ URL.revokeObjectURL(__smBlob); __smBlob = ""; }
+  if(__smResize){ window.removeEventListener("resize", __smResize); __smResize = null; }
+  document.removeEventListener("keydown", __smEsc, true);
+}
+function __smEsc(e){ if(e.key==="Escape") closeStudentMedia(); }
+/* إطار العرض يطابق أبعاد الصورة/الفيديو تمامًا (بلا أشرطة سوداء)، ومساحته ربع مساحة الشاشة؛ والتوسيع يملأ الشاشة */
+function showStudentMedia(src, type){
+  try{ hideHintPopupNow(); }catch(e){}
+  closeStudentMedia();
+  const isVideo = type==="video";
+  const ov = document.createElement("div"); ov.id = "studentMediaOverlay";
+  const frame = document.createElement("div"); frame.className = "sm-frame";
+  const media = document.createElement(isVideo ? "video" : "img");
+  media.className = "sm-media";
+  let ratio = 16/9, full = false;
+  function layout(){
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if(full){ frame.style.width = vw+"px"; frame.style.height = vh+"px"; return; }
+    const area = 0.25 * vw * vh;
+    let w = Math.sqrt(area * ratio), h = w / ratio;
+    const k = Math.min(1, (vw*0.96)/w, (vh*0.92)/h);
+    frame.style.width = Math.round(w*k)+"px"; frame.style.height = Math.round(h*k)+"px";
+  }
+  function ready(w, h){ if(w && h) ratio = w/h; layout(); frame.classList.add("sm-ready"); }
+  if(isVideo){
+    __smBlob = dataUrlToBlobUrl(src, "video/mp4");
+    media.controls = true; media.autoplay = true; media.playsInline = true; media.preload = "auto"; media.setAttribute("controlsList","nodownload");
+    media.addEventListener("loadedmetadata", ()=>ready(media.videoWidth, media.videoHeight));
+    media.addEventListener("error", ()=>{
+      frame.innerHTML = ""; const er = document.createElement("div"); er.className = "sm-err"; er.textContent = "تعذّر تشغيل الفيديو في هذا المتصفح. اطلب من المعلم رفعه بصيغة MP4 (H.264) أو WebM.";
+      frame.appendChild(er); frame.appendChild(tools); ready(16, 9);
+    });
+    media.src = __smBlob;
+  } else {
+    media.addEventListener("load", ()=>ready(media.naturalWidth, media.naturalHeight));
+    media.addEventListener("error", ()=>ready(16, 9));
+    media.src = src;
+  }
+  const tools = document.createElement("div"); tools.className = "sm-tools";
+  const bExp = document.createElement("button"); bExp.type = "button"; bExp.className = "sm-btn"; bExp.textContent = "⤢ توسيع";
+  const bRes = document.createElement("button"); bRes.type = "button"; bRes.className = "sm-btn"; bRes.textContent = "⤡ استعادة"; bRes.style.display = "none";
+  const bX = document.createElement("button"); bX.type = "button"; bX.className = "sm-btn"; bX.textContent = "✕"; bX.title = "إغلاق";
+  bExp.addEventListener("click", ()=>{ full = true; frame.classList.add("sm-full"); bExp.style.display = "none"; bRes.style.display = ""; layout(); });
+  bRes.addEventListener("click", ()=>{ full = false; frame.classList.remove("sm-full"); bRes.style.display = "none"; bExp.style.display = ""; layout(); });
+  bX.addEventListener("click", closeStudentMedia);
+  tools.appendChild(bExp); tools.appendChild(bRes); tools.appendChild(bX);
+  frame.appendChild(media); frame.appendChild(tools); ov.appendChild(frame);
+  ov.addEventListener("click", (e)=>{ if(e.target===ov) closeStudentMedia(); });   // الضغط خارج الإطار يغلقه فورًا
+  document.body.appendChild(ov);
+  __smResize = layout; window.addEventListener("resize", __smResize);
+  document.addEventListener("keydown", __smEsc, true);
+  layout();
+}
+document.addEventListener("click", (e)=>{
+  const c = e.target.closest && e.target.closest(".clip-solve");
+  if(c){
+    e.stopPropagation(); e.preventDefault();
+    const u = __linkReg[+c.dataset.lref]; if(u) window.open(u, "_blank", "noopener,noreferrer");
+    return;
+  }
+  const t = e.target.closest && e.target.closest(".screen-solve");
+  if(!t) return;
+  e.stopPropagation(); e.preventDefault();
+  const m = __mediaReg[+t.dataset.mref];
+  if(m) showStudentMedia(m.src, m.type);
+});
+
 function bulbButton(){
   const b = document.createElement("span");
   b.className="bulb"; b.textContent="💡"; b.title="إضافة/تعديل تلميح";
   b.style.filter = "grayscale(1) opacity(.4)";
+  queueMicrotask(()=>ensureScreen(b));   // زر الشاشة 🖥 بجوار اللمبة (أو أسفلها في المطلوبات النحوية)
   b.addEventListener("click", ()=>{
     const ta = document.getElementById("hintTextarea");
     ta.value = b.dataset.hint || "";
@@ -5698,9 +6118,9 @@ function buildBlockByTool(tool, savedData){
   else if(tool==="spellchoice") el = buildSpellChoiceBlock(savedData);
   else if(tool==="spellaudio") el = buildSpellAudioBlock(savedData);
   else if(tool==="essay") el = buildEssayBlock(savedData);
-  else if(tool==="match") el = buildMatchBlock(savedData && savedData.pairs, savedData && savedData.hint);
-  else if(tool==="reorder") el = buildReorderBlock(savedData && savedData.correctOrder, savedData && savedData.hint);
-  else if(tool==="mindmap") el = buildMindmapBlock(savedData && savedData.items, savedData && savedData.connections, savedData && savedData.bg);
+  else if(tool==="match") el = buildMatchBlock(savedData && savedData.pairs, savedData && savedData.hint, savedData);
+  else if(tool==="reorder") el = buildReorderBlock(savedData && savedData.correctOrder, savedData && savedData.hint, savedData);
+  else if(tool==="mindmap") el = buildMindmapBlock(savedData && savedData.items, savedData && savedData.connections, savedData && savedData.bg, savedData);
   else if(tool==="classify") el = buildClassifyBlock(savedData);
   if(el){
     el.dataset.tool = tool;
@@ -6096,6 +6516,7 @@ function buildGrammarBlock(savedReqRows){
         if(inp){ inp.style.height="auto"; inp.style.height=(inp.scrollHeight)+"px"; }
         const bulbEl = qRow.querySelector(".bulb");
         if(bulbEl && row.hint){ bulbEl.dataset.hint = row.hint; bulbEl.style.filter = "none"; }
+        restoreMedia(bulbEl, row);
         const pencilEl = qRow.querySelector(".pencil");
         if(pencilEl && row.strict){ pencilEl.classList.add("on"); pencilEl.style.filter="none"; pencilEl.style.color="#e03131"; }
         const cell = dropCells[i];
@@ -6261,7 +6682,7 @@ function buildMCQBlock(savedItems){
         l.querySelectorAll("input")[1].value = (saved.options && saved.options[i]) || "";
         if(saved.correct===i) l.querySelector('input[type="radio"]').checked = true;
       });
-      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; }
+      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; } restoreMedia(bulb, saved);
     }
     list.appendChild(row);
   }
@@ -6313,7 +6734,7 @@ function buildTFBlock(savedItems){
       row.querySelector('input[type="text"]').value = saved.statement || "";
       if(saved.correct===true) row.querySelector('.tf-mark[data-v="T"]').classList.add("selT");
       else if(saved.correct===false) row.querySelector('.tf-mark[data-v="F"]').classList.add("selF");
-      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; }
+      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; } restoreMedia(bulb, saved);
     }
     list.appendChild(row);
   }
@@ -6371,7 +6792,7 @@ function buildSpellChoiceBlock(savedItems){
       const correctSet = new Set(saved.correct||[]);
       if(opts.length){ opts.forEach((w,i)=>addWordCell(w, correctSet.has(i))); }
       else { for(let i=0;i<5;i++) addWordCell("", false); }
-      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; }
+      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; } restoreMedia(bulb, saved);
     } else {
       for(let i=0;i<5;i++) addWordCell("", false);
     }
@@ -6396,7 +6817,7 @@ function buildSpellAudioBlock(savedItems){
       <div class="qrow"></div>
       <div class="audio-row">
         <button class="sa-rec" title="تسجيل">🎙</button><button class="sa-upload" title="رفع ملف">📁</button>
-        <button class="sa-play" title="تشغيل/إيقاف">▶</button><button class="sa-restart" title="إعادة من البداية">⟲</button><button class="sa-del-audio" title="حذف الملف">🗑</button>
+        <button class="sa-play" title="تشغيل/إيقاف">▶</button><button class="sa-restart" title="إعادة من البداية">⟲</button><button class="sa-del-audio" title="حذف الملف">🗑</button><button class="sa-board" type="button" title="الإملاء الجماعي: عرض على الشاشة الكبيرة لعدة طلاب">👥</button>
         <input type="file" accept="audio/*" class="sa-file" style="display:none;">
         <span class="sa-status" style="font-size:11px; color:#999;">لا يوجد تسجيل</span>
       </div>
@@ -6406,7 +6827,7 @@ function buildSpellAudioBlock(savedItems){
     row.querySelector(".qrow").appendChild(bulb);
     if(saved){
       row.querySelector("textarea").value = saved.answer || "";
-      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; }
+      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; } restoreMedia(bulb, saved);
     }
 
     const fileInput = row.querySelector(".sa-file");
@@ -6493,6 +6914,9 @@ function buildSpellAudioBlock(savedItems){
       if(!player.src){ alert("لا يوجد تسجيل بعد."); return; }
       player.currentTime = 0; player.play();
     });
+    row.querySelector(".sa-board").addEventListener("click", ()=>{
+      openSpellBoard({answer: row.querySelector("textarea").value.trim(), audioUrl: row.dataset.audioData || null}, false);
+    });
     row.querySelector(".sa-del-audio").addEventListener("click", ()=>{
       player.pause(); player.src=""; fileInput.value=""; delete row.dataset.audioData; statusEl.textContent="لا يوجد تسجيل";
     });
@@ -6523,7 +6947,7 @@ function buildEssayBlock(savedItems){
     row.querySelector(".del").addEventListener("click", ()=>row.remove());
     if(saved){
       row.querySelector('input[type="text"]').value = saved.question || "";
-      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; }
+      if(saved.hint){ bulb.dataset.hint = saved.hint; bulb.style.filter = "none"; } restoreMedia(bulb, saved);
     }
     list.appendChild(row);
   }
@@ -6533,7 +6957,7 @@ function buildEssayBlock(savedItems){
   return el;
 }
 
-function buildMatchBlock(savedPairs, savedHint){
+function buildMatchBlock(savedPairs, savedHint, savedMeta){
   const el = makeBlockShell("صل البطاقات في العمود الأول بما يناسبها في العمود الثاني");
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `
@@ -6553,6 +6977,7 @@ function buildMatchBlock(savedPairs, savedHint){
   const matchBulb = bulbButton();
   body.querySelector(".match-toolbar").appendChild(matchBulb);
   if(savedHint){ matchBulb.dataset.hint = savedHint; matchBulb.style.filter = "none"; }
+  restoreMedia(matchBulb, savedMeta);
   const right = body.querySelector(".mc-right"), left = body.querySelector(".mc-left"), svg = body.querySelector(".connect-svg");
   let connections = [];
   let pending = null;
@@ -6561,6 +6986,7 @@ function buildMatchBlock(savedPairs, savedHint){
     const card = document.createElement("div");
     card.className="match-card"; card.dataset.side=side;
     card.innerHTML = `<input type="text" placeholder="بطاقة" style="border:none; width:110px; max-width:100%;"><span class="dot ${side}"></span>`;
+    if(side==="right"){ const rb = bulbButton(); rb.title = "تلميح لهذه البطاقة"; card.insertBefore(rb, card.firstChild); card._bulb = rb; }   // لمبة قبل كل بطاقة في العمود الأيمن
     const dot = card.querySelector(".dot");
     dot.addEventListener("click", ()=>{
       if(!pending){ pending = {card, side}; dot.style.background="var(--danger)"; }
@@ -6600,6 +7026,10 @@ function buildMatchBlock(savedPairs, savedHint){
   if(savedPairs && savedPairs.length){
     savedPairs.forEach(p=>{
       const rCard = makeCard(right,"right"); rCard.querySelector("input").value = p.right || "";
+      if(rCard._bulb && savedMeta && Array.isArray(savedMeta.rightMeta)){
+        const rm = savedMeta.rightMeta.find(m=>m && m.text===p.right);
+        if(rm){ if(rm.hint){ rCard._bulb.dataset.hint = rm.hint; rCard._bulb.style.filter = "none"; } restoreMedia(rCard._bulb, rm); }
+      }
       const lCard = makeCard(left,"left"); lCard.querySelector("input").value = p.left || "";
       connections.push({a:rCard, b:lCard});
     });
@@ -6647,7 +7077,7 @@ function buildMatchBlock(savedPairs, savedHint){
   return el;
 }
 
-function buildReorderBlock(savedOrder, savedHint){
+function buildReorderBlock(savedOrder, savedHint, savedMeta){
   const el = makeBlockShell("أعد ترتيب البطاقات التالية");
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `<div class="toolbar ro-toolbar"></div><div class="cards-row ro-cards"></div>
@@ -6655,6 +7085,7 @@ function buildReorderBlock(savedOrder, savedHint){
   const roBulb = bulbButton();
   body.querySelector(".ro-toolbar").appendChild(roBulb);
   if(savedHint){ roBulb.dataset.hint = savedHint; roBulb.style.filter = "none"; }
+  restoreMedia(roBulb, savedMeta);
   const cardsRow = body.querySelector(".ro-cards");
   wireFreshClear(body);
   let dragEl=null;
@@ -6689,7 +7120,7 @@ function buildReorderBlock(savedOrder, savedHint){
   return el;
 }
 
-function buildMindmapBlock(savedItems, savedConnections, savedBg){
+function buildMindmapBlock(savedItems, savedConnections, savedBg, savedQ){
   // بند 13: ألوان مختلفة جدًا يختار المعلم منها لتلوين تعبئة صناديق الخريطة الذهنية (أُضيف اللون الأبيض)
   const MM_COLORS = ["#ff6b6b","#4dabf7","#51cf66","#ffd43b","#cc5de8","#ff922f","#20c997"];
   const el = makeBlockShell("أكمل الخريطة الذهنية");
@@ -6725,6 +7156,12 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
   const dupBtnRef = el.querySelector(".dup");
   if(actionsBar && dupBtnRef) actionsBar.insertBefore(lockBtn, dupBtnRef);
   if(actionsBar && dupBtnRef) actionsBar.insertBefore(expandBtn, dupBtnRef);
+  // لمبة (وشاشة) رأس سؤال الخريطة الذهنية: تلميح عام للسؤال كله
+  const mmQBulb = bulbButton(); mmQBulb.classList.add("mm-q-bulb"); mmQBulb.title = "تلميح/شاشة لسؤال الخريطة الذهنية";
+  if(actionsBar) actionsBar.insertBefore(mmQBulb, actionsBar.firstChild);
+  if(savedQ && savedQ.hint){ mmQBulb.dataset.hint = savedQ.hint; mmQBulb.style.filter = "none"; }
+  restoreMedia(mmQBulb, savedQ);
+  el.getMindmapQuestion = ()=> Object.assign({hint: mmQBulb.dataset.hint || ""}, mediaOf(mmQBulb));
   const body = el.querySelector(".qblock-body");
   body.innerHTML = `
     <div class="mm-fs-container">
@@ -6959,6 +7396,8 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     });
     const mmBulb = b.querySelector(".bulb");
     if(saved && saved.hint){ mmBulb.dataset.hint = saved.hint; mmBulb.style.filter = "none"; }
+    restoreMedia(mmBulb, saved);
+    ensureScreen(mmBulb);
     mmBulb.addEventListener("click", (ev)=>{
       ev.stopPropagation();
       const ta = document.getElementById("hintTextarea");
@@ -6993,7 +7432,7 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
       return {x:e.clientX, y:e.clientY};
     }
     function dragStart(e){
-      if(e.target.closest(".mb-del") || e.target.closest(".bulb") || e.target.closest(".mb-color-slot")) return;
+      if(e.target.closest(".mb-del") || e.target.closest(".bulb") || e.target.closest(".screenbtn") || e.target.closest(".clipbtn") || e.target.closest(".mb-color-slot")) return;
       isDown=true;
       const p = pointOf(e);
       // بند: عند تفعيل القفل يكون شريط المقبض (mb-handle) نفسه display:none، فكان طلب حدوده
@@ -7135,7 +7574,7 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
     const h = liveH > 0 ? liveH : (parseFloat(b.dataset.savedH) || 0);
     if(liveW > 0) b.dataset.savedW = liveW;
     if(liveH > 0) b.dataset.savedH = liveH;
-    return {
+    return Object.assign({
       label: b.querySelector(".mb-label").textContent.trim(),
       answer: b.dataset.answer || "",
       isLabel: !!b.dataset.isLabel,
@@ -7150,7 +7589,7 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg){
       // نص "الإجابة" أو أيقونة اللمبة عند الطالب)، فيتغيّر موضع/امتداد الصندوق فعليًا ويكشف أجزاءً
       // من صورة الخلفية كان المعلم يقصد حجبها خلف الصندوق تحديدًا.
       w, h
-    };
+    }, mediaOf(b.querySelector(".bulb")));
   });
   el.getMindmapConnections = ()=> connections
     .map(c=>({a: boxes.indexOf(c.a), b: boxes.indexOf(c.b)}))
@@ -7193,7 +7632,11 @@ function buildClassifyBlock(savedData){
       if(h){ b.dataset.hint = h; b.style.filter = "none"; }
     });
   }
+  if(savedData && Array.isArray(savedData.columnMedia)){
+    [...body.querySelectorAll("thead th:not(.cf-th-space) .bulb")].forEach((b,i)=>restoreMedia(b, savedData.columnMedia[i]));
+  }
   function wireColumnBulb(bulbEl){
+    ensureScreen(bulbEl);
     bulbEl.addEventListener("click", (ev)=>{
       ev.stopPropagation();
       const ta = document.getElementById("hintTextarea");
@@ -7397,6 +7840,102 @@ function normalizeSpellAnswer(s){
   return stripArabicDiacritics(String(s||"")).trim().toLowerCase();
 }
 
+/* ===================== الإملاء السماعي الجماعي =====================
+   يُعرض على سبورة ذكية/شاشة كبيرة: من 2 إلى 4 طلاب يكتبون في الوقت نفسه؛ لكل طالب مربع نص خاص ولوحة مفاتيح
+   عربية خاصة أسفله (أزرار مستقلة تعمل باللمس المتعدد). لا يتعارض مع حل الطالب الفردي ولا يؤثر في درجته. */
+const SAB_ROWS = [
+  ["ض","ص","ث","ق","ف","غ","ع","ه","خ","ح","ج","د"],
+  ["ش","س","ي","ب","ل","ا","ت","ن","م","ك","ط"],
+  ["ئ","ء","ؤ","ر","ى","ة","و","ز","ظ","ذ","أ","إ","آ"],
+  ["َ","ُ","ِ","ً","ٌ","ٍ","ّ","ْ"]
+];
+function openSpellBoard(q, noCheck){
+  const old = document.getElementById("saBoardOverlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.id = "saBoardOverlay";
+  let count = 4;
+  const audio = q.audioUrl ? new Audio(q.audioUrl) : null;
+  const values = [];
+  function close(){ if(audio){ try{ audio.pause(); }catch(e){} } ov.remove(); document.removeEventListener("keydown", onEsc, true); }
+  function onEsc(e){ if(e.key==="Escape" && !(e.target && e.target.tagName==="INPUT")) close(); }
+  ov.innerHTML = `<div class="sab-top">
+      <h3>اكتب ما يُملى عليك — كل طالب في مربعه</h3>
+      ${audio ? '<button type="button" class="chip-btn accent" id="sabPlay">▶ تشغيل</button><button type="button" class="chip-btn" id="sabRestart">⟲ إعادة</button>' : ''}
+      <label style="margin:0; display:flex; align-items:center; gap:6px;">عدد الطلاب
+        <select id="sabCount" style="width:auto;"><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option></select></label>
+      <button type="button" class="chip-btn" id="sabClear">🗑 مسح الكل</button>
+      <button type="button" class="chip-btn danger" id="sabClose">✕ إغلاق</button>
+    </div>
+    <div class="sab-grid" id="sabGrid"></div>`;
+  document.body.appendChild(ov);
+  document.addEventListener("keydown", onEsc, true);
+  const grid = ov.querySelector("#sabGrid");
+
+  function render(){
+    grid.innerHTML = "";
+    grid.style.gridTemplateColumns = count===3 ? "repeat(3,1fr)" : "repeat(2,1fr)";
+    grid.style.gridTemplateRows = count===4 ? "repeat(2,1fr)" : "1fr";
+    for(let n=0; n<count; n++){
+      if(values[n]==null) values[n] = "";
+      const p = document.createElement("div"); p.className = "sab-panel"; p.tabIndex = 0;
+      p.innerHTML = `<input type="text" class="sab-name" value="الطالب ${n+1}" aria-label="اسم الطالب">
+        <div class="sab-text" dir="rtl"></div>
+        <div class="sab-status"></div>
+        <div class="sab-kb"></div>`;
+      grid.appendChild(p);
+      const txt = p.querySelector(".sab-text"), st = p.querySelector(".sab-status"), kb = p.querySelector(".sab-kb");
+      const draw = ()=>{ txt.classList.remove("ok","bad"); st.textContent = ""; txt.innerHTML = ""; txt.appendChild(document.createTextNode(values[n])); const c = document.createElement("span"); c.className = "sab-caret"; txt.appendChild(c); };
+      const add = (ch)=>{ values[n] += ch; draw(); };
+      const back = ()=>{ values[n] = Array.from(values[n]).slice(0,-1).join(""); draw(); };
+      const check = ()=>{
+        if(!values[n].trim()){ st.textContent = "اكتب أولًا"; return; }
+        const okk = normalizeSpellAnswer(values[n]) === normalizeSpellAnswer(q.answer);
+        txt.classList.toggle("ok", okk); txt.classList.toggle("bad", !okk);
+        st.textContent = okk ? "✔ إجابة صحيحة" : "✘ حاول مرة أخرى"; st.style.color = okk ? "#1e8e4e" : "var(--danger)";
+      };
+      // كل زر مستقل ويعمل بـ pointerdown فيستجيب اللمس المتعدد من عدة طلاب في اللحظة نفسها
+      const mk = (label, cls, fn)=>{
+        const b = document.createElement("button"); b.type = "button"; b.className = "sab-key "+(cls||""); b.textContent = label;
+        b.addEventListener("pointerdown", (e)=>{ e.preventDefault(); e.stopPropagation(); fn(); });
+        b.addEventListener("click", (e)=>e.preventDefault());
+        return b;
+      };
+      SAB_ROWS.forEach((r,ri)=>{
+        const row = document.createElement("div"); row.className = "sab-row";
+        r.forEach(ch=>row.appendChild(mk(ch, ri===3 ? "mark" : "", ()=>add(ri===3 ? ch : ch))));
+        if(ri===0) row.appendChild(mk("⌫","del wide", back));
+        kb.appendChild(row);
+      });
+      const last = document.createElement("div"); last.className = "sab-row";
+      last.appendChild(mk("لا","", ()=>add("لا")));
+      last.appendChild(mk("مسافة","wide", ()=>add(" ")));
+      last.appendChild(mk("،","", ()=>add("،")));
+      if(!noCheck) last.appendChild(mk("✔ تحقق","act wide", check));   // في الاختبارات لا تُكشف صحة الإجابة
+      last.appendChild(mk("مسح","del", ()=>{ values[n] = ""; draw(); }));
+      kb.appendChild(last);
+      // لوحة المفاتيح الفعلية (عند وجودها) تكتب في المربع الذي عليه التركيز
+      p.addEventListener("keydown", (e)=>{
+        if(e.target && e.target.tagName==="INPUT") return;
+        if(e.key==="Backspace"){ e.preventDefault(); back(); }
+        else if(e.key==="Enter"){ e.preventDefault(); check(); }
+        else if(e.key.length===1 && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); add(e.key); }
+      });
+      draw();
+    }
+  }
+  render();
+  ov.querySelector("#sabCount").addEventListener("change", (e)=>{ count = +e.target.value; render(); });
+  ov.querySelector("#sabClear").addEventListener("click", ()=>{ for(let i=0;i<values.length;i++) values[i] = ""; render(); });
+  ov.querySelector("#sabClose").addEventListener("click", close);
+  if(audio){
+    const pp = ov.querySelector("#sabPlay");
+    pp.addEventListener("click", ()=>{ if(audio.paused) audio.play(); else audio.pause(); });
+    audio.addEventListener("play", ()=>pp.textContent = "⏸ إيقاف");
+    audio.addEventListener("pause", ()=>pp.textContent = "▶ تشغيل");
+    audio.addEventListener("ended", ()=>pp.textContent = "▶ تشغيل");
+    ov.querySelector("#sabRestart").addEventListener("click", ()=>{ audio.currentTime = 0; audio.play(); });
+  }
+}
+
 function renderSolveView(view, model, forceRetry, justSubmitted){
   view.innerHTML = `
     <button class="chip-btn" id="solveBack">◀ رجوع</button>
@@ -7478,7 +8017,9 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         const rowGroup = rowsMap.get(rid).sort((a,b)=>(a.item.rowSlot||0)-(b.item.rowSlot||0));
         return `<tr>${rowGroup.map(g=>{
           const it = g.item;
-          const bulbHTML = (it.hint && !model.testMode) ? `<span class="bulb gr-row-hint" data-gidx="${g.idx}" style="cursor:pointer; font-size:14px;">💡</span>` : "";
+          const __b = (it.hint && !model.testMode) ? `<span class="bulb gr-row-hint" data-gidx="${g.idx}" style="cursor:pointer; font-size:14px;">💡</span>` : "";
+          const __m = (it.media || it.link) ? mediaBtnsHTML(it, "font-size:14px;") : "";
+          const bulbHTML = (__b || __m) ? `<span class="bulb-stack">${__b}${__m}</span>` : "";
           return `<td class="req-q-td"><div class="req-q-row" style="display:flex; align-items:center; gap:4px;">${bulbHTML}<span style="font-weight:700;">${it.question}</span></div></td>
             <td class="req-a-td"><div class="drop-cell gr-drop-row" data-gidx="${g.idx}" style="min-height:34px;"></div></td>`;
         }).join("")}</tr>
@@ -7506,14 +8047,15 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     qNumCounter++;
     const box = document.createElement("div"); box.className="qitem"; box.style.marginBottom="14px";
     box.innerHTML = `<span class="qnum">${qNumCounter}</span>`;
-    if(q.hint && !model.testMode){
-      box.innerHTML += `<span class="hint-bulb" style="cursor:pointer; font-size:15px; float:left;" title="تلميح">💡</span><div class="hint-text" style="display:none; font-size:12px; color:var(--accent); background:#e9f5f0; border-radius:6px; padding:6px 8px; margin-bottom:6px;"></div>`;
+    const __hasHint = !!(q.hint && !model.testMode), __hasMedia = !!(q.media || q.link);
+    if(__hasHint || __hasMedia){
+      box.innerHTML += `<span class="hint-tools" style="float:left;">${__hasHint ? '<span class="hint-bulb" style="cursor:pointer; font-size:15px;" title="تلميح">💡</span>' : ''}${__hasMedia ? mediaBtnsHTML(q) : ''}</span>`;
     }
     if(q.type==="mcq"){
       // وضع الصناديق: السؤال ظاهر دائمًا، وتُغطّى الخيارات فقط (كل خيار صندوق) حتى يضغط الطالب النخلة 🌴 أو الصندوق نفسه.
       // زر ɇ (حذف إجابتين خاطئتين) يظهر في النماذج فقط لا الاختبارات.
       const moveBulbIntoHead = ()=>{
-        const head = box.querySelector(".mcq-head"), bulb = box.querySelector(".hint-bulb");
+        const head = box.querySelector(".mcq-head"), bulb = box.querySelector(".hint-tools");
         if(head && bulb){ bulb.style.float = "none"; head.appendChild(bulb); }
       };
       const tools = (q.boxMode || !model.testMode)
@@ -7546,13 +8088,15 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         <div class="cards-row classify-bank" style="margin-bottom:10px;"></div>
         <table class="classify-table"><thead><tr>${q.columns.map((c,ci)=>{
           const hint = q.columnHints && q.columnHints[ci];
-          return `<th>${(hint && !model.testMode) ? `<span class="cf-hint-bulb" data-ci="${ci}" style="cursor:pointer; margin-left:4px;">💡</span>` : ""}${c}</th>`;
+          const cm = q.columnMedia && q.columnMedia[ci];
+          return `<th>${(hint && !model.testMode) ? `<span class="cf-hint-bulb" data-ci="${ci}" style="cursor:pointer; margin-left:4px;">💡</span>` : ""}${(cm && (cm.media || cm.link)) ? mediaBtnsHTML(cm, "", "margin-left:4px;") : ""}${c}</th>`;
         }).join("")}</tr></thead>
         <tbody><tr>${q.columns.map((c,ci)=>`<td class="classify-cell-solve" data-col="${ci}" style="border:1.5px dashed #bbb; border-radius:6px; vertical-align:top; padding:6px;"></td>`).join("")}</tr>
         <tr>${q.columns.map((c,ci)=>`<td class="cf-hint-text" data-ci="${ci}" style="display:none; font-size:10.5px; color:var(--accent);"></td>`).join("")}</tr></tbody></table>`;
     } else if(q.type==="spellaudio"){
       box.classList.add("sa-solve-box");
       box.innerHTML += `<div style="font-weight:700; margin-bottom:8px; text-align:center;">اكتب ما يُملى عليك</div>
+        <div style="text-align:center; margin-bottom:10px;"><button type="button" class="primary-btn sa-board-btn" style="width:auto; padding:9px 18px; font-size:14px;" title="عرض السؤال على سبورة/شاشة كبيرة ليكتب عدة طلاب معًا، لكل طالب مربعه ولوحة مفاتيحه">👥 الإملاء الجماعي (شاشة كبيرة)</button></div>
         ${q.audioUrl?`<div class="qrow" style="justify-content:center; gap:6px; margin-bottom:8px;">
             <button type="button" class="chip-btn sa-solve-playpause">▶ تشغيل</button>
             <button type="button" class="chip-btn sa-solve-restart">⟲ إعادة</button>
@@ -7581,6 +8125,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
             <div style="font-size:11.5px;">${it.label}</div>
           </div>` : `<div class="mindbox mm-mindbox" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             ${(it.hint && !model.testMode) ? `<span class="bulb mm-hint-bulb" data-ii="${ii}" style="position:absolute; top:-9px; left:-9px; background:#fff; border-radius:50%; cursor:pointer;">💡</span>` : ""}
+            ${(it.media || it.link) ? mediaBtnsHTML(it, "", `position:absolute; top:-9px; left:${(it.hint && !model.testMode) ? 12 : -9}px; background:#fff; border-radius:12px; padding:0 3px;`) : ""}
             <div style="font-size:11.5px; margin-bottom:4px;">${it.label}</div>
             <div class="mm-drop" data-ii="${ii}" style="min-width:20px; min-height:16px; border:none; border-radius:0; padding:0; background:transparent;"></div>
             <div class="mm-hint-text" data-ii="${ii}" style="display:none; font-size:10.5px; color:var(--accent); max-width:110px;"></div>
@@ -7880,7 +8425,11 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       function makeCard(container, side, text){
         const card = document.createElement("div");
         card.className="match-card"; card.dataset.side=side;
-        card.innerHTML = `<span style="display:inline-block;">${text}</span><span class="dot ${side}"></span>`;
+        const rmeta = side==="right" ? (q.rightMeta||[]).find(m=>m && m.text===text) : null;
+        const rHint = !!(rmeta && rmeta.hint && !model.testMode);
+        card.innerHTML = `${rHint ? '<span class="bulb mc-hint" style="cursor:pointer; font-size:14px;" title="تلميح">💡</span>' : ''}${(rmeta && (rmeta.media || rmeta.link)) ? mediaBtnsHTML(rmeta, "font-size:14px;") : ''}<span class="mc-text" style="display:inline-block;">${text}</span><span class="dot ${side}"></span>`;
+        const mcHint = card.querySelector(".mc-hint");
+        if(mcHint) mcHint.addEventListener("click", (e)=>{ e.stopPropagation(); showStudentHint(rmeta.hint, mcHint); });
         const dot = card.querySelector(".dot");
         const self = {dot, side, text, card};
         function finishSelection(other){
@@ -7926,7 +8475,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
           const targetCard = under && under.closest(".match-card");
           if(targetCard && targetCard.dataset.side && targetCard.dataset.side !== side){
             const targetDot = targetCard.querySelector(".dot");
-            const other = {dot: targetDot, side: targetCard.dataset.side, text: targetCard.querySelector("span").textContent, card: targetCard};
+            const other = {dot: targetDot, side: targetCard.dataset.side, text: targetCard.querySelector(".mc-text").textContent, card: targetCard};
             finishSelection(other);
           } else {
             dot.style.background = connectionOfCard(card) ? "var(--accent)" : "";
@@ -7937,7 +8486,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         dot.addEventListener("touchstart", dragStart, {passive:false});
         // بند جديد: الضغط على جسم البطاقة نفسها (خارج النقطة) يحذف خط التوصيل الحالي لها إن وُجد
         card.addEventListener("click", (e)=>{
-          if(e.target === dot) return;
+          if(e.target === dot || e.target.closest(".bulb") || e.target.closest(".screenbtn") || e.target.closest(".clipbtn")) return;
           const c = connectionOfCard(card);
           if(c) removeConnection(c);
         });
@@ -7994,6 +8543,8 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     } else if(q.type==="spellaudio"){
       answers[idx] = "";
       const inp = box.querySelector(".sa-answer");
+      const saBoardBtn = box.querySelector(".sa-board-btn");
+      if(saBoardBtn) saBoardBtn.addEventListener("click", ()=>openSpellBoard(q, model.testMode));
       let saMatchTimer = null;
       inp.addEventListener("input", ()=>{
         answers[idx] = inp.value; checkAllAnswered();
@@ -10873,6 +11424,135 @@ function randomPassword(len){
   return Array.from(u).map(b=>A[b % A.length]).join("");
 }
 
+/* ===================== نسخة احتياطية لبيانات المستخدمين (تصدير/استيراد JSON) =====================
+   الغرض: حفظ حسابات كل المؤسسات (مديرون/منسقون/معلمون/طلاب/أولياء أمور) قبل أي تحديث، ثم استعادتها
+   دون أن يعيد المستخدمون إنشاء حساباتهم. كلمات المرور محفوظة في المنصة مشفّرة (تجزئة PBKDF2 + ملح)،
+   فتُصدَّر كما هي (لا نص صريح) وتعمل بعد الاستيراد بنفس كلمة المرور التي اختارها المستخدم. */
+const BACKUP_FORMAT = "anta-wa-nahnu/users-backup";
+const BACKUP_KINDS = ["orgAdmins","coordinators","teachers","students","parents"];  // ترتيب الاستيراد: الطلاب قبل أولياء الأمور
+const BACKUP_KIND_LABEL = {orgAdmins:"مديرو مؤسسات", coordinators:"منسقون", teachers:"معلمون", students:"طلاب", parents:"أولياء أمور"};
+
+function buildUsersBackup(orgIds){
+  const orgs = (ROOT.organizations||[]).filter(o=>o && (!orgIds || orgIds.includes(o.id)));
+  return {
+    format: BACKUP_FORMAT, version: 1, exportedAt: new Date().toISOString(),
+    note: "يحوي كلمات مرور مشفّرة (تجزئة) لا نصًّا صريحًا. احتفظ بالملف في مكان آمن.",
+    organizations: orgs.map(o=>{
+      const users = {};
+      BACKUP_KINDS.forEach(k=>{ users[k] = (ROOT[k]||[]).filter(u=>u && u.orgId===o.id).map(u=>JSON.parse(JSON.stringify(u))); });
+      const meta = ROOT.orgMeta && ROOT.orgMeta[o.id];
+      return {
+        id:o.id, name:o.name, code:o.code,
+        subscriptionStatus:o.subscriptionStatus, subscriptionExpiry:o.subscriptionExpiry||"",
+        subjects: (meta && meta.subjects) ? JSON.parse(JSON.stringify(meta.subjects)) : null,
+        users
+      };
+    })
+  };
+}
+function downloadJSONFile(name, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function exportUsersBackup(orgIds){
+  const data = buildUsersBackup(orgIds);
+  let total = 0; data.organizations.forEach(o=>BACKUP_KINDS.forEach(k=>total += o.users[k].length));
+  const d = new Date(), stamp = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+"_"+pad2(d.getHours())+pad2(d.getMinutes());
+  downloadJSONFile("نسخة-احتياطية-المستخدمين_"+stamp+".json", data);
+  tnToast("تم تصدير "+total+" مستخدمًا من "+data.organizations.length+" مؤسسة.");
+}
+
+/* يبني خطة الاستيراد دون تعديل أي بيانات؛ كل مستخدم يُوضع في مؤسسته هو فقط (التي جاء منها في الملف) */
+function planUsersImport(data){
+  const plan = {orgs:[], errors:[]};
+  const seen = new Set();   // منع تكرار الاسم داخل الملف نفسه
+  const takenNow = (u)=> usernameTakenAnywhere(u.username);
+  (data.organizations||[]).forEach(block=>{
+    if(!block || typeof block!=="object") return;
+    let target = block.id ? orgById(block.id) : null;
+    if(!target && block.code) target = (ROOT.organizations||[]).find(o=>o && String(o.code||"").toUpperCase()===String(block.code).toUpperCase()) || null;
+    const item = {block, target, create:false, add:{}, skipped:[], counts:{}};
+    if(!target){
+      if(!block.id || !block.name){ plan.errors.push("مؤسسة بلا معرّف أو اسم في الملف — تم تجاهلها."); return; }
+      item.create = true;
+    }
+    const orgKey = target ? target.id : block.id;
+    BACKUP_KINDS.forEach(k=>{
+      item.add[k] = []; item.counts[k] = 0;
+      const arr = (block.users && Array.isArray(block.users[k])) ? block.users[k] : [];
+      arr.forEach(u=>{
+        if(!u || typeof u!=="object" || !u.username){ item.skipped.push({name:"(بلا اسم)", why:"سجل غير صالح"}); return; }
+        if(u.orgId && u.orgId!==block.id){ item.skipped.push({name:u.username, why:"يتبع مؤسسة أخرى داخل الملف — لا يُنقل بين المؤسسات"}); return; }
+        const key = Sec.norm(u.username);
+        if(seen.has(key)){ item.skipped.push({name:u.username, why:"مكرر داخل الملف"}); return; }
+        if(!item.create && takenNow(u)){
+          const ex = allAccountRecords().find(r=>r && r.username && Sec.norm(r.username)===key);
+          item.skipped.push({name:u.username, why: (ex && ex.orgId===orgKey) ? "موجود مسبقًا في المؤسسة" : "الاسم مستخدم في مؤسسة أخرى"});
+          return;
+        }
+        if(item.create && usernameTakenAnywhere(u.username)){ item.skipped.push({name:u.username, why:"الاسم مستخدم في مؤسسة أخرى"}); return; }
+        if(!u.passHash && typeof u.password!=="string"){ item.skipped.push({name:u.username, why:"بلا كلمة مرور"}); return; }
+        seen.add(key);
+        item.add[k].push(u); item.counts[k]++;
+      });
+    });
+    plan.orgs.push(item);
+  });
+  return plan;
+}
+
+async function applyUsersImport(plan){
+  const now = Date.now();
+  ROOT.deletedUsers = ROOT.deletedUsers || {};
+  ROOT.deletedOrgs = ROOT.deletedOrgs || {};
+  const report = [];
+  for(const item of plan.orgs){
+    let org = item.target;
+    if(item.create){
+      const b = item.block;
+      const code = (b.code && !(ROOT.organizations||[]).some(o=>o && String(o.code||"").toUpperCase()===String(b.code).toUpperCase())) ? String(b.code).toUpperCase() : genOrgCode();
+      org = { id:b.id, name:b.name, code, subscriptionStatus:b.subscriptionStatus||"active", subscriptionExpiry:b.subscriptionExpiry||"", createdAt:now, updatedAt:now, statusLog:[], restoredFromBackup:true };
+      ROOT.organizations.push(org);
+      delete ROOT.deletedOrgs[org.id];
+      orgMetaFor(org.id);
+      if(b.subjects && typeof b.subjects==="object") ROOT.orgMeta[org.id].subjects = JSON.parse(JSON.stringify(b.subjects));
+    }
+    const added = {};
+    for(const k of BACKUP_KINDS){
+      added[k] = 0;
+      if(!Array.isArray(ROOT[k])) ROOT[k] = [];
+      for(const u of item.add[k]){
+        const rec = JSON.parse(JSON.stringify(u));
+        rec.orgId = org.id;                       // حاجز العزل: المستخدم يُوضع في مؤسسته فقط
+        ROOT[k].push(rec); added[k]++;
+        if(USER_KINDS.includes(k)) delete ROOT.deletedUsers[tombKey(k, userKeyOf(rec))];   // إلغاء شاهد حذف سابق حتى لا يُحذف عند المزامنة
+        if(k==="teachers"){ try{ withScope(org.id, ()=>linkTeacherRelations(rec)); }catch(e){ console.error(e); } }
+      }
+    }
+    report.push({org, added, skipped:item.skipped, created:item.create});
+  }
+  try{ snapshotKnownUsers(); }catch(e){}
+  saveDB(); flushSaveDBNow();
+  return report;
+}
+
+async function runUsersImport(file, onDone){
+  let data;
+  try{ data = JSON.parse(await file.text()); }catch(e){ tnToast("الملف ليس JSON صالحًا.", "err"); return; }
+  if(!data || data.format!==BACKUP_FORMAT || !Array.isArray(data.organizations)){ tnToast("هذا الملف ليس نسخة احتياطية صادرة من هذه المنصة.", "err"); return; }
+  if(firebaseDB){ try{ await ensureFirebaseAuth(); await mergeUsersWithCloud(); }catch(e){} }
+  const plan = planUsersImport(data);
+  let addTotal = 0, skipTotal = 0, newOrgs = 0;
+  plan.orgs.forEach(i=>{ BACKUP_KINDS.forEach(k=>addTotal += i.counts[k]); skipTotal += i.skipped.length; if(i.create) newOrgs++; });
+  if(!plan.orgs.length){ tnToast("لا توجد مؤسسات صالحة في الملف.", "err"); return; }
+  const lines = plan.orgs.map(i=>"• "+(i.target ? i.target.name : i.block.name+" (ستُنشأ)")+": "+BACKUP_KINDS.map(k=>i.counts[k]+" "+BACKUP_KIND_LABEL[k]).join("، ")).join("\n");
+  if(!confirm("سيتم استيراد "+addTotal+" مستخدمًا"+(newOrgs?" وإنشاء "+newOrgs+" مؤسسة مفقودة":"")+" (تخطّي "+skipTotal+" مستخدمًا موجودًا أو مخالفًا).\nكل مستخدم يُوضع في مؤسسته فقط، ولا يُستبدل أي حساب موجود.\n\n"+lines+"\n\nمتابعة؟")) return;
+  const report = await applyUsersImport(plan);
+  onDone && onDone(report, plan.errors);
+}
+
 function renderOrgsWindow(view){
   view.innerHTML = `
     <h2>المؤسسات والاشتراكات</h2>
@@ -10886,6 +11566,9 @@ function renderOrgsWindow(view){
         <option value="all">كل الحالات</option><option value="active">النشطة</option><option value="inactive">الموقوفة</option><option value="expired">المنتهية</option>
       </select>
       <button class="chip-btn" id="orgExportBtn">تصدير إكسل</button>
+      <button class="chip-btn" id="orgBackupExportBtn" title="يصدّر حسابات كل المستخدمين في كل المؤسسات (بكلمات مرورهم المشفّرة) كنسخة احتياطية JSON">📤 تصدير بيانات المؤسسات</button>
+      <button class="chip-btn" id="orgBackupImportBtn" title="يستعيد المستخدمين من نسخة JSON، كلٌّ في مؤسسته فقط">📥 استيراد بيانات المؤسسات</button>
+      <input type="file" id="orgBackupFile" accept="application/json,.json" style="display:none;">
     </div>
     <div id="orgTableWrap"></div>`;
   const wrap = document.getElementById("orgTableWrap");
@@ -10959,7 +11642,7 @@ function renderOrgsWindow(view){
         </td>
         <td><ul class="tn-list"><li><span>طلاب:</span> ${c.students}${c.unpaid?` <span>(غير مسدد ${c.unpaid})</span>`:""}</li><li><span>معلمون:</span> ${c.teachers}</li><li><span>منسقون:</span> ${c.coordinators}</li><li><span>أولياء أمور:</span> ${c.parents}</li></ul></td>
         <td>${admins.length ? `<ul class="tn-list">${admins.map(a=>`<li>${regEsc(a.username)}${a.active===false?" <span>(موقوف)</span>":""}</li>`).join("")}</ul>` : `<span class="tn-note">لا يوجد مدير</span>`}</td>
-        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn tn-mini c-edit">✏️ تعديل البيانات</button><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
+        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn tn-mini c-edit">✏️ تعديل البيانات</button><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="chip-btn tn-mini c-backup" title="تصدير مستخدمي هذه المؤسسة فقط (JSON)">📤 تصدير بيانات المؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
 
       tr.querySelector(".c-name").addEventListener("blur", (e)=>{
         const nv = e.target.textContent.trim().replace(/\s+/g," ");
@@ -10986,6 +11669,7 @@ function renderOrgsWindow(view){
       });
       tr.querySelectorAll(".tn-renew button").forEach(b=>b.addEventListener("click", ()=>{ renewOrg(o, +b.dataset.m); drawTable(); tnToast("تم تجديد الاشتراك حتى "+o.subscriptionExpiry); }));
       tr.querySelector(".c-open").addEventListener("click", ()=>enterOrgView(o.id));
+      tr.querySelector(".c-backup").addEventListener("click", ()=>exportUsersBackup([o.id]));
       tr.querySelector(".c-edit").addEventListener("click", ()=>openEditOrgModal(o, info=>{
         drawTable();
         const pw = info.resets.map(r=>`<li>${regEsc(r.user)} — كلمة المرور: <span class="tn-code">${regEsc(r.pass)}</span></li>`).join("");
@@ -11011,6 +11695,24 @@ function renderOrgsWindow(view){
     document.getElementById("orgFlashClose").addEventListener("click", ()=>{ document.getElementById("orgFlash").innerHTML = ""; });
     drawTable();
   }));
+  document.getElementById("orgBackupExportBtn").addEventListener("click", ()=>exportUsersBackup(null));
+  document.getElementById("orgBackupImportBtn").addEventListener("click", ()=>document.getElementById("orgBackupFile").click());
+  document.getElementById("orgBackupFile").addEventListener("change", async (e)=>{
+    const f = e.target.files[0]; e.target.value = "";
+    if(!f) return;
+    await runUsersImport(f, (report, errors)=>{
+      drawTable();
+      const rows = report.map(r=>{
+        const n = BACKUP_KINDS.map(k=>r.added[k]+" "+BACKUP_KIND_LABEL[k]).join("، ");
+        const sk = r.skipped.length ? `<div class="tn-note">تم تخطّي ${r.skipped.length}: ${r.skipped.slice(0,8).map(x=>regEsc(x.name)+" ("+regEsc(x.why)+")").join("، ")}${r.skipped.length>8?" …":""}</div>` : "";
+        return `<li><b>${regEsc(r.org.name)}</b>${r.created?" <span class=\"tn-note\">(أُنشئت من النسخة)</span>":""}: ${n}${sk}</li>`;
+      }).join("");
+      document.getElementById("orgFlash").innerHTML = `<div class="tn-flash" role="status"><b>اكتمل استيراد المستخدمين.</b>
+        <ul class="tn-list" style="margin-top:6px;">${rows}</ul>${errors.length?`<div class="tn-note">${errors.map(regEsc).join("<br>")}</div>`:""}
+        <div style="margin-top:8px;"><button type="button" class="chip-btn tn-mini" id="orgFlashClose3">إخفاء</button></div></div>`;
+      document.getElementById("orgFlashClose3").addEventListener("click", ()=>{ document.getElementById("orgFlash").innerHTML = ""; });
+    });
+  });
   document.getElementById("orgExportBtn").addEventListener("click", ()=>{
     const counts = orgCountsMap();
     exportCSV(["م","المؤسسة","الرمز","الحالة","تاريخ الانتهاء","طلاب","معلمون","منسقون","أولياء أمور"],
