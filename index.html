@@ -692,6 +692,9 @@
   .safety-bar.err{ background:#fbeae7; color:var(--danger); border-color:var(--danger); }
   .safety-bar.warn{ background:#fff4d6; color:#5c3b06; border-color:var(--warn); }
   .safety-bar button{ margin:0 6px; padding:4px 12px; font-family:inherit; font-size:12.5px; font-weight:800; border:1.5px solid currentColor; border-radius:8px; background:#fff; color:inherit; cursor:pointer; }
+  .sync-chip{ position:fixed; bottom:10px; right:10px; z-index:100000; padding:5px 12px; border-radius:999px; font:700 12px/1.6 inherit; font-family:inherit; border:1.5px solid; background:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  .sync-chip.ok{ color:var(--accent); border-color:var(--accent); } .sync-chip.busy{ color:#5c3b06; border-color:var(--warn); }
+  .sync-chip.bad{ color:var(--danger); border-color:var(--danger); background:#fbeae7; }
   .bk-kind{ display:inline-block; padding:1px 9px; border-radius:999px; font-size:12px; font-weight:800; border:1.5px solid currentColor; }
   .bk-kind.daily{ color:var(--accent); } .bk-kind.event{ color:var(--warn); } .bk-kind.local{ color:#2f6fdb; }
 </style>
@@ -1816,7 +1819,9 @@ let writeBlocked = null;       // سبب إيقاف الرفع بواسطة حا
 let allowShrinkOnce = false;   // تجاوز مقصود لمرة واحدة
 let pendingResave = false;
 let skipAbsorbOnce = false;
-let persistRetryTimer = null;   // الاستعادة تكتب فوق الحالة الحالية بدل دمجها مع الوارد
+let persistRetryTimer = null;
+const syncDiag = { lastOk:0, lastErr:"", lastErrAt:0, readErr:"" };
+window.__platformSync = syncDiag;   // الاستعادة تكتب فوق الحالة الحالية بدل دمجها مع الوارد
 let baseHashes = null;         // {مفتاح: بصمة} لآخر حالة معروفة للسحابة؛ null = جهاز بلا خط أساس
 let lastCloudCounts = null, lastCloudRaw = "", latestCloud = null;
 let hydrateTimer = null, hydrateAttempts = 0;
@@ -2175,6 +2180,41 @@ function healFromLocal(){
   saveDB();
 }
 
+
+/* ---------- مؤشر حالة المزامنة (تشخيص فوري: هل تصل تعديلاتي إلى السحابة؟) ---------- */
+function storageBlocked(){ try{ const k="__t"+Date.now(); localStorage.setItem(k,"1"); localStorage.removeItem(k); return false; }catch(e){ return true; } }
+function syncDetails(){
+  const f = t=> t ? new Date(t).toLocaleString("ar-EG") : "لم يحدث";
+  return ["حالة المزامنة:",
+    "• قراءة السحابة: "+(cloudHydrated ? "ناجحة" : "لم تكتمل"+(syncDiag.readErr ? " — "+syncDiag.readErr : "")),
+    "• آخر رفع ناجح: "+f(syncDiag.lastOk),
+    "• آخر خطأ رفع: "+(syncDiag.lastErr ? syncDiag.lastErr+" ("+f(syncDiag.lastErrAt)+")" : "لا يوجد"),
+    "• تعديلات معلّقة: "+((saveTimer||saveInFlight) ? "نعم" : "لا"),
+    "• الرفع موقوف بالحارس: "+(writeBlocked ? writeBlocked : "لا"),
+    "• قفل البنية: "+(schemaLocked ? "نعم" : "لا"),
+    "• التخزين المحلي: "+(storageBlocked() ? "محجوب (Tracking Prevention أو وضع خاص)" : "متاح"),
+    "• إصدار البنية: "+(ROOT.schemaVersion||0)+"/"+SCHEMA_VERSION,
+    "• المتصفح: "+navigator.userAgent].join("\n");
+}
+function renderSyncChip(){
+  let el = document.getElementById("syncChip");
+  if(typeof session === "undefined" || !session || !firebaseConfigured()){ if(el) el.remove(); return; }
+  if(!el){
+    el = document.createElement("button"); el.type = "button"; el.id = "syncChip"; el.className = "sync-chip";
+    el.addEventListener("click", ()=>{ const t = syncDetails(); try{ if(navigator.clipboard) navigator.clipboard.writeText(t).catch(()=>{}); }catch(e){} alert(t+"\n\n(تم نسخ هذه المعلومات؛ أرسلها للدعم)"); });
+    document.body.appendChild(el);
+  }
+  let cls = "ok", txt;
+  if(schemaLocked) { cls = "bad"; txt = "⛔ الحفظ موقوف: حدّث الصفحة"; }
+  else if(writeBlocked) { cls = "bad"; txt = "⛔ الحفظ موقوف لحماية البيانات"; }
+  else if(!cloudHydrated) { cls = "bad"; txt = "⚠️ لا اتصال بالسحابة — تعديلاتك على هذا الجهاز فقط"; }
+  else if(syncDiag.lastErr && Date.now()-syncDiag.lastErrAt < 120000 && syncDiag.lastErrAt > syncDiag.lastOk) { cls = "bad"; txt = "⚠️ لم يُرفع آخر تعديل ("+syncDiag.lastErr.slice(0,40)+") — اضغط للتفاصيل"; }
+  else if(saveTimer || saveInFlight) { cls = "busy"; txt = "… جارٍ الحفظ"; }
+  else { txt = syncDiag.lastOk ? "☁️ محفوظ في السحابة "+new Date(syncDiag.lastOk).toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"}) : "☁️ متصل بالسحابة"; }
+  el.className = "sync-chip "+cls; el.textContent = txt;
+}
+setInterval(renderSyncChip, 1500);
+
 /* ---------- المزامنة الأولية مع السحابة ---------- */
 async function waitUntil(fn, ms){ const t0 = Date.now(); while(!fn() && Date.now()-t0 < ms) await sleepMs(120); return fn(); }
 async function syncFromCloudInBackground(){
@@ -2190,7 +2230,7 @@ async function syncFromCloudInBackground(){
       const snap = await firebaseDB.ref("platform-db").get();
       readOk = true;
       if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); }
-    }catch(e){ console.error("تعذّر قراءة قاعدة البيانات السحابية:", e); }
+    }catch(e){ syncDiag.readErr = String((e && (e.code || e.message)) || e); console.error("تعذّر قراءة قاعدة البيانات السحابية:", e); }
     if(!readOk){
       // لا نكتب شيئًا أبدًا قبل قراءة ناجحة؛ نعيد المحاولة تدريجيًا وتبقى التعديلات محفوظة على الجهاز.
       hydrateAttempts++;
@@ -2426,13 +2466,18 @@ async function persistDBNow(){
       await firebaseDB.ref("platform-db").update(payload);
       Object.keys(up).forEach(k=>{ if(up[k].h) baseHashes[k] = up[k].h; else delete baseHashes[k]; });
       persistBase();
+      // آخر حدث وصلنا قد يكون أقدم من كتابتنا المؤكَّدة للتو (مثلًا صدى قديم من كتابة سابقة فاشلة). إن لم يحتوِ بالضبط ما كتبناه
+      // فهو قديم: نهمله كي لا يُدمج فيُسقط تعديلاتنا التي أصبحت الآن «متزامنة». الحدث التالي سيجلب الحالة الصحيحة.
+      if(latestCloud && Object.keys(up).some(k=>hashKey(latestCloud[k]) !== up[k].h)) latestCloud = null;
       allowShrinkOnce = false;
       lastCloudCounts = countsOf(ROOT);
     } else if(typeof window.storage !== "undefined"){
       await window.storage.set("platform-db", snapshot, true);
     }
     lastSavedSnapshot = snapshot;
+    syncDiag.lastOk = Date.now(); syncDiag.lastErr = "";
   }catch(e){
+    syncDiag.lastErr = String((e && (e.code || e.message)) || e); syncDiag.lastErrAt = Date.now();
     console.error("فشل الحفظ السحابي (تم الاحتفاظ بنسخة محلية):", e);
     latestCloud = null;                                  // قد يكون صدى لكتابة فاشلة؛ سيصل الحدث الحقيقي بعد تراجع الـSDK
     showSyncWarning();
