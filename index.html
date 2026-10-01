@@ -5020,7 +5020,7 @@ function serializeModel(model, warnings){
           const t = c.querySelector("input").value.trim(), b = c.querySelector(".bulb");
           if(!t || !b) return null;
           const h = b.dataset.hint || "", m = mediaOf(b);
-          return (h || m.media || m.link) ? Object.assign({text:t, hint:h}, m) : null;
+          return (h || m.media || m.mediaId || m.link) ? Object.assign({text:t, hint:h}, m) : null;
         }).filter(Boolean);
         data.push(Object.assign({type:"match", pairs, hint: matchHint, rightAll: allCards.rightAll, leftAll: allCards.leftAll, rightMeta}, mediaOf(el.querySelector(".match-toolbar .bulb"))));
       }
@@ -5620,6 +5620,40 @@ function addBlockQNum(el){
    المعلم: يرفع فيديو أو صورة تُحفظ مع السؤال (data URL) بجوار اللمبة. الطالب: يُعرض الوسيط مباشرة داخل المنصة
    في إطار بثلث مساحة الشاشة تقريبًا (زر توسيع/استعادة)، ويُغلق فور الضغط خارج الإطار — بلا تنزيل ولا فتح خارجي. */
 const MEDIA_MAX_VIDEO = 4 * 1024 * 1024;   // حدّ الفيديو (بايت): الوسائط تُخزَّن داخل قاعدة بيانات المنصة
+
+/* ===== MediaStore: تخزين الوسائط في عقدة منفصلة (platform-media) بدل حشرها داخل models =====
+   السبب الجذري لفقدان الوسائط: الصورة/الفيديو كانت تُخزَّن كنص base64 داخل model.data، فتتضخم عقدة "models" كلها
+   وتتجاوز حدود Firebase (16MB للكتابة الواحدة، و10MB للقيمة النصية) وحدود localStorage (~5MB). فتُرفض الكتابة
+   (تظهر الوسائط مؤقتًا ثم يتراجع الـSDK فتختفي). الآن: الوسيط يُرفع قطعًا صغيرة (500KB) ويُحفظ في النموذج مُعرّفه فقط. */
+const MediaStore = (function(){
+  const ROOTP = "platform-media", CH = 500000, cache = new Map();
+  function hashStr(str){ let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for(let i=0;i<str.length;i+=Math.max(1,(str.length/4000)|0)){ const c = str.charCodeAt(i); h1 = Math.imul(h1^c, 2654435761); h2 = Math.imul(h2^c, 1597334677); } return (h1>>>0).toString(36)+(h2>>>0).toString(36)+str.length.toString(36); }
+  async function db(){
+    if(typeof firebaseDB==="undefined" || !firebaseDB) throw new Error("لا يوجد اتصال بقاعدة البيانات السحابية");
+    await ensureFirebaseAuth(); return firebaseDB;
+  }
+  async function put(dataUrl){
+    const d = await db(), id = "m"+hashStr(dataUrl), ref = d.ref(ROOTP+"/"+id);
+    try{ const m = await ref.child("meta").get(); if(m.exists() && m.val() && m.val().size===dataUrl.length){ cache.set(id, dataUrl); return id; } }catch(e){}
+    const parts = []; for(let i=0;i<dataUrl.length;i+=CH) parts.push(dataUrl.slice(i,i+CH));
+    await Promise.all(parts.map((p,k)=>ref.child("d/c"+String(k).padStart(4,"0")).set(p)));
+    await ref.child("meta").set({ n:parts.length, size:dataUrl.length, at:Date.now() });   // العلامة الأخيرة: لا يُعدّ الرفع ناجحًا قبلها
+    const chk = await ref.child("meta").get();                                              // تحقق فعلي من وصول الكتابة للخادم
+    if(!chk.exists()) throw new Error("لم يُؤكَّد الرفع");
+    cache.set(id, dataUrl); return id;
+  }
+  async function get(id){
+    if(!id) return "";
+    if(cache.has(id)) return cache.get(id);
+    const d = await db(), snap = await d.ref(ROOTP+"/"+id).get();
+    if(!snap.exists()) throw new Error("الوسيط غير موجود");
+    const v = snap.val(), m = v.meta || {}, dd = v.d || {};
+    const out = Object.keys(dd).sort().map(k=>dd[k]).join("");
+    if(m.size && out.length!==m.size) throw new Error("الوسيط ناقص");
+    cache.set(id, out); return out;
+  }
+  return { put, get };
+})();
 /* رمز الشاشة: شاشة عريضة أفقية (SVG) بإطار داكن وشاشة زرقاء وزر تشغيل وقاعدة — أوضح وأجمل من الإيموجي 🖥 */
 const SCREEN_SVG = '<svg viewBox="0 0 32 22" aria-hidden="true" focusable="false"><rect x="1" y="1" width="30" height="16" rx="2.6" fill="#2c3e50"/><rect x="3" y="3" width="26" height="12" rx="1.2" fill="#3aa7e8"/><path d="M3 3h12L8 15H3z" fill="#fff" opacity=".22"/><path d="M13.6 5.9L20.4 9l-6.8 3.1z" fill="#fff"/><rect x="14" y="17" width="4" height="2.6" fill="#2c3e50"/><rect x="9" y="19.4" width="14" height="2.2" rx="1.1" fill="#2c3e50"/></svg>';
 /* رمز المشبك 📎 لإرفاق رابط خارجي */
@@ -5635,18 +5669,20 @@ function normalizeLink(u){
 }
 function mediaOf(bulb){
   const d = bulb && bulb.dataset, o = {};
-  if(d && d.media){ o.media = d.media; o.mediaType = d.mediaType || "image"; }
+  if(d && d.mediaId){ o.mediaId = d.mediaId; o.mediaType = d.mediaType || "image"; }          // المسار الجديد: مُعرّف فقط
+  else if(d && d.media){ o.media = d.media; o.mediaType = d.mediaType || "image"; }          // قديم (غير مرفوع): احتياط
   if(d && d.link){ o.link = d.link; }
   return o;
 }
 function restoreMedia(bulb, saved){
-  if(bulb && saved && saved.media){ bulb.dataset.media = saved.media; bulb.dataset.mediaType = saved.mediaType || "image"; }
+  if(bulb && saved && saved.mediaId){ bulb.dataset.mediaId = saved.mediaId; bulb.dataset.mediaType = saved.mediaType || "image"; }
+  else if(bulb && saved && saved.media){ bulb.dataset.media = saved.media; bulb.dataset.mediaType = saved.mediaType || "image"; }
   if(bulb && saved && saved.link){ const n = normalizeLink(saved.link); if(n) bulb.dataset.link = n; }
   refreshScreen(bulb);
 }
 function refreshScreen(bulb){
   const sc = bulb && bulb._screen; if(!sc) return;
-  const has = !!bulb.dataset.media;
+  const has = !!(bulb.dataset.media || bulb.dataset.mediaId);
   sc.style.filter = has ? "none" : "grayscale(1) opacity(.4)";
   sc.title = has ? ("شاشة العرض: "+(bulb.dataset.mediaType==="video" ? "فيديو" : "صورة")+" محمَّل (اضغط للتعديل)") : "شاشة العرض: تحميل فيديو أو صورة يراها الطالب";
   const cl = bulb._clip;
@@ -5777,7 +5813,7 @@ function openMediaEditor(bulb){
   </div>`;
   document.body.appendChild(ov); ov.classList.add("show");
   const $ = id => ov.querySelector("#"+id);
-  let cur = {src: bulb.dataset.media || "", type: bulb.dataset.mediaType || ""};
+  let cur = {src: bulb.dataset.media || "", type: bulb.dataset.mediaType || "", id: bulb.dataset.mediaId || ""};
   let blobUrl = "";
   const setBlob = (u)=>{ if(blobUrl && blobUrl.startsWith("blob:")) URL.revokeObjectURL(blobUrl); blobUrl = u; };
   const setMsg = (t, ok)=>{ $("meMsg").textContent = t||""; $("meMsg").className = t ? ("msg show "+(ok?"ok":"err")) : "msg"; };
@@ -5795,6 +5831,7 @@ function openMediaEditor(bulb){
       box.querySelector("img").src = cur.src;
     }
   }
+  if(!cur.src && cur.id){ setMsg("جارٍ تحميل الوسيط المحفوظ…", true); MediaStore.get(cur.id).then(u=>{ cur.src = u; setMsg(""); drawPrev(); }).catch(()=>setMsg("تعذّر تحميل الوسيط المحفوظ.")); }
   drawPrev();
   const close = ()=>{ const v = ov.querySelector("video"); if(v){ v.pause(); v.removeAttribute("src"); } setBlob(""); ov.remove(); };
   $("meClose").addEventListener("click", close);
@@ -5809,25 +5846,34 @@ function openMediaEditor(bulb){
         const probe = await probeVideo(URL.createObjectURL(f));
         if(!probe.ok){ setMsg(MSG_VIDEO_UNSUPPORTED); e.target.value = ""; return; }
         const src = await new Promise((res, rej)=>{ const rd = new FileReader(); rd.onload = ()=>res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
-        setBlob(""); cur = {src, type:"video"}; setMsg("");
+        setBlob(""); cur = {src, type:"video", id:""}; setMsg("");
       } else if(f.type.startsWith("image/")){
-        setBlob(""); cur = {src: await compressImageFile(f), type:"image"};
+        setBlob(""); cur = {src: await compressImageFile(f), type:"image", id:""};
       } else { setMsg("اختر ملف فيديو أو صورة."); e.target.value = ""; return; }
       drawPrev();
     }catch(err){ setMsg("تعذّر قراءة الملف."); }
   });
-  $("meRemove").addEventListener("click", ()=>{ setBlob(""); cur = {src:"", type:""}; $("meFile").value = ""; setMsg(""); drawPrev(); });
-  $("meSave").addEventListener("click", ()=>{
-    if(cur.src){ bulb.dataset.media = cur.src; bulb.dataset.mediaType = cur.type; }
-    else { delete bulb.dataset.media; delete bulb.dataset.mediaType; }
+  $("meRemove").addEventListener("click", ()=>{ setBlob(""); cur = {src:"", type:"", id:""}; $("meFile").value = ""; setMsg(""); drawPrev(); });
+  $("meSave").addEventListener("click", async ()=>{
+    const btn = $("meSave");
+    if(!cur.src && !cur.id){ delete bulb.dataset.media; delete bulb.dataset.mediaId; delete bulb.dataset.mediaType; refreshScreen(bulb); close(); return; }
+    if(!cur.id){
+      btn.disabled = true; setMsg("جارٍ رفع الوسيط إلى قاعدة البيانات… لا تغلق النافذة", true);
+      try{ cur.id = await MediaStore.put(cur.src); }
+      catch(err){ console.error("فشل رفع الوسيط:", err); btn.disabled = false; setMsg("تعذّر رفع الوسيط إلى السحابة ("+((err&&(err.code||err.message))||err)+"). تحقّق من الاتصال ومن قواعد Firebase ثم أعد المحاولة."); return; }
+      btn.disabled = false;
+    }
+    bulb.dataset.mediaId = cur.id; bulb.dataset.mediaType = cur.type;
+    if(cur.src) bulb.dataset.media = cur.src;      // للمعاينة المحلية فقط؛ لا يُحفظ في النموذج (انظر mediaOf)
     refreshScreen(bulb); close();
+    try{ if(typeof saveDB==="function") saveDB(); }catch(e){}
   });
 }
 
 /* ---- عارض الطالب: عرض مباشر داخل المنصة ---- */
 const __mediaReg = [];
-function screenSolveHTML(src, type, extraStyle){
-  __mediaReg.push({src, type: type || "image"});
+function screenSolveHTML(src, type, extraStyle, id){
+  __mediaReg.push({src, type: type || "image", id: id || ""});
   return `<span class="screenbtn screen-solve" data-mref="${__mediaReg.length-1}" title="عرض الشاشة (فيديو/صورة)" style="cursor:pointer; ${extraStyle||""}">${SCREEN_SVG}</span>`;
 }
 /* زر المشبك عند الطالب: يفتح الرابط الخارجي في نافذة جديدة */
@@ -5840,7 +5886,7 @@ function clipSolveHTML(link, extraStyle){
 /* يجمع زري الشاشة والمشبك (إن وُجد لكل منهما محتوى) في صف واحد */
 function mediaBtnsHTML(o, btnStyle, wrapStyle){
   if(!o) return "";
-  const a = o.media ? screenSolveHTML(o.media, o.mediaType, btnStyle) : "";
+  const a = (o.media || o.mediaId) ? screenSolveHTML(o.media || "", o.mediaType, btnStyle, o.mediaId) : "";
   const b = o.link ? clipSolveHTML(o.link, btnStyle) : "";
   if(!a && !b) return "";
   return `<span class="media-row" style="${wrapStyle||""}">${a}${b}</span>`;
@@ -5878,7 +5924,7 @@ function showStudentMedia(src, type){
   function ready(w, h){ if(w && h) ratio = w/h; layout(); frame.classList.add("sm-ready"); }
   if(isVideo){
     __smBlob = dataUrlToBlobUrl(src, "video/mp4");
-    media.controls = true; media.autoplay = true; media.playsInline = true; media.preload = "auto"; media.setAttribute("controlsList","nodownload");
+    media.controls = true; media.autoplay = true; media.playsInline = true; media.preload = "auto"; media.setAttribute("controlsList","nodownload noremoteplayback noplaybackrate"); media.disablePictureInPicture = true; media.disableRemotePlayback = true; media.addEventListener("contextmenu", ev=>ev.preventDefault());
     media.addEventListener("loadedmetadata", ()=>ready(media.videoWidth, media.videoHeight));
     media.addEventListener("error", ()=>{
       frame.innerHTML = ""; const er = document.createElement("div"); er.className = "sm-err"; er.textContent = "تعذّر تشغيل الفيديو في هذا المتصفح. اطلب من المعلم رفعه بصيغة MP4 (H.264) أو WebM.";
@@ -5888,6 +5934,7 @@ function showStudentMedia(src, type){
   } else {
     media.addEventListener("load", ()=>ready(media.naturalWidth, media.naturalHeight));
     media.addEventListener("error", ()=>ready(16, 9));
+    media.draggable = false; media.addEventListener("contextmenu", ev=>ev.preventDefault()); media.addEventListener("dragstart", ev=>ev.preventDefault());
     media.src = src;
   }
   const tools = document.createElement("div"); tools.className = "sm-tools";
@@ -5899,7 +5946,9 @@ function showStudentMedia(src, type){
   bX.addEventListener("click", closeStudentMedia);
   tools.appendChild(bExp); tools.appendChild(bRes); tools.appendChild(bX);
   frame.appendChild(media); frame.appendChild(tools); ov.appendChild(frame);
-  ov.addEventListener("click", (e)=>{ if(e.target===ov) closeStudentMedia(); });   // الضغط خارج الإطار يغلقه فورًا
+  ov.addEventListener("click", (e)=>{ if(e.target===ov) closeStudentMedia(); });
+  ov.addEventListener("contextmenu", ev=>ev.preventDefault());   // مشاهدة فقط: لا قائمة «حفظ باسم»
+  ov.style.userSelect = "none"; ov.style.webkitUserSelect = "none"; ov.style.webkitTouchCallout = "none";   // الضغط خارج الإطار يغلقه فورًا
   document.body.appendChild(ov);
   __smResize = layout; window.addEventListener("resize", __smResize);
   document.addEventListener("keydown", __smEsc, true);
@@ -5916,7 +5965,11 @@ document.addEventListener("click", (e)=>{
   if(!t) return;
   e.stopPropagation(); e.preventDefault();
   const m = __mediaReg[+t.dataset.mref];
-  if(m) showStudentMedia(m.src, m.type);
+  if(!m) return;
+  if(m.src){ showStudentMedia(m.src, m.type); return; }
+  t.style.opacity = ".5";
+  MediaStore.get(m.id).then(u=>{ m.src = u; t.style.opacity = ""; showStudentMedia(u, m.type); })
+    .catch(err=>{ t.style.opacity = ""; console.error(err); alert("تعذّر تحميل الوسيط. تحقّق من الاتصال بالإنترنت ثم أعد المحاولة."); });
 });
 
 function bulbButton(){
@@ -8018,7 +8071,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         return `<tr>${rowGroup.map(g=>{
           const it = g.item;
           const __b = (it.hint && !model.testMode) ? `<span class="bulb gr-row-hint" data-gidx="${g.idx}" style="cursor:pointer; font-size:14px;">💡</span>` : "";
-          const __m = (it.media || it.link) ? mediaBtnsHTML(it, "font-size:14px;") : "";
+          const __m = (it.media || it.mediaId || it.link) ? mediaBtnsHTML(it, "font-size:14px;") : "";
           const bulbHTML = (__b || __m) ? `<span class="bulb-stack">${__b}${__m}</span>` : "";
           return `<td class="req-q-td"><div class="req-q-row" style="display:flex; align-items:center; gap:4px;">${bulbHTML}<span style="font-weight:700;">${it.question}</span></div></td>
             <td class="req-a-td"><div class="drop-cell gr-drop-row" data-gidx="${g.idx}" style="min-height:34px;"></div></td>`;
@@ -8047,7 +8100,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     qNumCounter++;
     const box = document.createElement("div"); box.className="qitem"; box.style.marginBottom="14px";
     box.innerHTML = `<span class="qnum">${qNumCounter}</span>`;
-    const __hasHint = !!(q.hint && !model.testMode), __hasMedia = !!(q.media || q.link);
+    const __hasHint = !!(q.hint && !model.testMode), __hasMedia = !!(q.media || q.mediaId || q.link);
     if(__hasHint || __hasMedia){
       box.innerHTML += `<span class="hint-tools" style="float:left;">${__hasHint ? '<span class="hint-bulb" style="cursor:pointer; font-size:15px;" title="تلميح">💡</span>' : ''}${__hasMedia ? mediaBtnsHTML(q) : ''}</span>`;
     }
@@ -8089,7 +8142,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         <table class="classify-table"><thead><tr>${q.columns.map((c,ci)=>{
           const hint = q.columnHints && q.columnHints[ci];
           const cm = q.columnMedia && q.columnMedia[ci];
-          return `<th>${(hint && !model.testMode) ? `<span class="cf-hint-bulb" data-ci="${ci}" style="cursor:pointer; margin-left:4px;">💡</span>` : ""}${(cm && (cm.media || cm.link)) ? mediaBtnsHTML(cm, "", "margin-left:4px;") : ""}${c}</th>`;
+          return `<th>${(hint && !model.testMode) ? `<span class="cf-hint-bulb" data-ci="${ci}" style="cursor:pointer; margin-left:4px;">💡</span>` : ""}${(cm && (cm.media || cm.mediaId || cm.link)) ? mediaBtnsHTML(cm, "", "margin-left:4px;") : ""}${c}</th>`;
         }).join("")}</tr></thead>
         <tbody><tr>${q.columns.map((c,ci)=>`<td class="classify-cell-solve" data-col="${ci}" style="border:1.5px dashed #bbb; border-radius:6px; vertical-align:top; padding:6px;"></td>`).join("")}</tr>
         <tr>${q.columns.map((c,ci)=>`<td class="cf-hint-text" data-ci="${ci}" style="display:none; font-size:10.5px; color:var(--accent);"></td>`).join("")}</tr></tbody></table>`;
@@ -8125,7 +8178,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
             <div style="font-size:11.5px;">${it.label}</div>
           </div>` : `<div class="mindbox mm-mindbox" style="left:${it.x||0}px; top:${it.y||0}px; cursor:default; ${sizeStyle} ${it.color?`background:${it.color};`:""}">
             ${(it.hint && !model.testMode) ? `<span class="bulb mm-hint-bulb" data-ii="${ii}" style="position:absolute; top:-9px; left:-9px; background:#fff; border-radius:50%; cursor:pointer;">💡</span>` : ""}
-            ${(it.media || it.link) ? mediaBtnsHTML(it, "", `position:absolute; top:-9px; left:${(it.hint && !model.testMode) ? 12 : -9}px; background:#fff; border-radius:12px; padding:0 3px;`) : ""}
+            ${(it.media || it.mediaId || it.link) ? mediaBtnsHTML(it, "", `position:absolute; top:-9px; left:${(it.hint && !model.testMode) ? 12 : -9}px; background:#fff; border-radius:12px; padding:0 3px;`) : ""}
             <div style="font-size:11.5px; margin-bottom:4px;">${it.label}</div>
             <div class="mm-drop" data-ii="${ii}" style="min-width:20px; min-height:16px; border:none; border-radius:0; padding:0; background:transparent;"></div>
             <div class="mm-hint-text" data-ii="${ii}" style="display:none; font-size:10.5px; color:var(--accent); max-width:110px;"></div>
@@ -8427,7 +8480,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         card.className="match-card"; card.dataset.side=side;
         const rmeta = side==="right" ? (q.rightMeta||[]).find(m=>m && m.text===text) : null;
         const rHint = !!(rmeta && rmeta.hint && !model.testMode);
-        card.innerHTML = `${rHint ? '<span class="bulb mc-hint" style="cursor:pointer; font-size:14px;" title="تلميح">💡</span>' : ''}${(rmeta && (rmeta.media || rmeta.link)) ? mediaBtnsHTML(rmeta, "font-size:14px;") : ''}<span class="mc-text" style="display:inline-block;">${text}</span><span class="dot ${side}"></span>`;
+        card.innerHTML = `${rHint ? '<span class="bulb mc-hint" style="cursor:pointer; font-size:14px;" title="تلميح">💡</span>' : ''}${(rmeta && (rmeta.media || rmeta.mediaId || rmeta.link)) ? mediaBtnsHTML(rmeta, "font-size:14px;") : ''}<span class="mc-text" style="display:inline-block;">${text}</span><span class="dot ${side}"></span>`;
         const mcHint = card.querySelector(".mc-hint");
         if(mcHint) mcHint.addEventListener("click", (e)=>{ e.stopPropagation(); showStudentHint(rmeta.hint, mcHint); });
         const dot = card.querySelector(".dot");
