@@ -2130,7 +2130,7 @@ const SecurityPanel = (function(){
         if(!r || !r.username || r.active===false) continue;
         if(session.role!=="admin" && r.orgId!==session.orgId) continue;
         total++;
-        if(!have.has(await Sec.userHash(r.username))){ const o = orgById(r.orgId); missing.push({ n:r.username, label, org:o ? o.name : "" }); }
+        if(!have.has(await Sec.userHash(r.username))){ const o = orgById(r.orgId); missing.push({ n:r.username, label, org:o ? o.name : "", k, r }); }
       }
     }
     const superOk = have.has(await Sec.userHash(SUPER_ADMIN.username));
@@ -2177,6 +2177,7 @@ const SecurityPanel = (function(){
       }catch(e){ st.textContent = "خطأ: "+(e.code||e.message); row.querySelectorAll("button").forEach(x=>x.disabled = false); }
     }));
     const out = body.querySelector("#spOut");
+    const canDel = session.role==="admin" || session.role==="orgadmin";
     body.querySelector("#spReady").addEventListener("click", async ()=>{
       out.textContent = "جارٍ الفحص…";
       try{
@@ -2184,7 +2185,25 @@ const SecurityPanel = (function(){
         const r = await readiness();
         out.innerHTML = `<p>المشرف العام: ${r.superOk ? "✅ لديه حساب حقيقي" : "❌ لا حساب حقيقي بعد (سجّل الخروج ثم الدخول به مرة قبل التشديد)"}</p>
           <p>المستخدمون المفعّلون: ${r.total} — المنتقلون: ${r.total - r.missing.length} — المتبقون: <b>${r.missing.length}</b></p>` +
-          (r.missing.length ? `<div style="max-height:200px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:6px">` + r.missing.slice(0,300).map(m=>`${esc(m.n)} <small>(${esc(m.label)}${m.org ? " — "+esc(m.org) : ""})</small>`).join("<br>") + `</div>` : `<p>✅ الجميع منتقلون.</p>`);
+          (r.missing.length ? `<div style="max-height:240px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:6px">` + r.missing.slice(0,300).map((m,i)=>`<label style="display:block;padding:2px 0">${canDel ? `<input type="checkbox" class="sp-ck" data-i="${i}"> ` : ""}${esc(m.n)} <small>(${esc(m.label)}${m.org ? " — "+esc(m.org) : ""})</small></label>`).join("") + `</div>` +
+            (canDel ? `<div style="margin-top:8px"><button id="spSelAll" style="cursor:pointer;padding:5px 12px">تحديد الكل / إلغاء التحديد</button> <button id="spDel" style="cursor:pointer;padding:5px 12px;color:#b00">حذف المحدد</button></div>
+              <p style="opacity:.75;font-size:12px">الطلاب والمعلمون والمنسقون وأولياء الأمور يُحذفون نهائيًا (تؤخذ نسخة احتياطية محلية قبل الحذف). أما مديرو المؤسسات فيُوقَف حسابهم ولا يُحذف، ويتم ذلك للمشرف العام فقط.</p>` : "") : `<p>✅ الجميع منتقلون.</p>`);
+        if(canDel && r.missing.length){
+          const cks = ()=>[...out.querySelectorAll(".sp-ck")];
+          out.querySelector("#spSelAll").addEventListener("click", ()=>{ const all = cks().every(c=>c.checked); cks().forEach(c=>c.checked = !all); });
+          out.querySelector("#spDel").addEventListener("click", async ()=>{
+            const picked = cks().filter(c=>c.checked).map(c=>r.missing[+c.dataset.i]).filter(Boolean);
+            if(!picked.length){ alert("حدّد حسابًا واحدًا على الأقل."); return; }
+            const adm = picked.filter(m=>m.k==="orgAdmins"), rest = picked.filter(m=>m.k!=="orgAdmins");
+            if(adm.length && session.role!=="admin"){ alert("إيقاف مديري المؤسسات للمشرف العام فقط. أزل تحديدهم."); return; }
+            if(!confirm("سيُحذف نهائيًا "+rest.length+" حسابًا"+(adm.length ? " ويُوقَف "+adm.length+" مدير مؤسسة" : "")+". هل أنت متأكد؟")) return;
+            try{ await LocalBackup.save(JSON.stringify(ROOT), "قبل حذف حسابات غير منتقلة", true); }catch(e){}
+            rest.forEach(m=>{ const arr = ROOT[m.k]; const ix = arr ? arr.indexOf(m.r) : -1; if(ix>=0) arr.splice(ix, 1); });
+            adm.forEach(m=>{ m.r.active = false; });
+            saveDB(); flushSaveDBNow();
+            out.innerHTML = "<p>✅ تم. أعد فحص الجاهزية للتأكد.</p>";
+          });
+        }
       }catch(e){ out.textContent = "تعذّر الفحص: "+(e.code||e.message); }
     });
     const out2 = body.querySelector("#spOut2");
