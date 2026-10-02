@@ -1401,6 +1401,7 @@ function daysUntilISO(iso){
 function orgById(id){ return (ROOT.organizations||[]).find(o=>o && o.id===id) || null; }
 /* حالة اشتراك المؤسسة الفعلية: تُحسب من الحالة اليدوية + تاريخ الانتهاء (يبقى الاشتراك سارياً طوال يوم الانتهاء نفسه) */
 function orgStateOf(org){
+  if(org && org.__pub) return { ok:!!org.__ok, code: org.__ok ? "active" : "inactive", label: org.__ok ? "نشطة" : "موقوفة" };
   if(!org) return {ok:false, code:"missing", label:"غير موجودة"};
   if(org.subscriptionStatus!=="active") return {ok:false, code:"inactive", label:"موقوفة"};
   if(org.subscriptionExpiry && org.subscriptionExpiry < todayLocalISO()) return {ok:false, code:"expired", label:"منتهية"};
@@ -1632,6 +1633,12 @@ async function migrateCredentials(){
         if(!r || typeof r.password!=="string") continue;
         if(r.password===""){ delete r.password; changed = true; continue; }
         const pw = r.password;
+        try{                                                 // المرحلة 2: ضبط كلمة مرور ⇒ حساب Firebase جديد + سحب صلاحية الحساب القديم
+          if(typeof session !== "undefined" && session && (session.role==="admin"||session.role==="orgadmin"||session.role==="coordinator") && r.username){
+            const roleOf = { admins:"admin", orgAdmins:"orgadmin", coordinators:"coordinator", teachers:"teacher", students:"student", parents:"parent" }[k];
+            if(roleOf) RealAuth.provisionQueued(r.username, pw, roleOf, r.orgId || "");
+          }
+        }catch(e){}
         const h = await Sec.hashPassword(pw);
         if(r.password===pw){ Object.assign(r, h); delete r.password; changed = true; }
       }
@@ -1820,67 +1827,376 @@ function applyCloudSnapshot(saved){
 // المحلية والنسخة السحابية عند كل تحميل، واعتماد الأحدث منهما فعليًا مهما كان مصدرها — بدل
 // افتراض تفوّق السحابة دومًا. (ج) في حال كانت المحلية هي الأحدث (أي أن آخر حفظة سحابية فشلت)،
 // تُرفع فورًا للسحابة لتصحيح الانحراف تلقائيًا ومنع تكرار المشكلة لاحقًا على أجهزة أخرى.
+let __authRestoredP = null, __anonP = null;
+function authRestored(){            // ننتظر استعادة جلسة Firebase المحفوظة قبل أي تسجيل مجهول، وإلا يُستبدل المستخدم الحقيقي بمجهول عند كل تحديث للصفحة
+  if(!__authRestoredP) __authRestoredP = new Promise(res=>{
+    try{ const un = firebase.auth().onAuthStateChanged(()=>{ try{ un(); }catch(e){} res(); }); setTimeout(res, 4000); }catch(e){ res(); }
+  });
+  return __authRestoredP;
+}
 async function ensureFirebaseAuth(){
   try{
     if(typeof firebase === "undefined" || !firebase.auth) return;
+    await authRestored();
     if(firebase.auth().currentUser) return;
-    await firebase.auth().signInAnonymously();
+    if(!__anonP) __anonP = firebase.auth().signInAnonymously().finally(()=>{ __anonP = null; });
+    await __anonP;
   }catch(e){ console.error("تعذّر تسجيل الدخول المجهول إلى Firebase (قد تفشل الكتابة السحابية بسبب قواعد الأمان):", e); }
 }
 
-/* ===== RealAuth (المرحلة 1): حساب Firebase حقيقي لكل مستخدم =====
-   - عند كل تسجيل دخول ناجح (بعد التحقق المحلي الحالي كما هو) يُنشأ/يُستخدم حساب بريد+كلمة مرور في Firebase Authentication،
-     بريده مشتق من التجزئة المشفّرة لاسم المستخدم (لا يُكشف الاسم). لا حاجة لأي إجراء من المستخدم: ينتقل تلقائيًا بكلمة مروره الحالية.
-   - يُسجَّل في roles/<uid> دور المستخدم ومدرسته، وهو الجدول الذي ستعتمد عليه قواعد المرحلة 2 (قائمة المسموح لهم).
-   - الوضع الحالي "متوافق": لا شيء يتعطل إن فشلت العملية (يبقى الدخول المجهول كما كان) إلى أن تُشدَّد القواعد لاحقًا. */
+/* ===== وضع القواعد الصارمة (المرحلة 2) =====
+   STRICT=true يعني أن قاعدة البيانات ترفض القراءة على غير أصحاب الصلاحيات (roles/<uid>)، فيصير الدخول عبر Firebase أولًا.
+   يُكتشف تلقائيًا من القواعد نفسها (لا إعداد يدوي)، ويُحفظ تلميح محلي فقط لحالة انقطاع الشبكة. */
+let STRICT = false;
+try{ STRICT = localStorage.getItem("platform-strict") === "1"; }catch(e){}
+function setStrict(v){ STRICT = !!v; try{ localStorage.setItem("platform-strict", v ? "1" : "0"); }catch(e){} }
+function isPermDenied(e){ return !!e && (e.code === "PERMISSION_DENIED" || /permission[_ ]denied/i.test(String(e.message || e))); }
+async function probeStrict(){
+  if(typeof firebaseConfigured !== "function" || !firebaseConfigured() || typeof firebase === "undefined") return STRICT;
+  try{
+    if(!firebaseDB){ if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); firebaseDB = firebase.database(); }
+    await ensureFirebaseAuth();
+    const u = firebase.auth().currentUser;
+    if(u && !u.isAnonymous){ await RealAuth.signOut(); }          // لا جلسة تطبيق هنا (شاشة الدخول): نعود للهوية المجهولة قبل الاختبار
+    await firebaseDB.ref("platform-db/schemaVersion").get();
+    if(STRICT) setStrict(false);
+  }catch(e){
+    if(isPermDenied(e)){ if(!STRICT) setStrict(true); try{ RealAuth.loadPublicOrgs(); }catch(_){} }
+  }
+  return STRICT;
+}
+
+/* ===== RealAuth: حساب Firebase حقيقي لكل مستخدم (المرحلتان 1 و2) =====
+   - البريد مشتق من تجزئة اسم المستخدم (لا يُكشف الاسم). رقم إصدار الحساب يُحفظ في ver/<uh>؛ وعند إعادة تعيين كلمة المرور
+     يُنشأ حساب بإصدار جديد ويُسحب دور الحساب القديم من roles فيفقد كل وصول (إلغاء الحسابات القديمة).
+   - roles/<uid> هو جدول الصلاحيات الذي تعتمد عليه القواعد الصارمة. */
 const RealAuth = (function(){
-  const DOMAIN = "users.arabic-skills.app", MAXV = 4;
+  const DOMAIN = "users.arabic-skills.app";
   let warned = false;
   const emailFor = (uh, ver)=>"u"+uh.slice(0,40)+(ver>1 ? "v"+ver : "")+"@"+DOMAIN;
-  const fbPw = pw=>{ pw = String(pw); return pw.length>=6 ? pw : pw + "#".repeat(6-pw.length); };   // Firebase يشترط 6 أحرف على الأقل
+  const fbPw = pw=>{ pw = String(pw); return pw.length>=6 ? pw : pw + "#".repeat(6-pw.length); };
   const isReal = u=>!!(u && !u.isAnonymous && u.email && u.email.endsWith("@"+DOMAIN));
+  const TS = ()=>firebase.database.ServerValue.TIMESTAMP;
+  const KNOWN_BAD = c=>c==="auth/user-not-found"||c==="auth/wrong-password"||c==="auth/invalid-credential"||c==="auth/invalid-login-credentials"||c==="auth/invalid-email";
+  async function getVer(uh){ try{ const s = await firebaseDB.ref("ver/"+uh).get(); if(s.exists()){ const v = s.val(); return Math.max(1, parseInt(v && v.n, 10) || 1); } }catch(e){} return 1; }
+  async function setVer(uh, n, orgId){ await firebaseDB.ref("ver/"+uh).set({ n, orgId: orgId || "" }); }
   async function writeRole(uid, uh, role, orgId){
     if(typeof firebaseDB==="undefined" || !firebaseDB) return;
-    await firebaseDB.ref("roles/"+uid).set({ role:role||"", orgId:orgId||"", u:uh, at:firebase.database.ServerValue.TIMESTAMP });
+    await firebaseDB.ref("roles/"+uid).set({ role:role||"", orgId:orgId||"", u:uh, at:TS() });
   }
+  /* المرحلة 1 (وضع متوافق): بعد تحقق التطبيق المحلي من كلمة المرور نربط/ننشئ الحساب الحقيقي ونكتب الدور */
   async function link(username, password, role, orgId){
     try{
       if(typeof firebase==="undefined" || !firebase.auth) return null;
-      const auth = firebase.auth(), uh = await Sec.userHash(username);
-      let user = auth.currentUser;
-      if(isReal(user) && user.email.startsWith("u"+uh.slice(0,40))){          // مسجّل دخوله فعليًا بهذا الحساب: يكفي تحديث الدور
-        await writeRole(user.uid, uh, role, orgId); return user.uid;
-      }
-      const pw = fbPw(password);
-      let cred = null;
-      for(let ver=1; ver<=MAXV && !cred; ver++){
+      const auth = firebase.auth(), uh = await Sec.userHash(username), n0 = await getVer(uh), user = auth.currentUser;
+      if(isReal(user) && user.email === emailFor(uh, n0)){ await writeRole(user.uid, uh, role, orgId); return user.uid; }
+      const pw = fbPw(password); let cred = null, used = n0;
+      for(let ver=n0; ver<n0+6 && !cred; ver++){
         const em = emailFor(uh, ver);
-        try{ cred = await auth.signInWithEmailAndPassword(em, pw); }
+        try{ cred = await auth.signInWithEmailAndPassword(em, pw); used = ver; }
         catch(e){
-          const c = e && e.code;
-          if(c==="auth/user-not-found" || c==="auth/wrong-password" || c==="auth/invalid-credential" || c==="auth/invalid-login-credentials"){
-            // إما حساب غير موجود (أول دخول) أو موجود بكلمة مرور قديمة (بعد إعادة تعيين من المشرف): نجرّب الإنشاء، وإن كان البريد مستخدمًا ننتقل للإصدار التالي
-            try{ cred = await auth.createUserWithEmailAndPassword(em, pw); }
+          if(KNOWN_BAD(e && e.code)){
+            try{ cred = await auth.createUserWithEmailAndPassword(em, pw); used = ver; }
             catch(e2){ if(e2 && e2.code==="auth/email-already-in-use") continue; throw e2; }
           } else throw e;
         }
       }
       if(!cred || !cred.user) return null;
+      if(used !== n0) await setVer(uh, used, orgId);
       await writeRole(cred.user.uid, uh, role, orgId);
       return cred.user.uid;
     }catch(e){
-      if(!warned){ warned = true;
-        console.error("RealAuth: تعذّر ربط الحساب بـ Firebase Authentication. إن كان الكود auth/operation-not-allowed فعّل Email/Password من Authentication > Sign-in method.", e); }
+      if(!warned){ warned = true; console.error("RealAuth: تعذّر ربط الحساب بـ Firebase Authentication (فعّل Email/Password من Authentication > Sign-in method).", e); }
       try{ await ensureFirebaseAuth(); }catch(_){}
       return null;
     }
+  }
+  /* المرحلة 2: دخول Firebase فقط (لا إنشاء). يعيد المستخدم أو null؛ ويرمي أخطاء الشبكة */
+  async function signInOnly(username, password){
+    await ensureFirebaseAuth();
+    const auth = firebase.auth(), uh = await Sec.userHash(username), n = await getVer(uh), pw = fbPw(password);
+    try{ return (await auth.signInWithEmailAndPassword(emailFor(uh, n), pw)).user; }
+    catch(e){ if(KNOWN_BAD(e && e.code)) return null; throw e; }
+  }
+  /* حساب ثانوي (نسخة Firebase منفصلة) كي لا يخرج المشرف من جلسته عند إنشاء حساب لغيره */
+  function secondaryAuth(){
+    let app = null;
+    try{ app = (firebase.apps||[]).find(a=>a.name==="prov") || null; }catch(e){}
+    if(!app) app = firebase.initializeApp(FIREBASE_CONFIG, "prov");
+    return firebase.auth(app);
+  }
+  /* يُستدعى حين يضبط المشرف كلمة مرور لمستخدم: ينشئ حسابًا بإصدار جديد، يكتب دوره، ويسحب أدوار الحسابات القديمة */
+  async function adminProvision(username, password, role, orgId){
+    if(typeof firebase==="undefined" || !firebase.auth || !firebaseDB) return { ok:false, why:"لا اتصال بـ Firebase" };
+    const uh = await Sec.userHash(username), pw = fbPw(password), a2 = secondaryAuth();
+    try{
+      const n0 = await getVer(uh); let user = null, used = n0;
+      for(let ver=n0; ver<n0+40 && !user; ver++){
+        const em = emailFor(uh, ver);
+        try{ user = (await a2.createUserWithEmailAndPassword(em, pw)).user; used = ver; }
+        catch(e){
+          if(e && e.code==="auth/email-already-in-use"){
+            try{ user = (await a2.signInWithEmailAndPassword(em, pw)).user; used = ver; }catch(e2){ /* كلمة مرور مختلفة: الإصدار التالي */ }
+          } else throw e;
+        }
+      }
+      if(!user) return { ok:false, why:"تعذّر إنشاء الحساب" };
+      let old = {};
+      try{ const q = await firebaseDB.ref("roles").orderByChild("u").equalTo(uh).get(); if(q.exists()) old = q.val(); }catch(e){}
+      if(used !== n0 || !(await firebaseDB.ref("ver/"+uh).get()).exists()) await setVer(uh, used, orgId);
+      await writeRole(user.uid, uh, role, orgId);
+      for(const o of Object.keys(old)){ if(o !== user.uid){ try{ await firebaseDB.ref("roles/"+o).remove(); }catch(e){} } }
+      return { ok:true, uid:user.uid };
+    }catch(e){ return { ok:false, why:String((e && (e.code||e.message)) || e) }; }
+    finally{ try{ await a2.signOut(); }catch(e){} }
+  }
+  let provQ = Promise.resolve();
+  function provisionQueued(u, p, role, org){
+    const note = m=>{ try{ tnToast(m, "err"); }catch(e){ console.warn(m); } };
+    provQ = provQ.then(()=>adminProvision(u, p, role, org))
+      .then(r=>{ if(!r || !r.ok) note("تعذّر تحديث دخول «"+u+"» في Firebase: "+((r && r.why)||"")+". أعد تعيين كلمة المرور بعد التأكد من الاتصال/الصلاحية."); })
+      .catch(e=>note("تعذّر تحديث دخول «"+u+"»: "+((e&&(e.code||e.message))||e)));
+  }
+  /* تسجيل ذاتي في الوضع الصارم: يُنشأ الحساب ويُكتب طلب في registrations بانتظار اعتماد المشرف (لا صلاحية قبله) */
+  async function registerAccount(username, password, role, orgId, rec){
+    await ensureFirebaseAuth();
+    const auth = firebase.auth(), uh = await Sec.userHash(username), pw = fbPw(password), n = await getVer(uh), em = emailFor(uh, n);
+    let user = null;
+    try{ user = (await auth.createUserWithEmailAndPassword(em, pw)).user; }
+    catch(e){
+      if(e && e.code==="auth/email-already-in-use"){
+        try{
+          const c = await auth.signInWithEmailAndPassword(em, pw);
+          const r = await firebaseDB.ref("roles/"+c.user.uid).get();
+          if(r.exists()){ await signOut(); return { ok:false, code:"taken" }; }
+          user = c.user;                                  // حساب بلا صلاحية (طلب سابق مرفوض/معلّق): يُعاد استخدامه
+        }catch(e2){ await signOut(); return { ok:false, code:"taken" }; }
+      } else { await signOut(); return { ok:false, code:(e && e.code) || "error" }; }
+    }
+    try{
+      await firebaseDB.ref("registrations/"+user.uid).set({ u:uh, role, orgId:orgId||"", rec:JSON.parse(JSON.stringify(rec)), at:TS() });
+    }catch(e){ await signOut(); return { ok:false, code:(e && e.code) || "write-failed" }; }
+    await signOut();
+    return { ok:true, uid:user.uid };
   }
   async function signOut(){
     try{ if(typeof firebase!=="undefined" && firebase.auth && isReal(firebase.auth().currentUser)) await firebase.auth().signOut(); }catch(e){}
     try{ await ensureFirebaseAuth(); }catch(e){}
   }
-  return { link, signOut, emailFor };
+  window.__pubOrgs = null;
+  const pubKey = c=>String(c||"").toUpperCase().replace(/[.#$\[\]\/\s]/g, "_");
+  async function loadPublicOrgs(){
+    try{ await ensureFirebaseAuth(); const s = await firebaseDB.ref("publicOrgs").get(); window.__pubOrgs = s.exists() ? s.val() : {}; }catch(e){}
+  }
+  async function syncPublicOrgs(){          // يُنفَّذ من المشرف العام: قائمة صغيرة (رمز → اسم/حالة) تكفي للتسجيل قبل تسجيل الدخول
+    const map = {};
+    (ROOT.organizations||[]).forEach(o=>{ if(o && o.code) map[pubKey(o.code)] = { id:o.id, name:o.name||"", ok:orgStateOf(o).ok }; });
+    const def = orgById(DEFAULT_ORG_ID);
+    if(def){ const v = { id:def.id, name:def.name||"", ok:orgStateOf(def).ok }; if(!map.AHHA) map.AHHA = v; if(!map.DEFAULT) map.DEFAULT = v; }
+    await firebaseDB.ref("publicOrgs").set(map);
+  }
+  return { link, signInOnly, signOut, adminProvision, provisionQueued, registerAccount, loadPublicOrgs, syncPublicOrgs, pubKey, emailFor, isReal };
 })();
+
+/* ===== الدخول في الوضع الصارم: Firebase أولًا، والدور يُؤخذ من roles/<uid> لا من الجهاز ===== */
+async function strictAuthenticate(username, password){
+  let user = null;
+  try{ user = await RealAuth.signInOnly(username, password); }
+  catch(e){
+    const c = e && e.code;
+    if(c==="auth/network-request-failed") return { special:true, msg:"تعذّر الاتصال بالإنترنت. أعد المحاولة." };
+    if(c==="auth/too-many-requests") return { special:true, msg:"محاولات كثيرة من هذا الجهاز. انتظر قليلًا ثم أعد المحاولة." };
+    if(c==="auth/operation-not-allowed") return { special:true, msg:"تسجيل الدخول بالبريد غير مفعّل في Firebase." };
+    console.error(e); return null;
+  }
+  if(!user) return null;
+  let R = null;
+  try{ const s = await firebaseDB.ref("roles/"+user.uid).get(); R = s.exists() ? s.val() : null; }catch(e){ R = null; }
+  if(!R){ await RealAuth.signOut(); return { special:true, msg:"حسابك مسجَّل لكنه بانتظار اعتماد المشرف. حاول لاحقًا أو راجع إدارة مؤسستك." }; }
+  const uh = await Sec.userHash(username);
+  if(R.u !== uh){ await RealAuth.signOut(); return null; }
+  hydrateAttempts = 0; clearTimeout(hydrateTimer); cloudSynced = false;
+  syncFromCloudInBackground();
+  const ok = await waitUntil(()=>cloudSynced, 20000);
+  if(!ok){ await RealAuth.signOut(); return { special:true, msg:"تعذّر تحميل بيانات المنصة الآن. أعد المحاولة بعد لحظات." }; }
+  if(R.role==="admin" && uh === await Sec.userHash(SUPER_ADMIN.username)) return { role:"admin", rec:SUPER_ADMIN };
+  const key = Sec.norm(username);
+  const rec = allTableFor(R.role).find(r=>r && r.username && Sec.norm(r.username)===key);
+  if(!rec) return { special:true, msg:"تم التحقق من هويتك لكن بيانات حسابك غير موجودة في المنصة. راجع مشرفك." };
+  return { role:R.role, rec };
+}
+async function strictRegister(d){
+  try{
+    const cred = await Sec.hashPassword(d.password);
+    const rec = Object.assign({ username:d.username, institution:d.institution, orgId:d.orgId, createdAt:Date.now(), selfRegistered:true }, d.extra, cred);
+    if(d.role !== "parent") rec.stage = d.stage;
+    const r = await RealAuth.registerAccount(d.username, d.password, d.role, d.orgId, rec);
+    if(r.ok) return r;
+    if(r.code==="taken") return { ok:false, msg:"اسم المستخدم هذا (أو ما يماثله) مسجَّل مسبقًا، اختر اسمًا آخر." };
+    return { ok:false, msg:"تعذّر إرسال الطلب ("+(r.code||"خطأ")+"). تحقق من الاتصال وأعد المحاولة." };
+  }catch(e){ console.error(e); return { ok:false, msg:"تعذّر إرسال الطلب: "+((e && (e.code||e.message)) || e) }; }
+}
+
+/* ===== لوحة الأمان للمشرفين: اعتماد التسجيلات الجديدة + جاهزية الانتقال + تنظيف الصلاحيات ===== */
+const SecurityPanel = (function(){
+  let btn = null, timer = null, busy = false, pendingCount = 0, pubDone = false;
+  const KIND = { student:"students", teacher:"teachers", parent:"parents" };
+  const ROLE_AR = { student:"طالب", teacher:"معلم", parent:"ولي أمر" };
+  const esc = s=>String(s==null ? "" : s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const canManage = ()=>!!session && (session.role==="admin" || session.role==="orgadmin" || session.role==="coordinator");
+  const TS = ()=>firebase.database.ServerValue.TIMESTAMP;
+  async function loadPending(){
+    if(!firebaseDB) return {};
+    await ensureFirebaseAuth();
+    let q = firebaseDB.ref("registrations");
+    if(session.role !== "admin") q = q.orderByChild("orgId").equalTo(session.orgId || "");
+    const s = await q.get(); return s.exists() ? s.val() : {};
+  }
+  async function approve(uid, reg, auto){
+    const role = reg.role, kind = KIND[role], rec = reg.rec;
+    if(!kind || !rec || !rec.username) return { skip:"طلب غير صالح" };
+    const org = orgById(reg.orgId);
+    if(!org || !orgStateOf(org).ok) return { skip:"المؤسسة غير نشطة" };
+    if(usernameConflict(rec.username)) return { skip:"اسم المستخدم مكرر" };
+    if(role==="parent" && rec.childUsername){
+      const ch = (ROOT.students||[]).find(s=>s && Sec.norm(s.username)===Sec.norm(rec.childUsername));
+      if(!ch) return { skip:"لا يوجد طالب بهذا الاسم" };
+    }
+    const prev = SCOPE.orgId; let active = true;
+    try{
+      SCOPE.orgId = reg.orgId;
+      if(role==="student") active = autoActivateOn("Students"); else if(role==="teacher") active = autoActivateOn("Teachers");
+    }finally{ SCOPE.orgId = prev; }
+    if(auto && !active) return { skip:"بانتظار الاعتماد اليدوي" };
+    const r = JSON.parse(JSON.stringify(rec)); r.active = true;
+    if(!Array.isArray(ROOT[kind])) ROOT[kind] = [];
+    ROOT[kind].push(r);
+    if(role==="teacher"){ try{ SCOPE.orgId = reg.orgId; linkTeacherRelations(r); }finally{ SCOPE.orgId = prev; } }
+    saveDB(); flushSaveDBNow();
+    await firebaseDB.ref("roles/"+uid).set({ role, orgId:reg.orgId||"", u:reg.u, at:TS() });
+    await firebaseDB.ref("registrations/"+uid).remove();
+    return { ok:true };
+  }
+  async function reject(uid){ await firebaseDB.ref("registrations/"+uid).remove(); }
+  function paint(){
+    if(!btn) return;
+    btn.innerHTML = "🔐" + (pendingCount ? `<span style="position:absolute;top:-6px;right:-6px;background:#d33;color:#fff;border-radius:10px;font-size:11px;padding:1px 6px">${pendingCount}</span>` : "");
+    btn.title = pendingCount ? "طلبات تسجيل بانتظار الاعتماد: "+pendingCount : "الأمان وطلبات التسجيل";
+  }
+  async function processAuto(){
+    if(busy || !canManage() || !firebaseDB || !cloudSynced) return;
+    busy = true;
+    try{
+      if(session.role==="admin" && !pubDone){ try{ await RealAuth.syncPublicOrgs(); pubDone = true; }catch(e){} }
+      const all = await loadPending(); let left = 0;
+      for(const uid of Object.keys(all)){
+        let r = {}; try{ r = await approve(uid, all[uid], true); }catch(e){ console.error(e); r = { skip:"خطأ" }; }
+        if(!r.ok) left++;
+      }
+      pendingCount = left; paint();
+    }catch(e){ /* لا صلاحية قراءة أو لا اتصال: لا شيء */ }
+    finally{ busy = false; }
+  }
+  async function readiness(){
+    const s = await firebaseDB.ref("roles").get(), have = new Set();
+    if(s.exists()) Object.values(s.val()).forEach(v=>{ if(v && v.u) have.add(v.u); });
+    const kinds = [["orgAdmins","مدير مؤسسة"],["coordinators","منسق"],["teachers","معلم"],["students","طالب"],["parents","ولي أمر"]];
+    const missing = []; let total = 0;
+    for(const [k,label] of kinds){
+      for(const r of (ROOT[k]||[])){
+        if(!r || !r.username || r.active===false) continue;
+        if(session.role!=="admin" && r.orgId!==session.orgId) continue;
+        total++;
+        if(!have.has(await Sec.userHash(r.username))){ const o = orgById(r.orgId); missing.push({ n:r.username, label, org:o ? o.name : "" }); }
+      }
+    }
+    const superOk = have.has(await Sec.userHash(SUPER_ADMIN.username));
+    return { total, missing, superOk, rolesCount:have.size };
+  }
+  async function cleanup(dry){
+    const s = await firebaseDB.ref("roles").get(); if(!s.exists()) return { removed:0 };
+    const live = new Set([await Sec.userHash(SUPER_ADMIN.username)]);
+    for(const k of ["admins","orgAdmins","coordinators","teachers","students","parents"]){ for(const r of (ROOT[k]||[])){ if(r && r.username) live.add(await Sec.userHash(r.username)); } }
+    const stale = Object.entries(s.val()).filter(([uid,v])=>v && v.u && !live.has(v.u)
+      && (session.role==="admin" || v.orgId===session.orgId));
+    if(!dry){ for(const [uid] of stale){ try{ await firebaseDB.ref("roles/"+uid).remove(); }catch(e){} } }
+    return { removed:stale.length };
+  }
+  async function render(ov){
+    const body = ov.querySelector("#spBody"); let html = "", pend = {};
+    try{ pend = await loadPending(); }catch(e){ html += `<p style="color:#b00">تعذّر قراءة طلبات التسجيل: ${esc(e.code||e.message)}</p>`; }
+    const ids = Object.keys(pend); pendingCount = ids.length; paint();
+    html += `<h4 style="margin:6px 0">📥 طلبات التسجيل بانتظار الاعتماد (${ids.length})</h4>`;
+    if(!ids.length) html += `<p style="opacity:.75">لا توجد طلبات معلّقة. الطلبات المستوفية للتفعيل التلقائي تُعتمد تلقائيًا عند فتح حساب المشرف.</p>`;
+    ids.forEach(uid=>{
+      const r = pend[uid], rec = r.rec || {}, o = orgById(r.orgId);
+      html += `<div class="sp-row" data-uid="${esc(uid)}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid #8884;border-radius:8px;padding:8px;margin:6px 0">
+        <span style="flex:1;min-width:200px">${esc(rec.username)} — ${esc(ROLE_AR[r.role]||r.role)} — ${esc(o ? o.name : r.orgId)}</span>
+        <button data-act="ok" style="cursor:pointer;padding:5px 12px">اعتماد</button><button data-act="no" style="cursor:pointer;padding:5px 12px">رفض</button><span class="sp-st"></span></div>`;
+    });
+    html += `<hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">🧭 جاهزية القواعد الصارمة</h4>
+      <p style="opacity:.8;font-size:13px">يقارن مستخدميك المفعّلين بالحسابات الحقيقية المسجّلة. انشر القواعد الصارمة فقط حين تكون القائمة المتبقية فارغة أو مقبولة.</p>
+      <button id="spReady" style="cursor:pointer;padding:6px 14px">فحص الجاهزية</button>
+      <button id="spClean" style="cursor:pointer;padding:6px 14px">إلغاء صلاحيات الحسابات المحذوفة</button>
+      <div id="spOut" style="margin-top:10px;font-size:14px"></div>`;
+    body.innerHTML = html;
+    body.querySelectorAll(".sp-row button").forEach(b=>b.addEventListener("click", async ()=>{
+      const row = b.closest(".sp-row"), uid = row.dataset.uid, st = row.querySelector(".sp-st"), act = b.dataset.act;
+      row.querySelectorAll("button").forEach(x=>x.disabled = true); st.textContent = "…";
+      try{
+        if(act==="ok"){ const r = await approve(uid, pend[uid], false); if(r.ok){ row.remove(); pendingCount = Math.max(0, pendingCount-1); paint(); } else { st.textContent = "تعذّر: "+(r.skip||""); row.querySelectorAll("button").forEach(x=>x.disabled = false); } }
+        else { await reject(uid); row.remove(); pendingCount = Math.max(0, pendingCount-1); paint(); }
+      }catch(e){ st.textContent = "خطأ: "+(e.code||e.message); row.querySelectorAll("button").forEach(x=>x.disabled = false); }
+    }));
+    const out = body.querySelector("#spOut");
+    body.querySelector("#spReady").addEventListener("click", async ()=>{
+      out.textContent = "جارٍ الفحص…";
+      try{
+        if(!cloudSynced){ out.textContent = "انتظر اكتمال مزامنة البيانات ثم أعد الفحص."; return; }
+        const r = await readiness();
+        out.innerHTML = `<p>المشرف العام: ${r.superOk ? "✅ لديه حساب حقيقي" : "❌ لا حساب حقيقي بعد (سجّل الخروج ثم الدخول به مرة قبل التشديد)"}</p>
+          <p>المستخدمون المفعّلون: ${r.total} — المنتقلون: ${r.total - r.missing.length} — المتبقون: <b>${r.missing.length}</b></p>` +
+          (r.missing.length ? `<div style="max-height:200px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:6px">` + r.missing.slice(0,300).map(m=>`${esc(m.n)} <small>(${esc(m.label)}${m.org ? " — "+esc(m.org) : ""})</small>`).join("<br>") + `</div>` : `<p>✅ الجميع منتقلون.</p>`);
+      }catch(e){ out.textContent = "تعذّر الفحص: "+(e.code||e.message); }
+    });
+    body.querySelector("#spClean").addEventListener("click", async ()=>{
+      try{
+        if(!cloudSynced){ out.textContent = "انتظر اكتمال مزامنة البيانات أولًا."; return; }
+        const d = await cleanup(true);
+        if(!d.removed){ out.textContent = "لا توجد صلاحيات لحسابات محذوفة."; return; }
+        if(!confirm("سيُلغى وصول "+d.removed+" حسابًا لم يعد موجودًا في المنصة. متابعة؟")) return;
+        const r = await cleanup(false); out.textContent = "تم إلغاء "+r.removed+" صلاحية.";
+      }catch(e){ out.textContent = "تعذّر التنظيف: "+(e.code||e.message); }
+    });
+  }
+  async function open(){
+    if(!canManage()) return;
+    const old = document.getElementById("secPanelOv"); if(old) old.remove();
+    const ov = document.createElement("div"); ov.id = "secPanelOv";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:12px;direction:rtl";
+    ov.innerHTML = `<div style="background:var(--card,#fff);color:var(--text,#111);max-width:760px;width:100%;max-height:90vh;overflow:auto;border-radius:14px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.4)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:17px">🔐 الأمان وطلبات التسجيل</b><button id="spClose" style="font-size:18px;cursor:pointer;background:none;border:0;color:inherit">✕</button></div>
+      <div id="spBody">جارٍ التحميل…</div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector("#spClose").onclick = ()=>ov.remove();
+    ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); });
+    await render(ov);
+  }
+  function onEnter(){
+    if(!canManage() || typeof firebase==="undefined") return;
+    if(!btn){
+      btn = document.createElement("button"); btn.id = "secPanelBtn"; btn.type = "button";
+      btn.style.cssText = "position:fixed;bottom:14px;left:14px;z-index:9998;width:44px;height:44px;border-radius:50%;border:1px solid #8886;background:var(--card,#fff);font-size:20px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)";
+      btn.addEventListener("click", open); document.body.appendChild(btn);
+    }
+    paint();
+    pubDone = false; setTimeout(processAuto, 4000);
+    clearInterval(timer); timer = setInterval(processAuto, 90000);
+  }
+  function onExit(){ clearInterval(timer); timer = null; if(btn){ btn.remove(); btn = null; } pendingCount = 0; const ov = document.getElementById("secPanelOv"); if(ov) ov.remove(); }
+  return { onEnter, onExit, open };
+})();
+
 
 function readLocalSnapshotRaw(){
   try{ return localStorage.getItem("platform-db-local"); }catch(e){ return null; }
@@ -2339,6 +2655,10 @@ async function syncFromCloudInBackground(){
       if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); }
     }catch(e){ syncDiag.readErr = String((e && (e.code || e.message)) || e); console.error("تعذّر قراءة قاعدة البيانات السحابية:", e); }
     if(!readOk){
+      try{                                   // المرحلة 2: القواعد صارمة والمستخدم غير مسجَّل دخوله فعليًا ⇒ لا إعادة محاولة؛ ننتظر تسجيل الدخول
+        const cu = firebase.auth().currentUser;
+        if(isPermDenied({ code:syncDiag.readErr, message:syncDiag.readErr }) && !(cu && !cu.isAnonymous)){ setStrict(true); try{ RealAuth.loadPublicOrgs(); }catch(e){} return; }
+      }catch(e){}
       // لا نكتب شيئًا أبدًا قبل قراءة ناجحة؛ نعيد المحاولة تدريجيًا وتبقى التعديلات محفوظة على الجهاز.
       hydrateAttempts++;
       clearTimeout(hydrateTimer);
@@ -2806,6 +3126,7 @@ function showLock(until){
 // يبحث عن الحساب في كل الصفات (مشرف/منسق/معلم/طالب/ولي أمر) ويتحقق من كلمة المرور؛
 // تُحدَّد الصفة تلقائيًا من الجدول الذي وُجد فيه المستخدم (لا يختارها المستخدم).
 async function authenticate(username, password){
+  if(STRICT) return await strictAuthenticate(username, password);
   const key = Sec.norm(username);
   const cands = [];
   if(key === Sec.norm(SUPER_ADMIN.username)) cands.push({role:"admin", rec:SUPER_ADMIN});
@@ -2829,7 +3150,8 @@ async function doLogin(){
     if(!username || !password){ showMsg("من فضلك أدخل اسم المستخدم وكلمة المرور.", "err"); return; }
     const hp = document.getElementById("hpWebsite");
     if(hp && hp.value){ await sleepMs(1500); showMsg("اسم المستخدم أو كلمة المرور غير صحيحة.", "err"); return; } // فخ للبرمجيات الآلية
-    if(!cloudSynced){                                   // جهاز جديد: ننتظر وصول البيانات من السحابة بدل «كلمة مرور خاطئة» كاذبة
+    await probeStrict();                                // المرحلة 2: هل القواعد صارمة؟ (يُكتشف من القواعد نفسها)
+    if(!cloudSynced && !STRICT){                        // جهاز جديد: ننتظر وصول البيانات من السحابة بدل «كلمة مرور خاطئة» كاذبة
       showMsg("جارِ مزامنة بياناتك من قاعدة البيانات، لحظة من فضلك...", "ok");
       await waitUntil(()=>cloudSynced, 9000);
       clearMsg();
@@ -2840,7 +3162,7 @@ async function doLogin(){
     const until = LoginGuard.lockedUntil(ids, cloud);
     if(until){ showLock(until); return; }
     const found = await authenticate(username, password);
-    if(!found && !cloudSynced && firebaseConfigured()){
+    if(!found && !cloudSynced && !STRICT && firebaseConfigured()){
       showMsg("تعذّر الاتصال بقاعدة البيانات الآن، ولا توجد على هذا الجهاز بيانات لهذا الحساب. تحقق من الإنترنت وأعد المحاولة.", "err"); return;
     }
     if(!found){
@@ -2848,9 +3170,10 @@ async function doLogin(){
       cloudGuardWrite(uh, r.userState);
       await sleepMs(500 + Math.random()*400);
       if(r.lock) showLock(r.lock);
-      else showMsg(`اسم المستخدم أو كلمة المرور غير صحيحة. (المتبقي ${r.left} محاولات قبل الإيقاف المؤقت)`, "err");
+      else showMsg(`اسم المستخدم أو كلمة المرور غير صحيحة. (المتبقي ${r.left} محاولات قبل الإيقاف المؤقت)` + (STRICT ? " إن كان حسابك قديمًا ولم تدخل منذ تفعيل الحماية، اطلب من مشرفك إعادة تعيين كلمة المرور." : ""), "err");
       return;
     }
+    if(found.special){ showMsg(found.msg, "err"); return; }
     const {role, rec} = found;
     const orgId = rec.orgId || null;
     const stCheck = Guard.accountState(role, rec, orgId ? orgById(orgId) : null);
@@ -2858,7 +3181,7 @@ async function doLogin(){
     LoginGuard.success("u:"+uh);
     passwordInput.value = ""; usernameInput.value = "";
     enterApp(role, rec.builtin ? {username:rec.username, builtin:true} : rec, orgId);
-    try{ RealAuth.link(username, password, role, orgId); }catch(e){}   // المرحلة 1: ربط/إنشاء حساب Firebase حقيقي بصمت (لا يعطّل الدخول)
+    try{ if(!STRICT) RealAuth.link(username, password, role, orgId); }catch(e){}   // المرحلة 1: ربط/إنشاء حساب Firebase حقيقي بصمت (لا يعطّل الدخول)
     // ترقية تجزئة كلمة المرور القديمة إلى العدد الحالي من الدورات بصمت (لا تؤثر على المستخدم)
     if(!rec.builtin && rec.passHash && (rec.passIter||0) < Sec.ITER){
       setTimeout(async ()=>{ try{ Object.assign(rec, await Sec.hashPassword(password)); saveDB(); }catch(e){} }, 1500);
@@ -2911,6 +3234,7 @@ function regResetOrgGate(){
 // الرمز AHHA (ومعه DEFAULT القديم) يشير إلى المؤسسة العامة الافتراضية لمن لا ينتمي لمؤسسة
 function findOrgByRegCode(code){
   let org = (ROOT.organizations||[]).find(o=>o && String(o.code||"").toUpperCase()===code) || null;
+  if(!org && STRICT && window.__pubOrgs){ const p = window.__pubOrgs[RealAuth.pubKey(code)]; if(p) org = { id:p.id, name:p.name, code, __pub:true, __ok:!!p.ok }; }
   if(!org && (code==="AHHA" || code==="DEFAULT")) org = orgById(DEFAULT_ORG_ID);
   return org;
 }
@@ -3072,7 +3396,7 @@ async function submitRegistration(){
   try{
     setRegMsg("");
     if(!regOrgId){ setRegMsg("اكتب رمز مؤسستك الصحيح أولًا (أو AHHA إن كنت لا تنتمي لمؤسسة)."); return; }
-    const orgNow = orgById(regOrgId);
+    const orgNow = orgById(regOrgId) || (STRICT ? regOrgObj : null);
     const stNow = orgStateOf(orgNow);
     if(!orgNow || !stNow.ok){ setRegMsg("تعذّر التسجيل: اشتراك المؤسسة غير نشط حاليًا. راجع إدارة مؤسستك أو المشرف العام."); return; }
     SCOPE.orgId = regOrgId;
@@ -3113,6 +3437,16 @@ async function submitRegistration(){
       extra = {grade, cls};
     }
 
+    if(STRICT){                              // المرحلة 2: التسجيل ينشئ حسابًا حقيقيًا وطلبًا بانتظار اعتماد المشرف
+      if(regRole==="parent"){ const cu = val("regChild"); if(!cu){ setRegMsg("اكتب اسم مستخدم الطالب."); return; } extra = { childUsername: cu }; }
+      const res = await strictRegister({ username, password, role:regRole, orgId:regOrgId, institution, stage, extra });
+      if(!res.ok){ setRegMsg(res.msg); return; }
+      regRateNote(); closeOverlay("registerOverlay"); clearMsg();
+      const m = "تم استلام طلب تسجيلك. سيُعتمد حسابك من إدارة مؤسستك (تلقائيًا أو بعد المراجعة). احفظ اسم المستخدم وكلمة المرور اللتين أنشأتهما.";
+      showMsg(m, "ok"); showNoticeModal(m, "تم استلام طلبك");
+      usernameInput.value = username; regFieldsBox.innerHTML = ""; regFieldsBox.classList.add("hidden"); regRole = null;
+      return;
+    }
     // اجلب أحدث المستخدمين من السحابة أولًا لضمان كشف التكرار عبر الأجهزة
     if(firebaseDB){ try{ await ensureFirebaseAuth(); await mergeUsersWithCloud(); }catch(e){} }
     if(regRole==="parent"){
@@ -3182,6 +3516,7 @@ function enterApp(role, user, orgId){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   applyShell();
+  try{ SecurityPanel.onEnter(); }catch(e){}
 }
 /* بند 2 (تحديث): معرّف فريد للمستخدم الحالي (الصفة + اسم المستخدم) لتتبّع مَن رأى كل مرفق،
    لأن نفس المرفق قد يصل لعدة مستلمين (صف/فصل كامل) فلا يصح تعليمه كمقروء للجميع دفعة واحدة */
@@ -3252,6 +3587,15 @@ async function tryRestoreSession(){
     let uh = saved.uh;
     if(!uh && saved.user && saved.user.username) uh = await Sec.userHash(saved.user.username); // جلسة قديمة: نحوّلها للصيغة المشفّرة
     if(!uh){ localStorage.removeItem("platform-session"); return; }
+    try{                                   // المرحلة 2: الدور يُتحقَّق منه من roles/<uid> لا من تخزين الجهاز (لا يمكن انتحال دور بتعديل التخزين)
+      await authRestored();
+      const cu = firebase.auth().currentUser;
+      if(RealAuth.isReal(cu) && firebaseDB){
+        const rs = await firebaseDB.ref("roles/"+cu.uid).get();
+        if(rs.exists()){ const R = rs.val(); if(R.u!==uh || R.role!==saved.role){ localStorage.removeItem("platform-session"); return; } }
+        else if(STRICT){ localStorage.removeItem("platform-session"); return; }
+      } else if(STRICT){ localStorage.removeItem("platform-session"); return; }
+    }catch(e){ if(STRICT) return; }
     if(saved.role==="admin" && uh === await Sec.userHash(SUPER_ADMIN.username)){
       if(!session) enterApp("admin", {username:SUPER_ADMIN.username, builtin:true}, null);
       return;
@@ -3306,6 +3650,7 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
   session = null; currentRole = null;
   try{ localStorage.removeItem("platform-session"); }catch(e){}
   try{ RealAuth.signOut(); }catch(e){}
+  try{ SecurityPanel.onExit(); }catch(e){}
   document.getElementById("appShell").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
   usernameInput.value=""; passwordInput.value=""; clearMsg();
@@ -12010,12 +12355,12 @@ function openEditOrgModal(o, onDone){
       plans.forEach((p,i)=>{
         const a = p.a, before = a.username;
         if(Sec.norm(p.u)!==Sec.norm(before) || p.u!==before){ if(p.u!==before) changes.push("تغيير اسم المدير «"+before+"» إلى «"+p.u+"»"); a.username = p.u; }
-        if(creds[i]){ Object.assign(a, creds[i]); delete a.password; changes.push("إعادة تعيين كلمة مرور المدير «"+p.u+"»"); resets.push({ user:p.u, pass:p.pw }); }
+        if(creds[i]){ Object.assign(a, creds[i]); delete a.password; changes.push("إعادة تعيين كلمة مرور المدير «"+p.u+"»"); resets.push({ user:p.u, pass:p.pw }); try{ RealAuth.provisionQueued(p.u, p.pw, "orgadmin", o.id); }catch(e){} }
         if((a.active!==false) !== p.on){ a.active = p.on; changes.push((p.on ? "تفعيل" : "إيقاف")+" حساب المدير «"+p.u+"»"); }
       });
       if(nu){
         ROOT.orgAdmins.push(Object.assign({ username:nu, orgId:o.id, active:true, email:"", createdAt:now }, newCred));
-        changes.push("إضافة مدير جديد «"+nu+"»"); resets.push({ user:nu, pass:np });
+        changes.push("إضافة مدير جديد «"+nu+"»"); resets.push({ user:nu, pass:np }); try{ RealAuth.provisionQueued(nu, np, "orgadmin", o.id); }catch(e){}
       }
       if(!changes.length){ close(); onDone({ changes:["لا تغييرات للحفظ."], resets:[] }); return; }
       o.updatedAt = now; orgLog(o, changes.join("، "));
@@ -12401,6 +12746,7 @@ function renderParentsWindow(view, role){
           const v = e.target.value; if(!v) return;
           if(v.length<6){ tnToast("كلمة المرور لا تقل عن 6 أحرف.", "err"); return; }
           Object.assign(p, await Sec.hashPassword(v)); delete p.password;
+          try{ RealAuth.provisionQueued(p.username, v, "parent", p.orgId || (session && session.orgId) || ""); }catch(e){}
           saveDB(); e.target.value = ""; e.target.placeholder = "✔ تم التعيين (مشفّرة)";
         });
         tr.querySelector(".c-on").addEventListener("change", e=>{ p.active = e.target.checked; saveDB(); });
