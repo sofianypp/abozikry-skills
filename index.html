@@ -1828,6 +1828,60 @@ async function ensureFirebaseAuth(){
   }catch(e){ console.error("تعذّر تسجيل الدخول المجهول إلى Firebase (قد تفشل الكتابة السحابية بسبب قواعد الأمان):", e); }
 }
 
+/* ===== RealAuth (المرحلة 1): حساب Firebase حقيقي لكل مستخدم =====
+   - عند كل تسجيل دخول ناجح (بعد التحقق المحلي الحالي كما هو) يُنشأ/يُستخدم حساب بريد+كلمة مرور في Firebase Authentication،
+     بريده مشتق من التجزئة المشفّرة لاسم المستخدم (لا يُكشف الاسم). لا حاجة لأي إجراء من المستخدم: ينتقل تلقائيًا بكلمة مروره الحالية.
+   - يُسجَّل في roles/<uid> دور المستخدم ومدرسته، وهو الجدول الذي ستعتمد عليه قواعد المرحلة 2 (قائمة المسموح لهم).
+   - الوضع الحالي "متوافق": لا شيء يتعطل إن فشلت العملية (يبقى الدخول المجهول كما كان) إلى أن تُشدَّد القواعد لاحقًا. */
+const RealAuth = (function(){
+  const DOMAIN = "users.arabic-skills.app", MAXV = 4;
+  let warned = false;
+  const emailFor = (uh, ver)=>"u"+uh.slice(0,40)+(ver>1 ? "v"+ver : "")+"@"+DOMAIN;
+  const fbPw = pw=>{ pw = String(pw); return pw.length>=6 ? pw : pw + "#".repeat(6-pw.length); };   // Firebase يشترط 6 أحرف على الأقل
+  const isReal = u=>!!(u && !u.isAnonymous && u.email && u.email.endsWith("@"+DOMAIN));
+  async function writeRole(uid, uh, role, orgId){
+    if(typeof firebaseDB==="undefined" || !firebaseDB) return;
+    await firebaseDB.ref("roles/"+uid).set({ role:role||"", orgId:orgId||"", u:uh, at:firebase.database.ServerValue.TIMESTAMP });
+  }
+  async function link(username, password, role, orgId){
+    try{
+      if(typeof firebase==="undefined" || !firebase.auth) return null;
+      const auth = firebase.auth(), uh = await Sec.userHash(username);
+      let user = auth.currentUser;
+      if(isReal(user) && user.email.startsWith("u"+uh.slice(0,40))){          // مسجّل دخوله فعليًا بهذا الحساب: يكفي تحديث الدور
+        await writeRole(user.uid, uh, role, orgId); return user.uid;
+      }
+      const pw = fbPw(password);
+      let cred = null;
+      for(let ver=1; ver<=MAXV && !cred; ver++){
+        const em = emailFor(uh, ver);
+        try{ cred = await auth.signInWithEmailAndPassword(em, pw); }
+        catch(e){
+          const c = e && e.code;
+          if(c==="auth/user-not-found" || c==="auth/wrong-password" || c==="auth/invalid-credential" || c==="auth/invalid-login-credentials"){
+            // إما حساب غير موجود (أول دخول) أو موجود بكلمة مرور قديمة (بعد إعادة تعيين من المشرف): نجرّب الإنشاء، وإن كان البريد مستخدمًا ننتقل للإصدار التالي
+            try{ cred = await auth.createUserWithEmailAndPassword(em, pw); }
+            catch(e2){ if(e2 && e2.code==="auth/email-already-in-use") continue; throw e2; }
+          } else throw e;
+        }
+      }
+      if(!cred || !cred.user) return null;
+      await writeRole(cred.user.uid, uh, role, orgId);
+      return cred.user.uid;
+    }catch(e){
+      if(!warned){ warned = true;
+        console.error("RealAuth: تعذّر ربط الحساب بـ Firebase Authentication. إن كان الكود auth/operation-not-allowed فعّل Email/Password من Authentication > Sign-in method.", e); }
+      try{ await ensureFirebaseAuth(); }catch(_){}
+      return null;
+    }
+  }
+  async function signOut(){
+    try{ if(typeof firebase!=="undefined" && firebase.auth && isReal(firebase.auth().currentUser)) await firebase.auth().signOut(); }catch(e){}
+    try{ await ensureFirebaseAuth(); }catch(e){}
+  }
+  return { link, signOut, emailFor };
+})();
+
 function readLocalSnapshotRaw(){
   try{ return localStorage.getItem("platform-db-local"); }catch(e){ return null; }
 }
@@ -2416,6 +2470,7 @@ function showSyncWarning(){
 // مع احترام "شواهد الحذف" (DB.deletedModelIds) كي لا يرجع نموذج محذوف عمدًا.
 async function mergeModelsWithCloud(){
   if(!firebaseDB) return;
+  await ensureFirebaseAuth();
   try{
     const snap = await firebaseDB.ref("platform-db/models").get();
     if(snap.exists()){
@@ -2454,6 +2509,7 @@ async function mergeModelsWithCloud(){
 /* دمج المستخدمين (طلاب/معلمون/أولياء أمور) مع السحابة قبل أي كتابة: يضيف من سجّلوا من أجهزة أخرى، ويطبّق شواهد الحذف،
    فتنعكس إضافة/حذف المعلم والمشرف العام على بعضهما فورًا ولا يُطيح جهاز بعمل آخر. */
 async function mergeUsersWithCloud(){
+  try{ await ensureFirebaseAuth(); }catch(e){}
   if(!firebaseDB) return;
   try{
     ROOT.deletedUsers = ROOT.deletedUsers || {};
@@ -2580,6 +2636,8 @@ function attachRealtimeSync(){
   // يجعل تعديلات معلّم/مشرف/منسق تصل لبقية الجلسات المفتوحة فعليًا وفورًا. الوارد الذي يصل أثناء حفظ معلّق أو
   // نموذج مفتوح للتحرير يُحتفَظ به ويُدمج تلقائيًا بمجرد زوال المانع (دمج ثلاثي، لا استبدال).
   if(!firebaseDB || window._rtAttached) return;
+  // تحضيرًا لقواعد "auth != null": لا يُفتح المستمع قبل اكتمال الدخول المجهول، وإلا يُلغى بخطأ permission_denied.
+  try{ if(firebase.auth && !firebase.auth().currentUser){ ensureFirebaseAuth().then(()=>{ if(firebase.auth().currentUser) attachRealtimeSync(); }); return; } }catch(e){}
   window._rtAttached = true;
   firebaseDB.ref("platform-db").on("value", snap=>{
     if(!snap.exists()) return;
@@ -2711,6 +2769,7 @@ const LoginGuard = (function(){
 
 async function cloudGuardRead(uh){
   if(!firebaseDB) return null;
+  try{ await Promise.race([ensureFirebaseAuth(), sleepMs(1500)]); }catch(e){}
   try{
     const snap = await Promise.race([ firebaseDB.ref("loginGuard/"+uh).get(), sleepMs(1200).then(()=>null) ]);
     return (snap && snap.exists()) ? snap.val() : null;
@@ -2718,7 +2777,7 @@ async function cloudGuardRead(uh){
 }
 function cloudGuardWrite(uh, state){
   if(!firebaseDB || !state) return;
-  try{ Promise.race([ firebaseDB.ref("loginGuard/"+uh).set(state), sleepMs(3000) ]).catch(()=>{}); }catch(e){}
+  try{ Promise.race([ ensureFirebaseAuth().then(()=>firebaseDB.ref("loginGuard/"+uh).set(state)), sleepMs(3000) ]).catch(()=>{}); }catch(e){}
 }
 
 let lockTicker = null;
@@ -2799,6 +2858,7 @@ async function doLogin(){
     LoginGuard.success("u:"+uh);
     passwordInput.value = ""; usernameInput.value = "";
     enterApp(role, rec.builtin ? {username:rec.username, builtin:true} : rec, orgId);
+    try{ RealAuth.link(username, password, role, orgId); }catch(e){}   // المرحلة 1: ربط/إنشاء حساب Firebase حقيقي بصمت (لا يعطّل الدخول)
     // ترقية تجزئة كلمة المرور القديمة إلى العدد الحالي من الدورات بصمت (لا تؤثر على المستخدم)
     if(!rec.builtin && rec.passHash && (rec.passIter||0) < Sec.ITER){
       setTimeout(async ()=>{ try{ Object.assign(rec, await Sec.hashPassword(password)); saveDB(); }catch(e){} }, 1500);
@@ -3245,6 +3305,7 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
   stopTestTimerAndOverlays();
   session = null; currentRole = null;
   try{ localStorage.removeItem("platform-session"); }catch(e){}
+  try{ RealAuth.signOut(); }catch(e){}
   document.getElementById("appShell").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
   usernameInput.value=""; passwordInput.value=""; clearMsg();
