@@ -1913,10 +1913,18 @@ const RealAuth = (function(){
   }
   /* المرحلة 2: دخول Firebase فقط (لا إنشاء). يعيد المستخدم أو null؛ ويرمي أخطاء الشبكة */
   async function signInOnly(username, password){
+    const auth = firebase.auth(); await authRestored();
+    const uh = await Sec.userHash(username), pw = fbPw(password), ck = "platform-ver-"+uh.slice(0,16);
+    let n = 0; try{ n = parseInt(localStorage.getItem(ck), 10) || 0; }catch(e){}
+    const attempt = async v=>{
+      try{ const u = (await auth.signInWithEmailAndPassword(emailFor(uh, v), pw)).user; try{ localStorage.setItem(ck, String(v)); }catch(e){} return u; }
+      catch(e){ if(KNOWN_BAD(e && e.code)) return null; throw e; }
+    };
+    if(n){ const u = await attempt(n); if(u) return u; }          // الإصدار المحفوظ على الجهاز أولًا: يوفّر رحلة شبكة كاملة
     await ensureFirebaseAuth();
-    const auth = firebase.auth(), uh = await Sec.userHash(username), n = await getVer(uh), pw = fbPw(password);
-    try{ return (await auth.signInWithEmailAndPassword(emailFor(uh, n), pw)).user; }
-    catch(e){ if(KNOWN_BAD(e && e.code)) return null; throw e; }
+    const sv = await getVer(uh);
+    if(sv === n) return null;
+    return await attempt(sv);
   }
   /* حساب ثانوي (نسخة Firebase منفصلة) كي لا يخرج المشرف من جلسته عند إنشاء حساب لغيره */
   function secondaryAuth(){
@@ -2000,6 +2008,7 @@ const RealAuth = (function(){
 
 /* ===== الدخول في الوضع الصارم: Firebase أولًا، والدور يُؤخذ من roles/<uid> لا من الجهاز ===== */
 async function strictAuthenticate(username, password){
+  const T = { t0: performance.now() }, lap = k=>{ T[k] = Math.round(performance.now() - T.t0); };
   let user = null;
   try{ user = await RealAuth.signInOnly(username, password); }
   catch(e){
@@ -2009,21 +2018,35 @@ async function strictAuthenticate(username, password){
     if(c==="auth/operation-not-allowed") return { special:true, msg:"تسجيل الدخول بالبريد غير مفعّل في Firebase." };
     console.error(e); return null;
   }
+  lap("signIn");
   if(!user) return null;
   let R = null;
   try{ const s = await firebaseDB.ref("roles/"+user.uid).get(); R = s.exists() ? s.val() : null; }catch(e){ R = null; }
+  lap("roles");
   if(!R){ await RealAuth.signOut(); return { special:true, msg:"حسابك مسجَّل لكنه بانتظار اعتماد المشرف. حاول لاحقًا أو راجع إدارة مؤسستك." }; }
   const uh = await Sec.userHash(username);
   if(R.u !== uh){ await RealAuth.signOut(); return null; }
+  const superHash = await Sec.userHash(SUPER_ADMIN.username), key = Sec.norm(username);
+  const findLocal = ()=>{
+    if(R.role==="admin" && uh===superHash) return { role:"admin", rec:SUPER_ADMIN };
+    const rec = allTableFor(R.role).find(r=>r && r.username && Sec.norm(r.username)===key);
+    return rec ? { role:R.role, rec } : null;
+  };
+  // الهوية والدور تحقّق منهما الخادم الآن. تنزيل قاعدة البيانات كاملةً يجري في الخلفية؛ ولا ننتظره إن كان سجل المستخدم موجودًا وسليمًا على هذا الجهاز.
   hydrateAttempts = 0; clearTimeout(hydrateTimer); cloudSynced = false;
   syncFromCloudInBackground();
-  const ok = await waitUntil(()=>cloudSynced, 20000);
-  if(!ok){ await RealAuth.signOut(); return { special:true, msg:"تعذّر تحميل بيانات المنصة الآن. أعد المحاولة بعد لحظات." }; }
-  if(R.role==="admin" && uh === await Sec.userHash(SUPER_ADMIN.username)) return { role:"admin", rec:SUPER_ADMIN };
-  const key = Sec.norm(username);
-  const rec = allTableFor(R.role).find(r=>r && r.username && Sec.norm(r.username)===key);
-  if(!rec) return { special:true, msg:"تم التحقق من هويتك لكن بيانات حسابك غير موجودة في المنصة. راجع مشرفك." };
-  return { role:R.role, rec };
+  let f = findLocal();
+  const usable = f && (f.rec.builtin || Guard.accountState(f.role, f.rec, f.rec.orgId ? orgById(f.rec.orgId) : null).ok);
+  if(usable){ lap("localHit"); }
+  else {
+    try{ showMsg("جارٍ تحميل بيانات المنصة إلى هذا الجهاز (تحدث مرة واحدة فقط وقد تستغرق وقتًا)…", "ok"); }catch(e){}
+    const ok = await waitUntil(()=>cloudSynced, 90000); lap("download");
+    if(!ok){ await RealAuth.signOut(); return { special:true, msg:"تعذّر تحميل بيانات المنصة الآن. أعد المحاولة بعد لحظات." }; }
+    f = findLocal();
+    if(!f) return { special:true, msg:"تم التحقق من هويتك لكن بيانات حسابك غير موجودة في المنصة. راجع مشرفك." };
+  }
+  window.__loginTiming = T; console.info("[توقيت الدخول بالمللي ثانية]", T);
+  return f;
 }
 async function strictRegister(d){
   try{
@@ -2138,7 +2161,12 @@ const SecurityPanel = (function(){
       <p style="opacity:.8;font-size:13px">يقارن مستخدميك المفعّلين بالحسابات الحقيقية المسجّلة. انشر القواعد الصارمة فقط حين تكون القائمة المتبقية فارغة أو مقبولة.</p>
       <button id="spReady" style="cursor:pointer;padding:6px 14px">فحص الجاهزية</button>
       <button id="spClean" style="cursor:pointer;padding:6px 14px">إلغاء صلاحيات الحسابات المحذوفة</button>
-      <div id="spOut" style="margin-top:10px;font-size:14px"></div>`;
+      <div id="spOut" style="margin-top:10px;font-size:14px"></div>
+      <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">⚡ السرعة وحجم البيانات</h4>
+      <p style="opacity:.8;font-size:13px">يكشف ما يُبطئ التحميل، وينقل الصور/الفيديوهات القديمة المضمّنة داخل النماذج إلى تخزين منفصل فتخفّ قاعدة البيانات كثيرًا.</p>
+      <button id="spSize" style="cursor:pointer;padding:6px 14px">فحص الحجم والسرعة</button>
+      <button id="spMig" style="cursor:pointer;padding:6px 14px">نقل الوسائط القديمة</button>
+      <div id="spOut2" style="margin-top:10px;font-size:14px"></div>`;
     body.innerHTML = html;
     body.querySelectorAll(".sp-row button").forEach(b=>b.addEventListener("click", async ()=>{
       const row = b.closest(".sp-row"), uid = row.dataset.uid, st = row.querySelector(".sp-st"), act = b.dataset.act;
@@ -2158,6 +2186,35 @@ const SecurityPanel = (function(){
           <p>المستخدمون المفعّلون: ${r.total} — المنتقلون: ${r.total - r.missing.length} — المتبقون: <b>${r.missing.length}</b></p>` +
           (r.missing.length ? `<div style="max-height:200px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:6px">` + r.missing.slice(0,300).map(m=>`${esc(m.n)} <small>(${esc(m.label)}${m.org ? " — "+esc(m.org) : ""})</small>`).join("<br>") + `</div>` : `<p>✅ الجميع منتقلون.</p>`);
       }catch(e){ out.textContent = "تعذّر الفحص: "+(e.code||e.message); }
+    });
+    const out2 = body.querySelector("#spOut2");
+    const findLegacy = ()=>{ const found = [], seen = new WeakSet();
+      (function walk(o){ if(!o || typeof o!=="object" || seen.has(o)) return; seen.add(o);
+        if(typeof o.media==="string" && o.media.startsWith("data:")) found.push(o);
+        for(const k in o){ const v = o[k]; if(v && typeof v==="object") walk(v); } })(ROOT);
+      return found; };
+    body.querySelector("#spSize").addEventListener("click", ()=>{
+      const rows = Object.keys(ROOT).map(k=>{ let n = 0; try{ n = JSON.stringify(ROOT[k]).length; }catch(e){} return [k, n]; }).sort((a,b)=>b[1]-a[1]);
+      const total = rows.reduce((a,r)=>a+r[1], 0), lg = findLegacy(), lb = lg.reduce((a,o)=>a+o.media.length, 0), T = window.__loginTiming;
+      out2.innerHTML = `<p>حجم البيانات الكلي ≈ <b>${(total/1048576).toFixed(2)} MB</b></p>` +
+        rows.slice(0,8).map(r=>`${esc(r[0])}: ${(r[1]/1048576).toFixed(2)} MB`).join("<br>") +
+        `<p>وسائط قديمة مضمّنة داخل النماذج: <b>${lg.length}</b> (≈ ${(lb/1048576).toFixed(2)} MB)</p>` +
+        (T ? `<p style="direction:ltr;text-align:left;font-size:12px">آخر دخول (ms): ${esc(JSON.stringify(T))}</p>` : "");
+    });
+    body.querySelector("#spMig").addEventListener("click", async ()=>{
+      try{
+        if(!cloudSynced){ out2.textContent = "انتظر اكتمال مزامنة البيانات أولًا."; return; }
+        const lg = findLegacy();
+        if(!lg.length){ out2.textContent = "لا توجد وسائط قديمة مضمّنة."; return; }
+        if(!confirm("سيُنقل "+lg.length+" وسيطًا إلى التخزين المنفصل. لا تغلق الصفحة حتى ينتهي. متابعة؟")) return;
+        let ok = 0, fail = 0;
+        for(const o of lg){
+          out2.textContent = "جارٍ النقل… "+(ok+fail)+" / "+lg.length;
+          try{ o.mediaId = await MediaStore.put(o.media); delete o.media; ok++; }catch(e){ console.error(e); fail++; }
+        }
+        saveDB(); flushSaveDBNow();
+        out2.textContent = "تم نقل "+ok+" وسيط"+(fail ? " وفشل "+fail+" (أعد المحاولة)" : "")+". احفظ وانتظر ثوانٍ ثم أعد فحص الحجم.";
+      }catch(e){ out2.textContent = "تعذّر النقل: "+(e.code||e.message); }
     });
     body.querySelector("#spClean").addEventListener("click", async ()=>{
       try{
@@ -2640,6 +2697,12 @@ setInterval(renderSyncChip, 1500);
 
 /* ---------- المزامنة الأولية مع السحابة ---------- */
 async function waitUntil(fn, ms){ const t0 = Date.now(); while(!fn() && Date.now()-t0 < ms) await sleepMs(120); return fn(); }
+function rebindSessionUser(){      // بعد دخول سريع بسجل محلي: نربط الجلسة بسجل المستخدم المحدّث القادم من السحابة
+  if(!session || !session.user || session.user.builtin) return;
+  const key = Sec.norm(session.user.username);
+  const r = allTableFor(session.role).find(x=>x && x.username && Sec.norm(x.username)===key);
+  if(r && r !== session.user) session.user = r;
+}
 async function syncFromCloudInBackground(){
   let cloudSaved = null, cloudRaw = null, readOk = false;
   const useFirebase = firebaseConfigured() && typeof firebase !== "undefined";
@@ -2652,6 +2715,7 @@ async function syncFromCloudInBackground(){
       await ensureFirebaseAuth();
       const snap = await firebaseDB.ref("platform-db").get();
       readOk = true;
+      try{ const cu = firebase.auth().currentUser; if(cu && cu.isAnonymous && STRICT) setStrict(false); }catch(e){}
       if(snap.exists()){ cloudSaved = snap.val(); cloudRaw = JSON.stringify(cloudSaved); }
     }catch(e){ syncDiag.readErr = String((e && (e.code || e.message)) || e); console.error("تعذّر قراءة قاعدة البيانات السحابية:", e); }
     if(!readOk){
@@ -2701,6 +2765,7 @@ async function syncFromCloudInBackground(){
     sanitizeLoadedModels();
     lastSavedSnapshot = cloudRaw || "";
     persistLocalNow();
+    try{ rebindSessionUser(); }catch(e){}
     try{ if(typeof refreshCurrentScreen === "function") refreshCurrentScreen(); }catch(e){}
   } else if(useFirebase){
     baseHashes = {}; persistBase(); lastCloudCounts = countsOf({});   // السحابة فارغة فعلًا (أول تشغيل): نؤسّسها من النسخة المحلية
@@ -3150,7 +3215,7 @@ async function doLogin(){
     if(!username || !password){ showMsg("من فضلك أدخل اسم المستخدم وكلمة المرور.", "err"); return; }
     const hp = document.getElementById("hpWebsite");
     if(hp && hp.value){ await sleepMs(1500); showMsg("اسم المستخدم أو كلمة المرور غير صحيحة.", "err"); return; } // فخ للبرمجيات الآلية
-    await probeStrict();                                // المرحلة 2: هل القواعد صارمة؟ (يُكتشف من القواعد نفسها)
+    if(!STRICT) await probeStrict();                    // المرحلة 2: هل القواعد صارمة؟ (يُكتشف من القواعد نفسها)
     if(!cloudSynced && !STRICT){                        // جهاز جديد: ننتظر وصول البيانات من السحابة بدل «كلمة مرور خاطئة» كاذبة
       showMsg("جارِ مزامنة بياناتك من قاعدة البيانات، لحظة من فضلك...", "ok");
       await waitUntil(()=>cloudSynced, 9000);
@@ -3161,6 +3226,7 @@ async function doLogin(){
     const cloud = await cloudGuardRead(uh);
     const until = LoginGuard.lockedUntil(ids, cloud);
     if(until){ showLock(until); return; }
+    if(STRICT) showMsg("جارٍ تسجيل الدخول…", "ok");
     const found = await authenticate(username, password);
     if(!found && !cloudSynced && !STRICT && firebaseConfigured()){
       showMsg("تعذّر الاتصال بقاعدة البيانات الآن، ولا توجد على هذا الجهاز بيانات لهذا الحساب. تحقق من الإنترنت وأعد المحاولة.", "err"); return;
@@ -6048,17 +6114,43 @@ const MediaStore = (function(){
     if(!chk.exists()) throw new Error("لم يُؤكَّد الرفع");
     cache.set(id, dataUrl); return id;
   }
-  async function get(id){
-    if(!id) return "";
-    if(cache.has(id)) return cache.get(id);
-    const d = await db(), snap = await d.ref(ROOTP+"/"+id).get();
-    if(!snap.exists()) throw new Error("الوسيط غير موجود");
-    const v = snap.val(), m = v.meta || {}, dd = v.d || {};
-    const out = Object.keys(dd).sort().map(k=>dd[k]).join("");
+  const inflight = new Map(), pq = [], queued = new Set(); let pRun = false, pfBytes = 0;
+  const remember = (id, out)=>{ cache.set(id, out); while(cache.size > 10) cache.delete(cache.keys().next().value); };
+  async function fetchAll(id, notify){
+    const d = await db(), base = d.ref(ROOTP+"/"+id), ms = await base.child("meta").get();
+    if(!ms.exists()) throw new Error("الوسيط غير موجود");
+    const m = ms.val() || {}, n = m.n || 0, parts = new Array(n); let next = 0, done = 0;
+    const worker = async ()=>{
+      while(next < n){
+        const k = next++, sn = await base.child("d/c"+String(k).padStart(4,"0")).get();
+        if(!sn.exists()) throw new Error("الوسيط ناقص");
+        parts[k] = sn.val(); done++; notify(done/n);
+      }
+    };
+    await Promise.all(Array.from({length:Math.min(6, Math.max(n,1))}, worker));     // جلب القطع بالتوازي بدل كتلة واحدة بطيئة
+    const out = parts.join("");
     if(m.size && out.length!==m.size) throw new Error("الوسيط ناقص");
-    cache.set(id, out); return out;
+    return out;
   }
-  return { put, get };
+  function get(id, onProg){
+    if(!id) return Promise.resolve("");
+    if(cache.has(id)){ if(onProg) onProg(1); return Promise.resolve(cache.get(id)); }
+    let f = inflight.get(id);
+    if(!f){
+      f = { cbs:[], p:null };
+      f.p = fetchAll(id, p=>f.cbs.forEach(cb=>{ try{ cb(p); }catch(e){} })).then(out=>{ remember(id, out); inflight.delete(id); return out; }, e=>{ inflight.delete(id); throw e; });
+      inflight.set(id, f);
+    }
+    if(onProg) f.cbs.push(onProg);
+    return f.p;
+  }
+  function prefetch(id){                       // تحميل مسبق هادئ لوسائط النموذج المفتوح (بسقف حجم) ليفتح الفيديو فورًا عند الضغط
+    if(!id || cache.has(id) || queued.has(id) || pfBytes > 12e6) return;
+    queued.add(id); pq.push(id);
+    if(pRun) return; pRun = true;
+    (async()=>{ while(pq.length && pfBytes <= 12e6){ const x = pq.shift(); try{ const o = await get(x); pfBytes += o.length; }catch(e){} } pq.length = 0; pRun = false; })();
+  }
+  return { put, get, prefetch };
 })();
 /* رمز الشاشة: شاشة عريضة أفقية (SVG) بإطار داكن وشاشة زرقاء وزر تشغيل وقاعدة — أوضح وأجمل من الإيموجي 🖥 */
 const SCREEN_SVG = '<svg viewBox="0 0 32 22" aria-hidden="true" focusable="false"><rect x="1" y="1" width="30" height="16" rx="2.6" fill="#2c3e50"/><rect x="3" y="3" width="26" height="12" rx="1.2" fill="#3aa7e8"/><path d="M3 3h12L8 15H3z" fill="#fff" opacity=".22"/><path d="M13.6 5.9L20.4 9l-6.8 3.1z" fill="#fff"/><rect x="14" y="17" width="4" height="2.6" fill="#2c3e50"/><rect x="9" y="19.4" width="14" height="2.2" rx="1.1" fill="#2c3e50"/></svg>';
@@ -6280,6 +6372,7 @@ function openMediaEditor(bulb){
 const __mediaReg = [];
 function screenSolveHTML(src, type, extraStyle, id){
   __mediaReg.push({src, type: type || "image", id: id || ""});
+  if(id && !src){ try{ if(session && session.role==="student") setTimeout(()=>MediaStore.prefetch(id), 1200); }catch(e){} }
   return `<span class="screenbtn screen-solve" data-mref="${__mediaReg.length-1}" title="عرض الشاشة (فيديو/صورة)" style="cursor:pointer; ${extraStyle||""}">${SCREEN_SVG}</span>`;
 }
 /* زر المشبك عند الطالب: يفتح الرابط الخارجي في نافذة جديدة */
@@ -6374,8 +6467,12 @@ document.addEventListener("click", (e)=>{
   if(!m) return;
   if(m.src){ showStudentMedia(m.src, m.type); return; }
   t.style.opacity = ".5";
-  MediaStore.get(m.id).then(u=>{ m.src = u; t.style.opacity = ""; showStudentMedia(u, m.type); })
-    .catch(err=>{ t.style.opacity = ""; console.error(err); alert("تعذّر تحميل الوسيط. تحقّق من الاتصال بالإنترنت ثم أعد المحاولة."); });
+  let tb = document.getElementById("mediaLoadToast");
+  if(!tb){ tb = document.createElement("div"); tb.id = "mediaLoadToast"; tb.style.cssText = "position:fixed;bottom:70px;left:50%;transform:translateX(-50%);z-index:100000;background:#111c;color:#fff;padding:10px 18px;border-radius:24px;font-size:15px;direction:rtl;box-shadow:0 4px 18px rgba(0,0,0,.4)"; document.body.appendChild(tb); }
+  tb.textContent = "جارٍ تحميل الوسيط… 0%";
+  MediaStore.get(m.id, p=>{ tb.textContent = "جارٍ تحميل الوسيط… "+Math.round(p*100)+"%"; })
+    .then(u=>{ m.src = u; t.style.opacity = ""; tb.remove(); showStudentMedia(u, m.type); })
+    .catch(err=>{ t.style.opacity = ""; tb.remove(); console.error(err); alert("تعذّر تحميل الوسيط. تحقّق من الاتصال بالإنترنت ثم أعد المحاولة."); });
 });
 
 function bulbButton(){
