@@ -1560,7 +1560,8 @@ const Sec = (function(){
     if(typeof rec.password==="string" && rec.password!=="") return rec.password===String(pw);
     return false;
   }
-  return { norm, userHash, hashPassword, verify, sha256Hex, ITER, available: !!subtle };
+  function userHashSync(username){ return uhCache.get(norm(username)) || null; }   // بصمة مخزّنة مسبقًا (تُدفَأ بـ warmUH) لاستعمالها في دوال التخطيط المتزامنة
+  return { norm, userHash, userHashSync, hashPassword, verify, sha256Hex, ITER, available: !!subtle };
 })();
 
 // تجزئة سريعة (غير أمنية) لبناء مفاتيح قصيرة آمنة لـ Firebase (لا تحوي . $ # [ ] /)
@@ -1873,17 +1874,37 @@ async function probeStrict(){
 let LAYOUT = 1, CLOUD_ME = null;
 const SHARD_ARRAYS = TENANT_ARRAYS.slice();
 const ADMIN_ONLY_KEYS = ["admins"];
+/* ===== المرحلة 4: عقدة لكل مستخدم (LAYOUT = 3) =====
+   سجلات هذه المفاتيح (وفيها كلمات المرور المشفّرة والنتائج) لا تبقى في مصفوفة واحدة يقرؤها كل من في المدرسة،
+   بل تُفرَّق إلى userData/<مدرسة>/<بصمة المستخدم>/<مفتاح>. الطالب/ولي الأمر تسمح له القواعد بقراءة عقدته فقط
+   (وولي الأمر عقد أبنائه المعتمدة في parentKids)، أما طاقم المدرسة فيقرأ userData/<مدرسة> كاملًا. */
+const USER_SHARDS = ["students","results","parents","pendingStudents"];
+const USER_SHARD_SET = new Set(USER_SHARDS);
+const STAFF_ROLES = ["admin","orgadmin","coordinator","teacher"];
+const isStaffRole = r=>STAFF_ROLES.includes(r);
+let USPLIT = false;                                  // يُضبط من resolveLayout (LAYOUT === 3)
+let shardUsers = {};                                 // مفتاح -> Set("مدرسة|بصمة") للعقد الموجودة فعلًا (لحذف عقدة مستخدم زال)
+const ownerNameOf = (k, it)=> it ? (k==="results" ? it.studentUsername : it.username) : "";
+const ownerUh = (k, it)=>{ const n = ownerNameOf(k, it); return n ? Sec.userHashSync(n) : null; };
+async function warmUH(obj){                           // يحسب بصمات أصحاب السجلات مسبقًا كي تبقى planShardWrites متزامنة
+  const names = new Set();
+  USER_SHARDS.forEach(k=>toArr((obj||{})[k]).forEach(it=>{ const n = ownerNameOf(k, it); if(n) names.add(n); }));
+  for(const n of names) await Sec.userHash(n);
+}
+const okUhKey = x=>/^[0-9a-f]{64}$|^_none$/.test(x);
 const STUDENT_WRITE = ["results","students","parents","pendingStudents","tasks","correspondence","attachTasks","attachments","meta"];
 const GLOBAL_STAFF_WRITE = ["deletedModelIds","deletedUsers"];
 const GLOBAL_ANY_WRITE = ["updatedAt","schemaVersion"];
 let shardHashes = {}, shardOrgs = {};
 const orgOfItem = x=>(x && x.orgId) ? String(x.orgId) : "_none";
-function splitToShards(obj){
-  const orgData = {}, global = {}, adminOnly = {};
+function splitToShards(obj, userSplit){
+  const orgData = {}, global = {}, adminOnly = {}, userData = {};
   const put = (oid,k,v)=>{ (orgData[oid] = orgData[oid] || {})[k] = v; };
   Object.keys(obj||{}).forEach(k=>{
     const v = obj[k];
-    if(SHARD_ARRAYS.includes(k)){
+    if(userSplit && USER_SHARD_SET.has(k)){
+      toArr(v).forEach(it=>{ const o = orgOfItem(it), u = ownerUh(k, it) || "_none"; (((userData[o] = userData[o] || {})[u] = userData[o][u] || {})[k] = userData[o][u][k] || []).push(it); });
+    } else if(SHARD_ARRAYS.includes(k)){
       const by = {}; toArr(v).forEach(it=>{ const o = orgOfItem(it); (by[o] = by[o] || []).push(it); });
       Object.keys(by).forEach(oid=>put(oid, k, by[oid]));
     } else if(k==="organizations"){ toArr(v).forEach(o=>{ if(o && o.id) put(String(o.id), "org", o); }); }
@@ -1891,9 +1912,10 @@ function splitToShards(obj){
     else if(ADMIN_ONLY_KEYS.includes(k)) adminOnly[k] = v;
     else global[k] = v;
   });
-  return { orgData, global, adminOnly };
+  return { orgData, global, adminOnly, userData };
 }
-function assembleCloud(raw){
+function assembleCloud(raw, userSplit){
+  if(userSplit === undefined) userSplit = USPLIT;
   const out = Object.assign({}, raw.global || {}), arrays = {}, orgs = [], meta = {};
   const od = raw.orgData || {};
   Object.keys(od).forEach(oid=>{
@@ -1901,7 +1923,15 @@ function assembleCloud(raw){
     Object.keys(sh).forEach(k=>{
       if(k==="org") orgs.push(sh.org);
       else if(k==="meta") meta[oid] = sh.meta;
+      else if(userSplit && USER_SHARD_SET.has(k)) return;        // النسخة القديمة (مصفوفة المدرسة) تُهمل بعد التفعيل حتى لا يعود محذوف منها
       else (arrays[k] = arrays[k] || []).push(...toArr(sh[k]));
+    });
+  });
+  if(userSplit) Object.keys(raw.userData || {}).forEach(oid=>{
+    const ud = raw.userData[oid] || {};
+    Object.keys(ud).forEach(uh=>{
+      const node = ud[uh] || {};
+      Object.keys(node).forEach(k=>{ if(USER_SHARD_SET.has(k)) (arrays[k] = arrays[k] || []).push(...toArr(node[k])); });
     });
   });
   Object.keys(arrays).forEach(k=>{ out[k] = arrays[k]; });
@@ -1911,10 +1941,15 @@ function assembleCloud(raw){
   return out;
 }
 function noteShards(raw){
-  shardOrgs = {}; shardHashes = {};
+  shardOrgs = {}; shardHashes = {}; shardUsers = {};
   Object.keys(raw.orgData || {}).forEach(oid=>Object.keys(raw.orgData[oid] || {}).forEach(k=>{
+    if(USPLIT && USER_SHARD_SET.has(k)) return;                  // نسخة قديمة ميتة: لا نخطّط لها كتابة
     (shardOrgs[k] = shardOrgs[k] || new Set()).add(oid); shardHashes[oid+"|"+k] = hashKey(raw.orgData[oid][k]);
   }));
+  if(USPLIT) Object.keys(raw.userData || {}).forEach(oid=>Object.keys(raw.userData[oid] || {}).forEach(uh=>Object.keys(raw.userData[oid][uh] || {}).forEach(k=>{
+    if(!USER_SHARD_SET.has(k)) return;
+    (shardUsers[k] = shardUsers[k] || new Set()).add(oid+"|"+uh); shardHashes[oid+"|u|"+uh+"|"+k] = hashKey(raw.userData[oid][uh][k]);
+  })));
   Object.keys(raw.global || {}).forEach(k=>{ shardHashes["g|"+k] = hashKey(raw.global[k]); });
   Object.keys(raw.adminOnly || {}).forEach(k=>{ shardHashes["a|"+k] = hashKey(raw.adminOnly[k]); });
 }
@@ -1940,6 +1975,21 @@ function planShardWrites(payload, me){
   Object.keys(payload).forEach(k=>{
     const v = payload[k];
     if(k==="updatedAt"){ if(canWriteGlobal(me,k)) set("global/updatedAt","g|updatedAt", v); return; }
+    if(USPLIT && USER_SHARD_SET.has(k)){
+      const byU = {}; let unresolved = false;
+      toArr(v).forEach(it=>{ const o = orgOfItem(it), u = ownerUh(k, it) || "_none"; if(u==="_none" && ownerNameOf(k,it)) unresolved = true; ((byU[o] = byU[o] || {})[u] = byU[o][u] || []).push(it); });
+      if(unresolved){ skipped.push(k); return; }                 // بصمة غير محسوبة: لا نكتب في عقدة خاطئة أبدًا
+      const combos = new Set(); Object.keys(byU).forEach(o=>Object.keys(byU[o]).forEach(u=>combos.add(o+"|"+u)));
+      (shardUsers[k] || []).forEach(c=>combos.add(c));
+      combos.forEach(c=>{
+        const i = c.indexOf("|"), oid = c.slice(0,i), uh = c.slice(i+1);
+        if(!isAdm && oid !== me.orgId) return;
+        if(!canWriteShard(me,k)){ skipped.push(k); return; }
+        if(!isStaffRole(me.role) && (uh !== me.uh || k !== "results")) return;   // الطالب لا يكتب إلا نتائجه في عقدته؛ سجله (الصف/التفعيل/الرسوم) وسجل ولي الأمر يديرهما الطاقم فقط، وتُهمَل محاولات غير ذلك بصمت
+        set("userData/"+oid+"/"+uh+"/"+k, oid+"|u|"+uh+"|"+k, (byU[oid] && byU[oid][uh]) || []);
+      });
+      return;
+    }
     if(SHARD_ARRAYS.includes(k)){
       const by = {}; toArr(v).forEach(it=>{ const o = orgOfItem(it); (by[o] = by[o] || []).push(it); });
       const orgs = new Set(Object.keys(by)); (shardOrgs[k] || []).forEach(o=>orgs.add(o));
@@ -1979,14 +2029,15 @@ function sameShardContent(k, a, b){
 }
 
 async function resolveLayout(){
-  try{ const s = await firebaseDB.ref("config/layout").get(); LAYOUT = (s.exists() && Number(s.val())===2) ? 2 : 1; }catch(e){}
+  try{ const s = await firebaseDB.ref("config/layout").get(); const n = s.exists() ? Number(s.val()) : 1; LAYOUT = (n===2 || n===3) ? n : 1; }catch(e){}
+  USPLIT = LAYOUT === 3;
   return LAYOUT;
 }
 async function ensureCloudMe(){
   if(CLOUD_ME) return CLOUD_ME;
   try{
     const u = firebase.auth().currentUser;
-    if(u && !u.isAnonymous){ const s = await firebaseDB.ref("roles/"+u.uid).get(); if(s.exists()){ const R = s.val(); CLOUD_ME = { role:R.role, orgId:R.orgId || "" }; } }
+    if(u && !u.isAnonymous){ const s = await firebaseDB.ref("roles/"+u.uid).get(); if(s.exists()){ const R = s.val(); CLOUD_ME = { role:R.role, orgId:R.orgId || "", uh:R.u || "" }; } }
   }catch(e){}
   return CLOUD_ME;
 }
@@ -1994,24 +2045,51 @@ const deniedErr = ()=>Object.assign(new Error("PERMISSION_DENIED"), { code:"PERM
 /* قراءة كامل ما يحق لهذا المستخدم قراءته، بشكل الكائن السحابي القديم نفسه (فيعمل محرك الدمج دون تغيير) */
 async function cloudReadAll(){
   await ensureFirebaseAuth(); await ensureCloudMe(); await resolveLayout();
-  if(LAYOUT !== 2){ const snap = await firebaseDB.ref("platform-db").get(); return snap.exists() ? snap.val() : null; }
+  if(LAYOUT < 2){ const snap = await firebaseDB.ref("platform-db").get(); return snap.exists() ? snap.val() : null; }
   if(!CLOUD_ME || (CLOUD_ME.role!=="admin" && !CLOUD_ME.orgId)) throw deniedErr();
+  if(USPLIT && !isStaffRole(CLOUD_ME.role) && !CLOUD_ME.uh) throw deniedErr();
   const isAdm = CLOUD_ME.role === "admin";
-  const [g, o, a] = await Promise.all([
+  const [g, o, a, userData] = await Promise.all([
     firebaseDB.ref("global").get(),
     isAdm ? firebaseDB.ref("orgData").get() : firebaseDB.ref("orgData/"+CLOUD_ME.orgId).get(),
-    isAdm ? firebaseDB.ref("adminOnly").get() : Promise.resolve(null)
+    isAdm ? firebaseDB.ref("adminOnly").get() : Promise.resolve(null),
+    readUserData(CLOUD_ME)
   ]);
   const orgData = isAdm ? (o.exists() ? o.val() : {}) : (o.exists() ? { [CLOUD_ME.orgId]: o.val() } : {});
-  const raw = { orgData, global: g.exists() ? g.val() : {}, adminOnly: (a && a.exists()) ? a.val() : {} };
+  const raw = { orgData, userData, global: g.exists() ? g.val() : {}, adminOnly: (a && a.exists()) ? a.val() : {} };
   noteShards(raw);
-  return (Object.keys(orgData).length || Object.keys(raw.global).length) ? assembleCloud(raw) : null;
+  return (Object.keys(orgData).length || Object.keys(raw.global).length || Object.keys(userData).length) ? assembleCloud(raw) : null;
+}
+/* قراءة عقد المستخدمين (LAYOUT = 3): الطاقم يقرأ مدرسته كاملة، والطالب عقدته فقط، وولي الأمر عقدته وعقد أبنائه المعتمدين.
+   عقدة ابن لم تُعتمد بعد (رفضتها القواعد) تُهمَل بصمت ولا تُسقط القراءة كلها. الشكل: { مدرسة: { بصمة: { مفتاح: [..] } } } */
+async function readUserData(me){
+  if(!USPLIT || !me) return {};
+  const isAdm = me.role === "admin";
+  if(isStaffRole(me.role)){
+    const s = await firebaseDB.ref(isAdm ? "userData" : "userData/"+me.orgId).get(), v = s.exists() ? s.val() : {};
+    return isAdm ? v : { [me.orgId]: v };
+  }
+  const base = "userData/"+me.orgId+"/", node = {};
+  const own = await firebaseDB.ref(base+me.uh).get(); const ov = own.exists() ? own.val() : {};
+  node[me.uh] = ov;
+  if(me.role === "parent"){
+    const rec = toArr(ov.parents)[0], kids = rec ? parentChildren(rec) : [];
+    await Promise.all(kids.map(async n=>{
+      try{ const uh = await Sec.userHash(n); if(node[uh]) return; const s = await firebaseDB.ref(base+uh).get(); if(s.exists()) node[uh] = s.val(); }catch(e){ if(!isPermDenied(e)) throw e; }
+    }));
+  }
+  return { [me.orgId]: node };
 }
 /* قراءة مفتاح واحد (لدمج النماذج/المستخدمين قبل الكتابة). undefined = غير موجود */
 async function cloudReadKey(k){
-  if(LAYOUT !== 2){ const s = await firebaseDB.ref("platform-db/"+k).get(); return s.exists() ? s.val() : undefined; }
+  if(LAYOUT < 2){ const s = await firebaseDB.ref("platform-db/"+k).get(); return s.exists() ? s.val() : undefined; }
   const me = CLOUD_ME; if(!me) return undefined;
   const isAdm = me.role === "admin";
+  if(USPLIT && USER_SHARD_SET.has(k)){
+    const ud = await readUserData(me), all = [];
+    Object.keys(ud).forEach(oid=>Object.keys(ud[oid] || {}).forEach(uh=>{ const n = ud[oid][uh]; if(n && n[k]) all.push(...toArr(n[k])); }));
+    return all.length ? all : undefined;
+  }
   if(SHARD_ARRAYS.includes(k)){
     const orgs = isAdm ? Array.from(new Set([...(shardOrgs[k] || []), ...(ROOT.organizations || []).map(o=>o && o.id).filter(Boolean)])) : [me.orgId];
     if(!orgs.length) return undefined;
@@ -2024,8 +2102,10 @@ async function cloudReadKey(k){
 }
 /* كتابة المفاتيح المتغيّرة. تعيد قائمة المفاتيح التي رفضتها القواعد (لا يُعاد تجربتها بلا نهاية) */
 async function cloudUpdate(payload){
-  if(LAYOUT !== 2){ await firebaseDB.ref("platform-db").update(payload); return []; }
+  if(LAYOUT < 2){ await firebaseDB.ref("platform-db").update(payload); return []; }
+  if(USPLIT) await warmUH(payload);
   const plan = planShardWrites(payload, CLOUD_ME), denied = plan.skipped.slice(), paths = Object.keys(plan.ups);
+  const friendly = p=>p.indexOf("userData/")===0 ? p.slice(p.lastIndexOf("/")+1) : p;
   if(paths.length){
     try{ await firebaseDB.ref().update(plan.ups); }
     catch(e){
@@ -2033,7 +2113,7 @@ async function cloudUpdate(payload){
       // مسار مرفوض يُسقط التحديث الذري كله؛ نكتب كل مسار على حدة لنعرف المرفوض ولا نخسر المسموح
       for(const p of paths){
         try{ await firebaseDB.ref(p).set(plan.ups[p]); }
-        catch(e2){ if(!isPermDenied(e2)) throw e2; denied.push(p); delete plan.hs[plan.pk[p]]; }
+        catch(e2){ if(!isPermDenied(e2)) throw e2; denied.push(friendly(p)); delete plan.hs[plan.pk[p]]; }
       }
     }
   }
@@ -2041,20 +2121,100 @@ async function cloudUpdate(payload){
     shardHashes[h] = plan.hs[h];
     const i = h.indexOf("|"), a = h.slice(0, i), k = h.slice(i+1);
     if(a === "g" || a === "a") return;
+    if(k.indexOf("u|") === 0){                                   // عقدة مستخدم: oid|u|uh|key
+      const j = k.indexOf("|", 2), uh = k.slice(2, j), kk = k.slice(j+1), us = (shardUsers[kk] = shardUsers[kk] || new Set());
+      if(plan.hs[h] === "") us.delete(a+"|"+uh); else us.add(a+"|"+uh);
+      return;
+    }
     const set = (shardOrgs[k] = shardOrgs[k] || new Set());
     if(plan.hs[h] === "") set.delete(a); else set.add(a);
   });
   return denied;
 }
+/* ===== صيانة الطاقم في LAYOUT = 3 =====
+   1) ترتيب الطالب (داخل الفصل/الصف) يحتاج نتائج غيره، وهذا محجوب عن الطالب الآن. فيحسبه الطاقم ويكتب النتيجة النصّية
+      فقط (rk) في سجل الطالب نفسه، فلا يرى الطالب إلا ترتيبه هو. يتحدّث كلما كانت جلسة طاقم مفتوحة.
+   2) parentKids: خريطة {بصمة ولي الأمر: {بصمة الابن: true}} تقرؤها القواعد لتسمح لولي الأمر بقراءة عقد أبنائه فقط. */
+async function computeParentKids(parents){
+  const maps = {};
+  for(const p of toArr(parents)){
+    if(!p || !p.username || !p.orgId) continue;
+    const puh = await Sec.userHash(p.username);
+    for(const n of parentChildren(p)){ const kuh = await Sec.userHash(n); const m = (maps[p.orgId] = maps[p.orgId] || {}); (m[puh] = m[puh] || {})[kuh] = true; }
+  }
+  return maps;
+}
+function computeStudentRanks(students, results){
+  const agg = {}; toArr(results).forEach(r=>{ if(r && r.studentUsername){ const k = Sec.norm(r.studentUsername), o = agg[k] = agg[k] || { sc:0, tt:0 }; o.sc += Number(r.score)||0; o.tt += Number(r.total)||0; } });
+  const pct = s=>{ const o = agg[Sec.norm(s.username)]; return o && o.tt ? o.sc/o.tt : -1; };
+  const byOrg = {}; toArr(students).forEach(s=>{ if(s && s.username) (byOrg[s.orgId || ""] = byOrg[s.orgId || ""] || []).push(s); });
+  const out = new Map();
+  const rankOf = (list, me)=>{
+    const ranked = list.map(x=>({ u:Sec.norm(x.username), p:pct(x) })).filter(x=>x.p>=0).sort((a,b)=> b.p!==a.p ? b.p-a.p : (a.u<b.u ? -1 : 1));   // ترتيب حتمي عند التعادل كي لا تتبدّل النتيجة بين جلستين
+    const i = ranked.findIndex(x=>x.u===Sec.norm(me.username));
+    return i>=0 ? (i+1)+" من "+ranked.length : "";
+  };
+  Object.keys(byOrg).forEach(oid=>{
+    const list = byOrg[oid];
+    list.forEach(me=>{
+      const g = list.filter(x=>x.grade===me.grade), c = g.filter(x=>String(x.cls)===String(me.cls));
+      out.set(me, { c: rankOf(c, me), g: rankOf(g, me) });
+    });
+  });
+  return out;
+}
+async function refreshStudentRanks(){
+  if(!Array.isArray(ROOT.students)) return;
+  const ranks = computeStudentRanks(ROOT.students, ROOT.results); let changed = false;
+  ranks.forEach((nk, me)=>{ const old = me.rk; if(!old || old.c !== nk.c || old.g !== nk.g){ me.rk = { c:nk.c, g:nk.g, at:Date.now() }; changed = true; } });
+  if(changed) saveDB();
+}
+let __pkSig = {};
+async function syncParentKids(){
+  if(!USPLIT || !CLOUD_ME || !isStaffRole(CLOUD_ME.role) || !firebaseDB) return;
+  const maps = await computeParentKids(ROOT.parents), orgs = new Set(Object.keys(maps)); Object.keys(__pkSig).forEach(o=>orgs.add(o));
+  for(const oid of orgs){
+    if(CLOUD_ME.role !== "admin" && oid !== CLOUD_ME.orgId) continue;
+    if(!/^[^.$#\[\]\/]+$/.test(oid)) continue;
+    const m = maps[oid] || null, sig = JSON.stringify(canon(m) || {});
+    if(__pkSig[oid] === sig) continue;
+    __pkSig[oid] = sig;                                          // لا نكرّر المحاولة إن رفضتها القواعد
+    try{ await firebaseDB.ref("parentKids/"+oid).set(m); }catch(e){ if(!isPermDenied(e)) console.error("parentKids:", e); }
+  }
+}
+let __maintTimer = null;
+function startStaffMaintenance(){
+  if(__maintTimer || !USPLIT || !CLOUD_ME || !isStaffRole(CLOUD_ME.role)) return;
+  const tick = async ()=>{
+    if(!CLOUD_ME || !USPLIT){ clearInterval(__maintTimer); __maintTimer = null; return; }
+    try{
+      if(!cloudHydrated || saveTimer || saveInFlight || (typeof activeModel !== "undefined" && activeModel)) return;
+      await refreshStudentRanks(); await syncParentKids();
+    }catch(e){ console.error(e); }
+  };
+  setTimeout(tick, 8000); __maintTimer = setInterval(tick, 60000);
+}
 function purgeForeign(oid){
   SHARD_ARRAYS.forEach(k=>{ if(Array.isArray(ROOT[k])) ROOT[k] = ROOT[k].filter(x=>x && x.orgId===oid); });
+  if(USPLIT && CLOUD_ME && !isStaffRole(CLOUD_ME.role)){        // طالب/ولي أمر: لا يبقى على الجهاز (localStorage) سجل زميل بعد دخول معلم على الجهاز نفسه
+    const me = CLOUD_ME; let kids = null;
+    if(me.role === "parent"){
+      const rec = (ROOT.parents || []).find(x=>x && ownerUh("parents", x) === me.uh);
+      kids = new Set((rec ? parentChildren(rec) : []).map(n=>Sec.norm(n)));
+    }
+    USER_SHARDS.forEach(k=>{ if(Array.isArray(ROOT[k])) ROOT[k] = ROOT[k].filter(x=>{
+      if(!x) return false;
+      if(ownerUh(k, x) === me.uh) return true;
+      return !!kids && (k==="students" || k==="results") && kids.has(Sec.norm(ownerNameOf(k, x)));
+    }); });
+  }
   if(Array.isArray(ROOT.organizations)) ROOT.organizations = ROOT.organizations.filter(o=>o && o.id===oid);
   if(ROOT.orgMeta && typeof ROOT.orgMeta==="object") Object.keys(ROOT.orgMeta).forEach(k=>{ if(k!==oid) delete ROOT.orgMeta[k]; });
   ROOT.admins = [];
 }
 function prepareScope(){            // يُنفَّذ بعد القراءة الناجحة: لا يبقى على الجهاز شيء من مدرسة أخرى، ولا خط أساس مبنيّ على منظور مستخدم آخر
-  if(LAYOUT !== 2 || !CLOUD_ME) return;
-  const owner = CLOUD_ME.role==="admin" ? "*" : CLOUD_ME.orgId;
+  if(LAYOUT < 2 || !CLOUD_ME) return;
+  const owner = CLOUD_ME.role==="admin" ? "*" : (USPLIT ? CLOUD_ME.orgId + (isStaffRole(CLOUD_ME.role) ? "|staff" : "|u:"+CLOUD_ME.uh) : CLOUD_ME.orgId);   // تبديل المنظور على الجهاز نفسه يُصفّر خط الأساس فلا يُعدّ غياب سجلات الزملاء «حذفًا»
   let prev = null; try{ prev = localStorage.getItem("platform-db-owner"); }catch(e){}
   if(prev !== owner){ baseHashes = null; try{ localStorage.removeItem(BASE_KEY); }catch(e){} }
   if(CLOUD_ME.role !== "admin") purgeForeign(CLOUD_ME.orgId);
@@ -2235,7 +2395,7 @@ async function strictAuthenticate(username, password){
   };
   // الهوية والدور تحقّق منهما الخادم الآن. تنزيل قاعدة البيانات كاملةً يجري في الخلفية؛ ولا ننتظره إن كان سجل المستخدم موجودًا وسليمًا على هذا الجهاز.
   hydrateAttempts = 0; clearTimeout(hydrateTimer); cloudSynced = false;
-  CLOUD_ME = { role:R.role, orgId:R.orgId || "" };            // المرحلة 3: الدور والمدرسة من الخادم لا من الجهاز
+  CLOUD_ME = { role:R.role, orgId:R.orgId || "", uh:R.u || "" };            // المرحلة 3: الدور والمدرسة من الخادم لا من الجهاز
   try{ detachRealtimeSync(); }catch(e){}
   syncFromCloudInBackground();
   let f = findLocal();
@@ -2371,9 +2531,14 @@ const SecurityPanel = (function(){
       <button id="spMig" style="cursor:pointer;padding:6px 14px">نقل الوسائط القديمة</button>
       <div id="spOut2" style="margin-top:10px;font-size:14px"></div>` + (session.role==="admin" ? `
       <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">🧩 تقسيم البيانات حسب المدرسة (المرحلة 3)</h4>
-      <p style="opacity:.8;font-size:13px">يفصل بيانات كل مدرسة في فرع مستقل، فلا يرى أحد بيانات مدرسة أخرى. الحالة الحالية: <b>${LAYOUT===2 ? "مقسَّم (2)" : "قديم (1)"}</b>. يُنفَّذ للمشرف العام فقط، ويحتفظ بنسخة احتياطية قبل أي تغيير.</p>
+      <p style="opacity:.8;font-size:13px">يفصل بيانات كل مدرسة في فرع مستقل، فلا يرى أحد بيانات مدرسة أخرى. الحالة الحالية: <b>${LAYOUT===3 ? "مقسَّم + عقدة لكل مستخدم (3)" : LAYOUT===2 ? "مقسَّم حسب المدرسة (2)" : "قديم (1)"}</b>. يُنفَّذ للمشرف العام فقط، ويحتفظ بنسخة احتياطية قبل أي تغيير.</p>
       <button id="spMigV2" style="cursor:pointer;padding:6px 14px">ترحيل إلى التخزين المقسَّم</button>
       <button id="spBackV1" style="cursor:pointer;padding:6px 14px">الرجوع للتخزين القديم</button>
+      <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">🪪 فصل المستخدمين داخل المدرسة (المرحلة 4)</h4>
+      <p style="opacity:.8;font-size:13px">يجعل لكل طالب/ولي أمر عقدة خاصة به (سجله ونتائجه وكلمة مروره المشفّرة)، فلا يقرأ زميله شيئًا منها. الترتيب: ١) انشر قواعد الخطوة الأولى (userData وparentKids) ٢) «تفعيل عقدة لكل مستخدم» ٣) جرّب دخول طالب وولي أمر ومعلم ٤) «حذف النسخ القديمة» ٥) انشر القواعد المشدَّدة.</p>
+      <button id="spMigV3" style="cursor:pointer;padding:6px 14px">تفعيل عقدة لكل مستخدم</button>
+      <button id="spCleanV3" style="cursor:pointer;padding:6px 14px">حذف النسخ القديمة بعد التجربة</button>
+      <button id="spBackV2" style="cursor:pointer;padding:6px 14px">الرجوع إلى (2)</button>
       <div id="spOut3" style="margin-top:10px;font-size:14px"></div>` : "");
     body.innerHTML = html;
     body.querySelectorAll(".sp-row button").forEach(b=>b.addEventListener("click", async ()=>{
@@ -2455,7 +2620,7 @@ const SecurityPanel = (function(){
       out3.innerHTML = "";
       try{
         if(session.role!=="admin") return;
-        if(LAYOUT===2){ log3("البيانات مقسَّمة بالفعل."); return; }
+        if(LAYOUT>=2){ log3("البيانات مقسَّمة بالفعل."); return; }
         if(!cloudSynced){ log3("انتظر اكتمال مزامنة البيانات ثم أعد المحاولة."); return; }
         if(!confirm("سيُنسخ كل شيء إلى فروع المدارس مع التحقق، ثم يُفعَّل التقسيم. يُفضَّل أن يكون المستخدمون الآخرون خارج المنصة الآن. متابعة؟")) return;
         flushSaveDBNow(); await waitUntil(()=>!(saveTimer || saveInFlight), 20000);
@@ -2483,11 +2648,94 @@ const SecurityPanel = (function(){
         setTimeout(()=>location.reload(), 2500);
       }catch(e){ log3("❌ تعذّر الترحيل: "+(e.code||e.message)+" — تأكد من نشر قواعد الخطوة الأولى. البيانات القديمة لم تُمسّ."); }
     });
+    const batchUpdate = async (ups)=>{                     // دفعات صغيرة: تحديث واحد ضخم قد يتجاوز حدّ الكتابة
+      const paths = Object.keys(ups); let n = 0;
+      for(let i=0;i<paths.length;i+=100){ const part = {}; paths.slice(i,i+100).forEach(q=>{ part[q] = ups[q]; }); await firebaseDB.ref().update(part); n += Object.keys(part).length; }
+      return n;
+    };
+    const readUD = async ()=>{ const u = await firebaseDB.ref("userData").get(); return u.exists() ? u.val() : {}; };
+    const mig3 = body.querySelector("#spMigV3");
+    if(mig3) mig3.addEventListener("click", async ()=>{
+      out3.innerHTML = "";
+      try{
+        if(session.role!=="admin") return;
+        if(LAYOUT===3){ log3("عقدة المستخدم مفعّلة بالفعل."); return; }
+        if(LAYOUT!==2){ log3("رحّل أولًا إلى التخزين المقسَّم حسب المدرسة (المرحلة 3)."); return; }
+        if(!cloudSynced){ log3("انتظر اكتمال مزامنة البيانات ثم أعد المحاولة."); return; }
+        if(!confirm("سيُنسخ كل طالب وولي أمر ونتائجه إلى عقدة خاصة به مع التحقق، ثم يُفعَّل النظام الجديد. لا يُحذف شيء من الفروع القديمة في هذه الخطوة. يُفضَّل أن يكون بقية المستخدمين خارج المنصة الآن. متابعة؟")) return;
+        flushSaveDBNow(); await waitUntil(()=>!(saveTimer || saveInFlight), 20000);
+        log3("① قراءة الفروع الحالية من السحابة…");
+        const raw = await readShardsRaw(), L = assembleCloud(raw, false);
+        log3("② نسخة احتياطية سحابية…");
+        try{ await Backup.event("pre-v4", JSON.stringify(L), "قبل فصل سجلات المستخدمين"); }catch(e){ log3("تعذّرت النسخة السحابية (سنكمل: الفروع القديمة تبقى سليمة ولا يُحذف منها شيء)."); }
+        await warmUH(L);
+        const sh = splitToShards(L, true), ups = {};
+        for(const oid of Object.keys(sh.userData)){
+          if(!okKeyName(oid)) throw new Error("معرّف مدرسة غير صالح: "+oid);
+          for(const uh of Object.keys(sh.userData[oid])){
+            if(!okUhKey(uh)) throw new Error("بصمة غير صالحة");
+            Object.keys(sh.userData[oid][uh]).forEach(k=>{ ups["userData/"+oid+"/"+uh+"/"+k] = sh.userData[oid][uh][k]; });
+          }
+        }
+        const pk = await computeParentKids(L.parents);
+        Object.keys(pk).forEach(oid=>{ if(okKeyName(oid)) ups["parentKids/"+oid] = pk[oid]; });
+        log3("③ كتابة "+Object.keys(ups).length+" عقدة…");
+        await batchUpdate(ups);
+        log3("④ التحقق بإعادة القراءة ومقارنة كل مفتاح…");
+        const back = assembleCloud({ orgData: raw.orgData, userData: await readUD(), global: {}, adminOnly: {} }, true), bad = [];
+        USER_SHARDS.forEach(k=>{ if(!sameShardContent(k, L[k], back[k])) bad.push(k); });
+        if(bad.length){ log3("❌ فشل التحقق في: "+bad.join("، ")+". لم يُفعَّل النظام الجديد والفروع القديمة سليمة."); return; }
+        await firebaseDB.ref("config/layout").set(3);
+        log3("✅ تم التحقق والتفعيل. ستُعاد تحميل الصفحة…");
+        setTimeout(()=>location.reload(), 2500);
+      }catch(e){ log3("❌ تعذّر الترحيل: "+(e.code||e.message)+" — تأكد من نشر قواعد الخطوة الأولى (userData وparentKids). الفروع القديمة لم تُمسّ."); }
+    });
+    const cl3 = body.querySelector("#spCleanV3");
+    if(cl3) cl3.addEventListener("click", async ()=>{
+      out3.innerHTML = "";
+      try{
+        if(session.role!=="admin") return;
+        if(LAYOUT!==3){ log3("فعّل عقدة المستخدم أولًا."); return; }
+        if(!cloudSynced){ log3("انتظر اكتمال مزامنة البيانات ثم أعد المحاولة."); return; }
+        if(!confirm("سيُحذف ما تبقّى من سجلات الطلاب وأولياء الأمور ونتائجهم في الفروع القديمة (المصفوفات المشتركة). تأكد أنك جرّبت الدخول بطالب وولي أمر ومعلم ورأيت بياناتهم سليمة. متابعة؟")) return;
+        flushSaveDBNow(); await waitUntil(()=>!(saveTimer || saveInFlight), 20000);
+        const raw = await readShardsRaw(), ud = await readUD();
+        const now = assembleCloud({ orgData: raw.orgData, userData: ud, global: raw.global, adminOnly: raw.adminOnly }, true);
+        const legacyHas = Object.keys(raw.orgData).some(oid=>USER_SHARDS.some(k=>raw.orgData[oid] && raw.orgData[oid][k] != null));
+        if(!legacyHas){ log3("لا توجد نسخ قديمة لحذفها."); return; }
+        if(!USER_SHARDS.some(k=>toArr(now[k]).length)){ log3("❌ لا بيانات في العقد الجديدة؛ توقّف الحذف حمايةً للبيانات."); return; }
+        try{ await Backup.event("pre-v4-clean", JSON.stringify(now), "قبل حذف النسخ القديمة للسجلات"); }catch(e){ log3("❌ تعذّرت النسخة الاحتياطية السحابية؛ توقّف الحذف."); return; }
+        const ups = {};
+        Object.keys(raw.orgData).forEach(oid=>USER_SHARDS.forEach(k=>{ if(raw.orgData[oid] && raw.orgData[oid][k] != null) ups["orgData/"+oid+"/"+k] = null; }));
+        const n = await batchUpdate(ups);
+        log3("✅ حُذفت "+n+" مصفوفة قديمة. انشر الآن القواعد المشدَّدة (الخطوة الثانية).");
+      }catch(e){ log3("❌ تعذّر الحذف: "+(e.code||e.message)); }
+    });
+    const bk2 = body.querySelector("#spBackV2");
+    if(bk2) bk2.addEventListener("click", async ()=>{
+      out3.innerHTML = "";
+      try{
+        if(session.role!=="admin") return;
+        if(LAYOUT!==3){ log3("النظام الحالي ليس عقدة لكل مستخدم."); return; }
+        if(!confirm("سيُعاد نسخ السجلات من العقد الفردية إلى مصفوفات المدارس ويُرجَع التخزين إلى (2). متابعة؟")) return;
+        flushSaveDBNow(); await waitUntil(()=>!(saveTimer || saveInFlight), 20000);
+        log3("① قراءة العقد الحالية…");
+        const raw = await readShardsRaw(), back = assembleCloud({ orgData: raw.orgData, userData: await readUD(), global: {}, adminOnly: {} }, true);
+        const sh = splitToShards(back, false), ups = {};
+        Object.keys(sh.orgData).forEach(oid=>USER_SHARDS.forEach(k=>{ if(sh.orgData[oid][k] !== undefined) ups["orgData/"+oid+"/"+k] = sh.orgData[oid][k]; }));
+        log3("② كتابة "+Object.keys(ups).length+" مصفوفة…");
+        await batchUpdate(ups);
+        await firebaseDB.ref("config/layout").set(2);
+        log3("✅ تم الرجوع إلى (2). ستُعاد تحميل الصفحة…");
+        setTimeout(()=>location.reload(), 2500);
+      }catch(e){ log3("❌ تعذّر الرجوع: "+(e.code||e.message)); }
+    });
     const bk = body.querySelector("#spBackV1");
     if(bk) bk.addEventListener("click", async ()=>{
       out3.innerHTML = "";
       try{
         if(session.role!=="admin") return;
+        if(LAYOUT===3){ log3("ارجع أولًا من (3) إلى (2) بزر «الرجوع إلى (2)»."); return; }
         if(LAYOUT!==2){ log3("التخزين الحالي قديم أصلًا."); return; }
         if(!confirm("سيُنسخ محتوى الفروع الحالي إلى platform-db ويُرجَع التخزين القديم. متابعة؟")) return;
         flushSaveDBNow(); await waitUntil(()=>!(saveTimer || saveInFlight), 20000);
@@ -2744,7 +2992,7 @@ const Backup = (function(){
   function split(str){ const a = []; for(let i=0;i<str.length;i+=CHUNK) a.push(str.slice(i, i+CHUNK)); return a.length ? a : [""]; }
   async function write(kind, id, raw, note){
     if(!firebaseDB) return false;
-    if(LAYOUT === 2 && !(CLOUD_ME && CLOUD_ME.role === "admin")) return false;     // المرحلة 3: النسخ السحابية للمشرف العام فقط (غيره لا يملك إلا شريحة مدرسته)
+    if(LAYOUT >= 2 && !(CLOUD_ME && CLOUD_ME.role === "admin")) return false;     // المرحلة 3: النسخ السحابية للمشرف العام فقط (غيره لا يملك إلا شريحة مدرسته)
     await ensureFirebaseAuth();
     let counts = {}; try{ counts = countsOf(JSON.parse(raw)); }catch(e){}
     const chunks = split(raw), base = DATA+"/"+kind+"/"+id;
@@ -3025,7 +3273,7 @@ async function syncFromCloudInBackground(){
     readOk = true;
   }
 
-  try{ prepareScope(); }catch(e){ console.error(e); }          // المرحلة 3: عزل ما على الجهاز بحسب المدرسة قبل الدمج
+  try{ if(USPLIT) await warmUH(ROOT); prepareScope(); }catch(e){ console.error(e); }          // المرحلة 3: عزل ما على الجهاز بحسب المدرسة قبل الدمج
   if(cloudSaved && (cloudSaved.schemaVersion||0) > SCHEMA_VERSION){ latestCloud = cloudSaved; lockSchema(); cloudHydrated = true; cloudSynced = true; return; }
   latestCloud = cloudSaved;
   await waitUntil(()=>!(saveTimer || saveInFlight), 10000);
@@ -3320,23 +3568,47 @@ function attachRealtimeSync(){
     deferredIncoming = null;
     applyIncomingSnapshot(saved);
   };
-  if(LAYOUT === 2 && CLOUD_ME){
-    const isAdm = CLOUD_ME.role === "admin", org = CLOUD_ME.orgId, parts = { g:null, o:null, a:null }, got = { g:false, o:false, a:!isAdm };
+  if(LAYOUT >= 2 && CLOUD_ME){
+    const isAdm = CLOUD_ME.role === "admin", org = CLOUD_ME.orgId, staff = isStaffRole(CLOUD_ME.role);
+    const parts = { g:null, o:null, a:null, u:{} }, got = { g:false, o:false, a:!isAdm, u:!USPLIT };
+    const uPending = new Set();
     const fire = ()=>{
-      if(!got.g || !got.o || !got.a) return;
-      const raw = { orgData: parts.o || {}, global: parts.g || {}, adminOnly: parts.a || {} };
+      if(!got.g || !got.o || !got.a || !got.u || uPending.size) return;
+      const raw = { orgData: parts.o || {}, userData: parts.u || {}, global: parts.g || {}, adminOnly: parts.a || {} };
       noteShards(raw); onCloud(assembleCloud(raw));
     };
     const rg = firebaseDB.ref("global"), ro = isAdm ? firebaseDB.ref("orgData") : firebaseDB.ref("orgData/"+org);
     rg.on("value", s2=>{ parts.g = s2.exists() ? s2.val() : {}; got.g = true; fire(); });
     ro.on("value", s2=>{ const v = s2.exists() ? s2.val() : {}; parts.o = isAdm ? v : { [org]: v }; got.o = true; fire(); });
     __rtRefs = [rg, ro];
+    if(USPLIT){
+      if(staff){
+        const ru = firebaseDB.ref(isAdm ? "userData" : "userData/"+org);
+        ru.on("value", s2=>{ const v = s2.exists() ? s2.val() : {}; parts.u = isAdm ? v : { [org]: v }; got.u = true; fire(); });
+        __rtRefs.push(ru);
+      } else {
+        // طالب: عقدته فقط. ولي أمر: عقدته ثم عقد أبنائه (المرفوض منها يُهمَل). كل عقدة مستمع مستقل.
+        const attachNode = (uh)=>{
+          const rn = firebaseDB.ref("userData/"+org+"/"+uh); uPending.add(uh);
+          const put = v=>{ (parts.u[org] = parts.u[org] || {})[uh] = v; };
+          rn.on("value", s2=>{ put(s2.exists() ? s2.val() : {}); uPending.delete(uh); got.u = true; fire(); },
+                         ()=>{ put({}); uPending.delete(uh); got.u = true; fire(); });
+          __rtRefs.push(rn);
+        };
+        attachNode(CLOUD_ME.uh);
+        if(CLOUD_ME.role === "parent"){
+          const rec = (ROOT.parents || []).find(x=>x && ownerUh("parents", x) === CLOUD_ME.uh);
+          (rec ? parentChildren(rec) : []).forEach(n=>{ Sec.userHash(n).then(uh=>{ if(uh !== CLOUD_ME.uh) attachNode(uh); }); });
+        }
+      }
+    }
     if(isAdm){ const ra = firebaseDB.ref("adminOnly"); ra.on("value", s2=>{ parts.a = s2.exists() ? s2.val() : {}; got.a = true; fire(); }); __rtRefs.push(ra); }
   } else {
     const rp = firebaseDB.ref("platform-db");
     rp.on("value", snap=>{ if(!snap.exists()) return; onCloud(snap.val()); });
     __rtRefs = [rp];
   }
+  try{ startStaffMaintenance(); }catch(e){ console.error(e); }
   if(!window._deferredIncomingTimer){
     window._deferredIncomingTimer = setInterval(()=>{
       if(!deferredIncoming) return;
@@ -9819,6 +10091,8 @@ function renderStudentScores(view){
   }
   const sameGrade = DB.students.filter(s=>s.grade===myInfo.grade);
   const sameClass = sameGrade.filter(s=>String(s.cls)===String(myInfo.cls));
+  // LAYOUT 3: الطالب لا يقرأ نتائج زملائه، فالترتيب يأتي جاهزًا من حساب الطاقم (myInfo.rk) ولا يُحسب هنا
+  const rkText = v=> myInfo.rk ? (v || "لم يُحل بعد") : "قيد الحساب";
   function rankAmong(list){
     const ranked = list.map(s=>({u:s.username, pct:overallPct(s.username)})).filter(x=>x.pct>=0).sort((a,b)=>b.pct-a.pct);
     const idx = ranked.findIndex(x=>x.u===session.user.username);
@@ -9827,10 +10101,10 @@ function renderStudentScores(view){
 
   view.innerHTML = `
     <h2>درجاتي وترتيبي</h2>
-    <p class="sub">جميع النماذج التي حللتها حتى الآن.</p>
+    <p class="sub">جميع النماذج التي حللتها حتى الآن.${USPLIT ? " (يُحدَّث الترتيب تلقائيًا عند فتح أحد المعلمين أو الإدارة للمنصة.)" : ""}</p>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
-      ${dashCard("ترتيبي داخل الفصل", rankAmong(sameClass))}
-      ${dashCard("ترتيبي داخل الصف كاملًا", rankAmong(sameGrade))}
+      ${dashCard("ترتيبي داخل الفصل", USPLIT ? rkText(myInfo.rk && myInfo.rk.c) : rankAmong(sameClass))}
+      ${dashCard("ترتيبي داخل الصف كاملًا", USPLIT ? rkText(myInfo.rk && myInfo.rk.g) : rankAmong(sameGrade))}
     </div>
     ${tableHTML(["الفصل الدراسي","الصف","الفصل","رقم النموذج","الدرجة","من","النسبة","التاريخ"],
       mine.map(r=>[r.term, r.grade, myInfo.cls||"—", r.modelNumber, r.score, r.total, Math.round(r.score/r.total*100)+"%", r.date]))}
