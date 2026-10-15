@@ -811,7 +811,7 @@
   #saBoardOverlay .sab-kb{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:3px; }
   #saBoardOverlay .sab-row{ display:flex; gap:3px; justify-content:center; }
   /* أزرار مربعة متقاربة أفقيًا (الحجم --k يُحسب من عرض اللوحة وارتفاعها) */
-  #saBoardOverlay .sab-key{ flex:0 0 auto; width:var(--k); height:var(--k); border:1.5px solid var(--ink); border-radius:8px; background:#fff; color:var(--ink); font-family:inherit; font-size:calc(var(--k)*.5); font-weight:700; line-height:1; cursor:pointer; padding:0; touch-action:manipulation; user-select:none; -webkit-user-select:none; display:flex; align-items:center; justify-content:center; }
+  #saBoardOverlay .sab-key{ flex:0 0 auto; width:var(--k); height:var(--kv, var(--k)); border:1.5px solid var(--ink); border-radius:8px; background:#fff; color:var(--ink); font-family:inherit; font-size:calc(var(--k)*.5); font-weight:700; line-height:1; cursor:pointer; padding:0; touch-action:manipulation; user-select:none; -webkit-user-select:none; display:flex; align-items:center; justify-content:center; }
   #saBoardOverlay .sab-key:active{ background:var(--accent); color:#fff; }
   /* الأزرار النصية (تحقق/مسح/مسافة) مستطيلة عادية؛ ما عداها مربع */
   #saBoardOverlay .sab-key.rect{ width:auto; min-width:calc(var(--k)*1.5); padding:0 calc(var(--k)*.3); font-size:calc(var(--k)*.34); white-space:nowrap; }
@@ -1526,13 +1526,17 @@ const Guard = (function(){
     if(role==="orgadmin" && rec.active===false) return {ok:false, code:"inactive-user", msg:"تم إيقاف حسابك. يرجى مراجعة المشرف العام."};
     return {ok:true};
   }
+  // أثناء «معاينة كطالب» تكون session جلسة وهمية لطالب غير موجود في الجداول؛ فيُفحص حساب المعلم الحقيقي بدلًا منها
+  function realSess(){ return (window.__previewing && window.__realSessionRef) ? window.__realSessionRef : session; }
   function currentRec(){
-    if(!session || !session.user) return null;
-    const key = Sec.norm(session.user.username);
-    return tableFor(session.role).find(r=>r && Sec.norm(r.username)===key && (r.orgId||null)===(session.orgId||null)) || null;
+    const s = realSess();
+    if(!s || !s.user) return null;
+    const key = Sec.norm(s.user.username);
+    return tableFor(s.role).find(r=>r && Sec.norm(r.username)===key && (r.orgId||null)===(s.orgId||null)) || null;
   }
   function forceLogout(msg){
     if(loggingOut) return; loggingOut = true;
+    if(window.__previewing){ window.__previewing = false; window.__realSessionRef = null; try{ document.body.classList.remove("previewing"); const pb = document.getElementById("previewBanner"); if(pb) pb.remove(); }catch(e){} }
     try{ flushSaveDBNow(); }catch(e){}
     try{ stopTestTimerAndOverlays(); }catch(e){}
     session = null; currentRole = null; SCOPE.orgId = null;
@@ -1546,27 +1550,29 @@ const Guard = (function(){
     loggingOut = false;
   }
   function verifySession(){
-    if(!session || session.isSuper || !session.orgId) return true;
-    const org = orgById(session.orgId);
+    const s = realSess();
+    if(!s || s.isSuper || !s.orgId) return true;
+    const org = orgById(s.orgId);
     if(!org){ if(cloudSynced){ forceLogout("المؤسسة المرتبطة بحسابك غير موجودة. يرجى مراجعة المشرف العام."); return false; } return true; }
     const rec = currentRec();
     if(!rec){ if(cloudSynced){ forceLogout("لم يعد حسابك موجودًا في المؤسسة. يرجى مراجعة إدارة المؤسسة."); return false; } return true; }
-    const st = accountState(session.role, rec, org);
+    const st = accountState(s.role, rec, org);
     if(!st.ok){ forceLogout(st.msg); return false; }
     return true;
   }
   /* فحص لقطة واردة من السحابة قبل تطبيقها (حتى لو أُجّل تطبيقها بسبب نموذج مفتوح): إيقاف الاشتراك يسري فورًا */
   function checkIncoming(saved){
-    if(!session || session.isSuper || !session.orgId || !saved) return;
+    const s = realSess();
+    if(!s || s.isSuper || !s.orgId || !saved) return;
     const list = k=>{ const v = saved[k]; return Array.isArray(v) ? v : Object.values(v||{}); };
-    const org = list("organizations").find(o=>o && o.id===session.orgId);
-    const gone = saved.deletedOrgs && saved.deletedOrgs[session.orgId];
+    const org = list("organizations").find(o=>o && o.id===s.orgId);
+    const gone = saved.deletedOrgs && saved.deletedOrgs[s.orgId];
     if(!org || gone){ forceLogout("المؤسسة المرتبطة بحسابك غير موجودة. يرجى مراجعة المشرف العام."); return; }
-    const tbl = ({orgadmin:"orgAdmins", coordinator:"coordinators", teacher:"teachers", student:"students", parent:"parents"})[session.role];
-    const key = Sec.norm(session.user.username);
-    const rec = list(tbl).find(r=>r && Sec.norm(r.username)===key && (r.orgId||null)===(session.orgId||null));
+    const tbl = ({orgadmin:"orgAdmins", coordinator:"coordinators", teacher:"teachers", student:"students", parent:"parents"})[s.role];
+    const key = Sec.norm(s.user.username);
+    const rec = list(tbl).find(r=>r && Sec.norm(r.username)===key && (r.orgId||null)===(s.orgId||null));
     if(!rec) return;   // غياب السجل في لقطة قديمة لا يُعدّ حذفًا قاطعًا
-    const st = accountState(session.role, rec, org);
+    const st = accountState(s.role, rec, org);
     if(!st.ok) forceLogout(st.msg);
   }
   return { accountState, verifySession, checkIncoming, forceLogout, currentRec };
@@ -5233,7 +5239,7 @@ function renderPlansWindow(view, role){
 let __realSession = null, __previewTaskFlags = null;
 function startStudentPreview(grade, cls){
   if(window.__previewing || !session) return;
-  __realSession = session;
+  __realSession = session; window.__realSessionRef = session;
   __previewTaskFlags = (ROOT.tasks||[]).map(t=>[t, t && t.delivered]);
   window.__previewing = true; document.body.classList.add("previewing");
   try{ stopTestTimerAndOverlays(); }catch(e){}
@@ -5253,7 +5259,7 @@ function endStudentPreview(){
   const pv = "معاينة المعلم";
   try{ ROOT.results = (ROOT.results||[]).filter(r=>r && r.studentUsername!==pv); }catch(e){}
   try{ (__previewTaskFlags||[]).forEach(([t,v])=>{ if(t){ if(v===undefined) delete t.delivered; else t.delivered = v; } }); }catch(e){}
-  session = __realSession; __realSession = null; __previewTaskFlags = null;
+  session = __realSession; __realSession = null; window.__realSessionRef = null; __previewTaskFlags = null;
   window.__previewing = false; document.body.classList.remove("previewing");
   SCOPE.orgId = session.viewOrg || session.orgId || null;
   const b = document.getElementById("previewBanner"); if(b) b.remove();
@@ -6108,6 +6114,7 @@ function renderFormsWindow(view, role, bankMode){
         <div class="section" id="toolsSection" style="border-bottom:none;">
           <h3>الأدوات والإضافات</h3>
           ${lessonMode ? '<button class="tool-btn" data-tool="htmlapp">➕ إضافة درس HTML تفاعلي (ملف جاهز)</button>' : ""}
+          ${lessonMode ? "" : `
           <button class="tool-btn" data-tool="grammar">➕ إضافة نموذج نحوي</button>
           <button class="tool-btn" data-tool="reading">➕ إضافة سؤال فهم المقروء</button>
           <button class="tool-btn" data-tool="mcq">➕ إضافة سؤال اختياري</button>
@@ -6118,16 +6125,16 @@ function renderFormsWindow(view, role, bankMode){
           <button class="tool-btn" data-tool="match">➕ إضافة سؤال توصيل</button>
           <button class="tool-btn" data-tool="reorder">➕ إضافة سؤال إعادة ترتيب</button>
           <button class="tool-btn" data-tool="mindmap">➕ إضافة سؤال خريطة ذهنية</button>
-          <button class="tool-btn" data-tool="classify">➕ إضافة سؤال تصنيف</button>
+          <button class="tool-btn" data-tool="classify">➕ إضافة سؤال تصنيف</button>`}
         </div>
       </div>
       <div class="workshop">
         <div class="workshop-topbar">
           <div class="title" id="workshopTitle">لم يُفتح أي نموذج</div>
           <div class="btns">
+            <button class="small-btn" id="wsBack">◀ السابق</button>
             <button class="small-btn" id="wsTemplate">⬇ القالب</button>
             <button class="small-btn" id="wsImport">📥 استيراد</button>
-            <button class="small-btn" id="wsBack">◀ السابق</button>
             ${bankMode ? "" : '<button class="small-btn" id="wsTestMode">إلى اختبار</button>'}
             <button class="small-btn" id="wsSave">💾 حفظ</button>
           </div>
@@ -6972,11 +6979,450 @@ async function htmlAppInlineExport(payload){   // يجعل التصدير مكت
   }));
   return Object.assign({}, payload, { data });
 }
-function htmlAppPrepareDoc(html){
+/* ===== يُحقَن داخل إطار الدرس (لا يستخدم أي متغير خارجي). يطبّق «طبقة التعديلات» على الدرس، وفي وضع التحرير يبني المحرّر المرئي ===== */
+function __haBoot(cfg){
+  var ops = (cfg.edits || []).slice(), media = cfg.media || {}, mo = null, editTarget = null, dirty = !!cfg.dirty, tmr = null, last = 0;
+  var sel = null, mode = 'edit', host = null, sh = null, ui = {}, drag = null, insInside = false, lastRange = null, pendingImg = null;
+  var PH = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  function post(type, extra){ try{ var m = {__ha:1, type:type}; if(extra){ for(var k in extra) m[k] = extra[k]; } parent.postMessage(m, '*'); }catch(e){} }
+  function sigOf(el){ return el.tagName + '|' + String(el.textContent || '').slice(0, 400).replace(/\s+/g, ' ').trim().slice(0, 80); }
+  function ensureSigs(){
+    if(!document.body) return;
+    var all = document.body.querySelectorAll('*');
+    for(var i = 0; i < all.length; i++){ var e = all[i]; if(e.tagName === 'SCRIPT' || e.tagName === 'STYLE') continue; if(!e.hasAttribute('data-ed-sig')) e.setAttribute('data-ed-sig', sigOf(e)); }
+  }
+  function describe(el){
+    ensureSigs();
+    if(el.id) return {i: el.id, t: el.tagName.toLowerCase()};
+    var a = el.parentElement ? el.parentElement.closest('[id]') : null, root = a || document.body, s = el.getAttribute('data-ed-sig');
+    var list = [].filter.call(root.querySelectorAll(el.tagName.toLowerCase()), function(x){ return x.getAttribute('data-ed-sig') === s; });
+    return {a: a ? a.id : '', t: el.tagName.toLowerCase(), s: s, n: list.indexOf(el)};
+  }
+  function same(o, d){ return o.i ? o.i === d.i : (!d.i && o.a === d.a && o.t === d.t && o.s === d.s && o.n === d.n); }
+  function resolve(d){
+    if(d.i) return document.getElementById(d.i);
+    var root = d.a ? document.getElementById(d.a) : document.body; if(!root) return null;
+    var list = [].filter.call(root.querySelectorAll(d.t), function(x){ return x.getAttribute('data-ed-sig') === d.s; });
+    return list[d.n] || null;
+  }
+  function save0(el){ if(!el.__ed0) el.__ed0 = {style: el.getAttribute('style'), html: el.innerHTML, src: el.getAttribute('src')}; }
+  function revert(el){
+    if(!el || !el.__ed0) return;
+    if(el.__ed0.style == null) el.removeAttribute('style'); else el.setAttribute('style', el.__ed0.style);
+    if(el.tagName === 'IMG'){ if(el.__ed0.src == null) el.removeAttribute('src'); else el.setAttribute('src', el.__ed0.src); } else el.innerHTML = el.__ed0.html;
+  }
+  function reorder(parent, sigs){
+    var kids = [].slice.call(parent.children), q = {}, out = [];
+    kids.forEach(function(c){ var s = c.getAttribute('data-ed-sig'); (q[s] = q[s] || []).push(c); });
+    sigs.forEach(function(s){ if(q[s] && q[s].length) out.push(q[s].shift()); });
+    kids.forEach(function(c){ if(out.indexOf(c) < 0) out.push(c); });
+    var ok = out.every(function(c, i){ return c === kids[i]; });
+    if(!ok) out.forEach(function(c){ parent.appendChild(c); });
+  }
+  function setImg(el, v){
+    if(!v) return;
+    if(el.tagName === 'IMG'){ el.removeAttribute('srcset'); if(el.getAttribute('src') !== v) el.setAttribute('src', v); }
+    else { el.style.setProperty('background-image', 'url("' + v + '")', 'important'); el.style.setProperty('background-size', 'cover', 'important'); el.style.setProperty('background-position', 'center', 'important'); el.style.setProperty('background-repeat', 'no-repeat', 'important'); }
+  }
+  function fillMedia(n){
+    [].forEach.call(n.querySelectorAll('img[data-ed-mid]'), function(i){ var v = media[i.getAttribute('data-ed-mid')]; if(v) i.setAttribute('src', v); });
+    if(n.tagName === 'IMG' && n.hasAttribute('data-ed-mid')){ var v2 = media[n.getAttribute('data-ed-mid')]; if(v2) n.setAttribute('src', v2); }
+  }
+  function applyAdd(op){
+    var par = resolve(op.p); if(!par) return;
+    for(var i = 0; i < par.children.length; i++){ if(par.children[i].getAttribute('data-ed-add') === op.id) return; }
+    var t = document.createElement('template'); t.innerHTML = op.h; var n = t.content.firstElementChild; if(!n) return;
+    fillMedia(n); par.insertBefore(n, par.children[op.x] || null);
+  }
+  function observe(){ if(mo) mo.observe(document.documentElement, {childList: true, subtree: true}); }
+  function applyOps(){
+    if(mo) mo.disconnect();
+    try{
+      ensureSigs();
+      ops.filter(function(o){ return o.k === 'add'; }).forEach(applyAdd);
+      ensureSigs();
+      ops.forEach(function(op){
+        if(op.k === 'add') return;
+        var el = resolve(op); if(!el || el === editTarget) return;
+        save0(el);
+        if(op.k === 'text'){ if(el.innerHTML !== op.h) el.innerHTML = op.h; }
+        else if(op.k === 'style'){ for(var p in op.c) el.style.setProperty(p, op.c[p], 'important'); }
+        else if(op.k === 'img'){ setImg(el, op.v || media[op.mid]); }
+        else if(op.k === 'order'){ reorder(el, op.o); }
+      });
+      ensureSigs();
+    }catch(e){}
+    observe();
+  }
+  function schedule(){
+    if(tmr || editTarget) return;
+    var wait = Math.max(30, 150 - (Date.now() - last));
+    tmr = setTimeout(function(){ tmr = null; last = Date.now(); applyOps(); }, wait);
+  }
+  function upsert(op){
+    for(var i = 0; i < ops.length; i++){
+      var o = ops[i];
+      if(o.k === op.k && same(o, op)){
+        if(op.k === 'style'){ for(var p in op.c) o.c[p] = op.c[p]; } else if(op.k === 'text'){ o.h = op.h; } else if(op.k === 'img'){ o.mid = op.mid; o.v = op.v; } else { o.o = op.o; }
+        return;
+      }
+    }
+    ops.push(op);
+  }
+  function mk(k, el, extra){ var d = describe(el), op = {k: k}; for(var x in d) op[x] = d[x]; for(var y in extra) op[y] = extra[y]; return op; }
+  function addRoot(el){ return el && el.closest ? el.closest('[data-ed-add]') : null; }
+  function serializeAdd(a){
+    var c = a.cloneNode(true); c.removeAttribute('contenteditable');
+    [].forEach.call(c.querySelectorAll('[contenteditable]'), function(x){ x.removeAttribute('contenteditable'); });
+    [].forEach.call(c.querySelectorAll('[data-ed-sig]'), function(x){ x.removeAttribute('data-ed-sig'); });
+    [].forEach.call(c.querySelectorAll('img[data-ed-mid]'), function(x){ x.setAttribute('src', PH); });
+    if(c.tagName === 'IMG' && c.hasAttribute('data-ed-mid')) c.setAttribute('src', PH);
+    return c.outerHTML;
+  }
+  function upAdd(a){ var id = a.getAttribute('data-ed-add'); for(var i = 0; i < ops.length; i++){ if(ops[i].k === 'add' && ops[i].id === id){ ops[i].h = serializeAdd(a); return; } } }
+  function commit(el, factory){ var a = addRoot(el); if(a) upAdd(a); else upsert(factory()); dirty = true; refreshCount(); }
+
+  /* ---------- المحرّر المرئي ---------- */
+  function toast(t){ ui.toast.textContent = t; ui.toast.style.opacity = 1; clearTimeout(toast._t); toast._t = setTimeout(function(){ ui.toast.style.opacity = 0; }, 2400); }
+  function refreshCount(){ if(ui.cnt) ui.cnt.textContent = '📋 التعديلات (' + ops.length + ')' + (dirty ? ' •' : ''); }
+  function label(el){ var s = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 28); return '<' + el.tagName.toLowerCase() + '>' + (addRoot(el) ? ' (مضاف)' : '') + ' ' + s; }
+  function toHex(c, dflt){ var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(c || ''); if(!m || (m[4] !== undefined && +m[4] === 0)) return dflt || '#000000'; return '#' + [m[1], m[2], m[3]].map(function(v){ return ('0' + (+v).toString(16)).slice(-2); }).join(''); }
+  function select(el){
+    commitText();
+    if(!el || el === document.documentElement || host.contains(el)) el = null;
+    sel = el; ui.info.textContent = el ? ('المحدد: ' + label(el)) : 'انقر على أي عنصر في الدرس لتحديده (انقر مرتين لكتابة النص)';
+    if(el){ var cs = getComputedStyle(el); ui.fg.value = toHex(cs.color); ui.bg.value = toHex(cs.backgroundColor, '#ffffff'); ui.bd.value = toHex(cs.borderTopColor); if(ui.props.style.display === 'block') fillProps(); }
+    place();
+  }
+  function place(){
+    if(!sel || !sel.isConnected){ ui.ov.style.display = 'none'; return; }
+    var r = sel.getBoundingClientRect(); ui.ov.style.display = 'block';
+    ui.ov.style.left = r.left + 'px'; ui.ov.style.top = r.top + 'px'; ui.ov.style.width = r.width + 'px'; ui.ov.style.height = r.height + 'px';
+  }
+  function startText(el){
+    if(!el) return; select(el); save0(el); el.__h0 = el.innerHTML; el.contentEditable = 'true'; editTarget = el; el.focus();
+    toast('وضع الكتابة: اكتب، ويمكنك تنسيق جزء من النص بالأزرار B / I / U ولون الخط. انقر خارج العنصر لإنهاء');
+  }
+  function commitText(){
+    var t = editTarget; if(!t) return; editTarget = null; t.removeAttribute('contenteditable'); lastRange = null;
+    if(t.innerHTML !== t.__h0){ commit(t, function(){ return mk('text', t, {h: t.innerHTML}); }); }
+    schedule();
+  }
+  function style(props){
+    if(!sel) return toast('حدّد عنصرًا أولًا'); commitText(); save0(sel);
+    for(var p in props) sel.style.setProperty(p, props[p], 'important');
+    commit(sel, function(){ return mk('style', sel, {c: props}); }); place();
+  }
+  function fontStep(d){ if(!sel) return toast('حدّد عنصرًا أولًا'); var px = parseFloat(getComputedStyle(sel).fontSize) || 16; style({'font-size': Math.max(6, Math.round(px + d)) + 'px'}); }
+  function sizeStep(dim, f){ if(!sel) return toast('حدّد عنصرًا أولًا'); var r = sel.getBoundingClientRect(); var o = {}; o[dim] = Math.max(8, Math.round((dim === 'width' ? r.width : r.height) * f)) + 'px'; style(o); }
+  function recordOrder(parent){
+    var a = addRoot(parent); if(a){ upAdd(a); dirty = true; refreshCount(); return; }
+    ensureSigs(); var o = [].filter.call(parent.children, function(c){ return c.hasAttribute('data-ed-sig'); }).map(function(c){ return c.getAttribute('data-ed-sig'); });
+    upsert(mk('order', parent, {o: o})); dirty = true; refreshCount();
+  }
+  function move(dir){
+    if(!sel || !sel.parentElement) return toast('حدّد عنصرًا أولًا'); commitText();
+    var p = sel.parentElement, sib = dir < 0 ? sel.previousElementSibling : sel.nextElementSibling;
+    if(!sib) return toast(dir < 0 ? 'هو أول عنصر' : 'هو آخر عنصر');
+    if(dir < 0) p.insertBefore(sel, sib); else p.insertBefore(sib, sel);
+    recordOrder(p); place();
+  }
+  function newId(){ return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+  function insertNew(n, refEl, inside){
+    commitText();
+    var parent = inside ? refEl : refEl.parentElement, ref = inside ? null : refEl.nextSibling;
+    if(!parent || parent === document.documentElement) return toast('حدّد عنصرًا داخل الدرس أولًا');
+    if(parent.tagName === 'IMG' || parent.tagName === 'INPUT' || parent.tagName === 'BR') parent = parent.parentElement;
+    var a = addRoot(parent);
+    if(a){ parent.insertBefore(n, ref && ref.parentNode === parent ? ref : null); upAdd(a); }
+    else {
+      var id = newId(); n.setAttribute('data-ed-add', id); n.setAttribute('data-ed-sig', 'ADD|' + id);
+      parent.insertBefore(n, ref && ref.parentNode === parent ? ref : null);
+      var d = describe(parent);
+      ops.push({k: 'add', id: id, p: d, x: [].indexOf.call(parent.children, n), h: serializeAdd(n)});
+      recordOrder(parent);
+    }
+    dirty = true; refreshCount(); select(n); toast('أُضيف عنصر جديد — انقر عليه مرتين لكتابة نصه');
+  }
+  var TPL = {
+    'فقرة نص': '<p style="margin:8px 0;font-size:1.1em">نص جديد — انقر مرتين للكتابة</p>',
+    'عنوان': '<h3 style="margin:10px 0">عنوان جديد</h3>',
+    'بطاقة / صندوق': '<div style="border:2px solid #0f4c5c;border-radius:12px;padding:12px;margin:8px 0;background:#ffffff;color:#16282e">بطاقة جديدة — انقر مرتين للكتابة</div>',
+    'زر': '<button type="button" style="padding:8px 16px;border-radius:10px;border:1px solid #0f4c5c;background:#0f4c5c;color:#fff;font:inherit;cursor:pointer;margin:6px">زر</button>',
+    'صورة': '<img alt="" src="data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%27180%27%3E%3Crect width=%27100%25%27 height=%27100%25%27 fill=%27%23d9e9ec%27/%3E%3C/svg%3E" width="300" height="180" style="max-width:100%;display:block;margin:8px auto;border-radius:10px">',
+    'بطاقة سؤال وجواب': '<div style="border:2px solid #0f4c5c;border-radius:12px;padding:12px;margin:8px 0;background:#fff;color:#16282e"><div style="font-weight:700">اكتب السؤال هنا</div><button type="button" style="margin-top:8px;padding:6px 14px;border-radius:8px;border:1px solid #9a5b00;background:#fff;color:#9a5b00;cursor:pointer;font:inherit" onclick="var a=this.nextElementSibling;a.style.display=a.style.display===\'none\'?\'block\':\'none\'">👁 أظهر / أخفِ الإجابة</button><div style="display:none;margin-top:8px;color:#2e7d5b;font-weight:700">اكتب الإجابة هنا</div></div>',
+    'بطاقة قلب (وجه/ظهر)': '<div style="border:2px solid #0f4c5c;border-radius:12px;padding:22px;margin:8px 0;background:#fff;color:#16282e;text-align:center;cursor:pointer;font-weight:700" onclick="var k=this.children,x=k[0].style.display===\'none\';k[0].style.display=x?\'\':\'none\';k[1].style.display=x?\'none\':\'\'"><span>الوجه الأمامي (انقر للقلب)</span><span style="display:none">الوجه الخلفي</span></div>',
+    'خط فاصل': '<hr style="border:0;border-top:3px solid #0f4c5c;margin:12px 0">'
+  };
+  function addTpl(name){ var t = document.createElement('template'); t.innerHTML = TPL[name]; var n = t.content.firstElementChild; insertNew(n, sel || document.body, !sel || sel === document.body ? true : insInside); }
+  function cloneSel(){
+    if(!sel || sel === document.body) return toast('حدّد البطاقة أو العنصر المراد نسخه');
+    var c = sel.cloneNode(true); c.removeAttribute('contenteditable'); c.removeAttribute('data-ed-add'); c.removeAttribute('data-ed-sig');
+    [].forEach.call(c.querySelectorAll('[data-ed-sig],[data-ed-add]'), function(x){ x.removeAttribute('data-ed-sig'); x.removeAttribute('data-ed-add'); });
+    insertNew(c, sel, false);
+  }
+  function delSel(){
+    if(!sel) return toast('حدّد عنصرًا أولًا');
+    var a = addRoot(sel);
+    if(a && a === sel){ var id = a.getAttribute('data-ed-add'); for(var i = 0; i < ops.length; i++){ if(ops[i].k === 'add' && ops[i].id === id){ var p = a.parentElement; ops.splice(i, 1); a.remove(); if(p) recordOrder(p); break; } } dirty = true; refreshCount(); select(null); toast('حُذف العنصر المضاف'); return; }
+    if(a){ var pa = sel.parentElement; sel.remove(); upAdd(a); dirty = true; refreshCount(); select(null); return; }
+    style({display: 'none'}); select(null); toast('أُخفي العنصر (يمكن استعادته من قائمة التعديلات)');
+  }
+  function pickImage(){ if(!sel) return toast('حدّد صورة (أو أي عنصر ليصير الصورة خلفية له)'); pendingImg = sel; post('pick-image'); }
+  function onImage(d){
+    var el = pendingImg; pendingImg = null; if(!el || !el.isConnected || !d.v) return;
+    media[d.mid || ('t' + Date.now())] = d.v; var mid = d.mid || ('t' + Date.now()); if(!d.mid) media[mid] = d.v;
+    save0(el); setImg(el, d.v);
+    var a = addRoot(el);
+    if(a){ if(el.tagName === 'IMG'){ el.setAttribute('data-ed-mid', mid); } upAdd(a); dirty = true; refreshCount(); }
+    else { upsert(mk('img', el, {mid: mid, v: d.mid ? undefined : d.v})); if(!d.mid){ for(var i = 0; i < ops.length; i++){ if(ops[i].k === 'img' && ops[i].mid === mid) ops[i].v = d.v; } } dirty = true; refreshCount(); }
+    place(); toast(el.tagName === 'IMG' ? 'تم تغيير الصورة' : 'تم تعيين صورة خلفية للعنصر');
+  }
+  function opText(op){
+    var tl = String(op.s || op.i || '').split('|').slice(1).join('|').slice(0, 20);
+    if(op.k === 'text') return 'نص: ' + String(op.h).replace(/<[^>]*>/g, '').slice(0, 26);
+    if(op.k === 'order') return 'ترتيب عناصر (' + op.o.length + ')';
+    if(op.k === 'img') return 'تغيير صورة';
+    if(op.k === 'add') return 'عنصر مضاف: ' + String(op.h).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 22);
+    var names = {color: 'لون الخط', 'background-color': 'الخلفية', 'font-size': 'حجم الخط', 'font-weight': 'سماكة', 'text-align': 'محاذاة', display: 'إخفاء', border: 'إطار', 'border-radius': 'حواف', width: 'عرض', height: 'ارتفاع', transform: 'إزاحة', padding: 'حشو', margin: 'هامش', opacity: 'شفافية', 'font-family': 'نوع الخط', 'line-height': 'ارتفاع السطر', 'letter-spacing': 'تباعد الحروف', 'font-style': 'مائل', 'text-decoration': 'تسطير', 'box-shadow': 'ظل'};
+    return Object.keys(op.c).map(function(k){ return names[k] || k; }).join('، ') + ' — ' + tl;
+  }
+  function renderPanel(){
+    ui.panel.innerHTML = '';
+    var h = document.createElement('div'); h.className = 'ph'; h.textContent = 'التعديلات الحالية (اضغط ✕ للتراجع عن تعديل)'; ui.panel.appendChild(h);
+    if(!ops.length){ var e = document.createElement('div'); e.className = 'pr'; e.textContent = 'لا توجد تعديلات بعد.'; ui.panel.appendChild(e); }
+    ops.forEach(function(op, i){
+      var r = document.createElement('div'); r.className = 'pr'; var s = document.createElement('span'); s.textContent = opText(op);
+      var b = document.createElement('button'); b.textContent = '✕'; b.onclick = function(){ removeOp(i); };
+      r.appendChild(s); r.appendChild(b); ui.panel.appendChild(r);
+    });
+    var all = document.createElement('button'); all.className = 'wide'; all.textContent = '↺ مسح كل التعديلات'; all.onclick = function(){ if(confirm('مسح كل التعديلات المرئية على هذا الدرس؟')){ ops = []; dirty = true; post('restart', {edits: ops, dirty: true}); } };
+    ui.panel.appendChild(all);
+  }
+  function removeOp(i){
+    var op = ops[i]; if(!op) return;
+    if(op.k === 'order'){ ops.splice(i, 1); dirty = true; post('restart', {edits: ops, dirty: true}); return; }
+    if(op.k === 'add'){ var e = document.querySelector('[data-ed-add="' + op.id + '"]'); if(e) e.remove(); ops.splice(i, 1); dirty = true; refreshCount(); renderPanel(); select(null); return; }
+    var el = resolve(op); if(el) revert(el);
+    ops.splice(i, 1); dirty = true; applyOps(); refreshCount(); renderPanel(); place();
+  }
+  function restoreSel(){
+    if(!sel) return toast('حدّد عنصرًا أولًا'); commitText();
+    var any = false, d = describe(sel);
+    for(var i = ops.length - 1; i >= 0; i--){ var o = ops[i]; if((o.k === 'style' || o.k === 'text' || o.k === 'img') && same(o, d)){ ops.splice(i, 1); any = true; } }
+    if(any){ revert(sel); dirty = true; applyOps(); refreshCount(); place(); toast('أُعيد العنصر لحالته الأصلية'); } else toast('لا تعديلات على هذا العنصر');
+  }
+  /* لوحة الخصائص المتقدمة */
+  var FONTS = [['', '(بلا تغيير)'], ["'Noto Naskh Arabic',serif", 'نسخ'], ['Tahoma,sans-serif', 'Tahoma'], ['Arial,sans-serif', 'Arial'], ["'Times New Roman',serif", 'Times'], ["'Traditional Arabic',serif", 'Traditional Arabic'], ["'Simplified Arabic',serif", 'Simplified Arabic'], ['Georgia,serif', 'Georgia'], ["'Courier New',monospace", 'Courier']];
+  var PROPS = [
+    ['نوع الخط', 'font-family', 'select'], ['حجم الخط (px)', 'font-size', 'num', 'px'], ['ارتفاع السطر', 'line-height', 'num', ''], ['تباعد الحروف (px)', 'letter-spacing', 'num', 'px'],
+    ['شفافية (0-100)', 'opacity', 'pct'], ['سماكة الإطار (px)', 'border-width', 'bw'], ['نمط الإطار', 'border-style', 'bs'], ['حواف مدوّرة (px)', 'border-radius', 'num', 'px'],
+    ['حشو داخلي (px)', 'padding', 'num', 'px'], ['هامش خارجي (px)', 'margin', 'num', 'px'], ['العرض (px أو %)', 'width', 'text'], ['الارتفاع (px أو %)', 'height', 'text'],
+    ['إزاحة أفقية (px)', 'tx', 'off'], ['إزاحة رأسية (px)', 'ty', 'off'], ['ظل', 'box-shadow', 'shadow']
+  ];
+  function offsets(){ var m = /translate\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px/.exec(sel && sel.style.transform || ''); return m ? [+m[1], +m[2]] : [0, 0]; }
+  function fillProps(){
+    if(!sel) return; var cs = getComputedStyle(sel), o = offsets();
+    ui.pf.forEach(function(f){
+      var p = f.p, v = '';
+      if(p === 'font-family'){ v = ''; }
+      else if(p === 'opacity') v = Math.round((parseFloat(cs.opacity) || 1) * 100);
+      else if(p === 'border-width') v = parseFloat(cs.borderTopWidth) || 0;
+      else if(p === 'border-style') v = cs.borderTopStyle;
+      else if(p === 'tx') v = o[0]; else if(p === 'ty') v = o[1];
+      else if(p === 'box-shadow') v = (cs.boxShadow && cs.boxShadow !== 'none') ? 'soft' : 'none';
+      else if(p === 'width' || p === 'height') v = sel.style[p] || '';
+      else if(p === 'line-height'){ var lh = parseFloat(cs.lineHeight), fs = parseFloat(cs.fontSize); v = (lh && fs) ? (Math.round(lh / fs * 100) / 100) : ''; }
+      else v = parseFloat(cs[p]) || 0;
+      f.el.value = v;
+    });
+    ui.css.value = '';
+  }
+  function applyProp(p, val, kind, unit){
+    if(!sel) return toast('حدّد عنصرًا أولًا');
+    if(val === '' && kind !== 'select') return;
+    if(p === 'tx' || p === 'ty'){ var o = offsets(); if(p === 'tx') o[0] = +val || 0; else o[1] = +val || 0; return style({transform: 'translate(' + o[0] + 'px,' + o[1] + 'px)'}); }
+    if(p === 'opacity') return style({opacity: String(Math.max(0, Math.min(100, +val)) / 100)});
+    if(p === 'border-width'){ var s = {'border-width': (+val || 0) + 'px'}; if(!parseFloat(getComputedStyle(sel).borderTopWidth) || getComputedStyle(sel).borderTopStyle === 'none'){ s['border-style'] = 'solid'; s['border-color'] = ui.bd.value; } return style(s); }
+    if(p === 'box-shadow') return style({'box-shadow': val === 'soft' ? '0 4px 14px rgba(0,0,0,.28)' : (val === 'strong' ? '0 8px 26px rgba(0,0,0,.45)' : 'none')});
+    if(p === 'font-family' && !val) return;
+    style({[p]: (kind === 'num') ? (val + unit) : val});
+  }
+  function buildProps(){
+    var pn = ui.props; pn.innerHTML = ''; ui.pf = [];
+    var h = document.createElement('div'); h.className = 'ph'; h.textContent = '⚙ خصائص العنصر المحدد (تُطبَّق فور التغيير)'; pn.appendChild(h);
+    var grid = document.createElement('div'); grid.className = 'pg'; pn.appendChild(grid);
+    PROPS.forEach(function(d){
+      var l = document.createElement('label'); l.className = 'pl'; l.appendChild(document.createTextNode(d[0])); var el;
+      if(d[2] === 'select'){ el = document.createElement('select'); FONTS.forEach(function(f){ var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; el.appendChild(o); }); }
+      else if(d[2] === 'bs'){ el = document.createElement('select'); ['none', 'solid', 'dashed', 'dotted', 'double'].forEach(function(f){ var o = document.createElement('option'); o.value = f; o.textContent = f; el.appendChild(o); }); }
+      else if(d[2] === 'shadow'){ el = document.createElement('select'); [['none', 'بلا ظل'], ['soft', 'ظل خفيف'], ['strong', 'ظل قوي']].forEach(function(f){ var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; el.appendChild(o); }); }
+      else { el = document.createElement('input'); el.type = d[2] === 'text' ? 'text' : 'number'; if(d[2] === 'num' && d[1] === 'line-height') el.step = '0.1'; }
+      el.addEventListener('change', function(){ if(d[1] === 'border-style'){ if(sel) style({'border-style': el.value}); } else applyProp(d[1], el.value, d[2], d[3] || ''); });
+      l.appendChild(el); grid.appendChild(l); ui.pf.push({p: d[1], el: el});
+    });
+    var lc = document.createElement('div'); lc.className = 'ph'; lc.style.marginTop = '8px'; lc.textContent = 'CSS مخصّص (سطر لكل خاصية: color: red)'; pn.appendChild(lc);
+    ui.css = document.createElement('textarea'); ui.css.rows = 3; pn.appendChild(ui.css);
+    var ap = document.createElement('button'); ap.className = 'wide'; ap.textContent = 'تطبيق CSS المخصّص';
+    ap.onclick = function(){ var o = {}; ui.css.value.split(/[;\n]+/).forEach(function(ln){ var i = ln.indexOf(':'); if(i > 0){ var k = ln.slice(0, i).trim(), v = ln.slice(i + 1).trim().replace(/\s*!important\s*$/i, ''); if(k && v) o[k] = v; } }); if(Object.keys(o).length) style(o); };
+    pn.appendChild(ap);
+    var nb = document.createElement('button'); nb.className = 'wide'; nb.textContent = 'بدون خلفية (شفاف)'; nb.onclick = function(){ style({'background-color': 'transparent'}); }; pn.appendChild(nb);
+  }
+  function togglePop(which){
+    ['panel', 'props', 'addm'].forEach(function(k){ if(k !== which) ui[k].style.display = 'none'; });
+    var p = ui[which]; if(p.style.display === 'block'){ p.style.display = 'none'; return; }
+    if(which === 'panel') renderPanel(); if(which === 'props'){ buildProps(); fillProps(); }
+    p.style.display = 'block';
+  }
+  function buildAddMenu(){
+    var m = ui.addm; m.innerHTML = '';
+    var h = document.createElement('div'); h.className = 'ph'; h.textContent = '➕ إضافة عنصر جديد'; m.appendChild(h);
+    var pos = document.createElement('button'); pos.className = 'wide'; function lp(){ pos.textContent = 'موضع الإدراج: ' + (insInside ? 'داخل العنصر المحدد' : 'بعد العنصر المحدد'); } lp(); pos.onclick = function(){ insInside = !insInside; lp(); }; m.appendChild(pos);
+    var cl = document.createElement('button'); cl.className = 'wide pri'; cl.textContent = '⧉ نسخ العنصر المحدد (بطاقة جديدة مماثلة)'; cl.onclick = function(){ ui.addm.style.display = 'none'; cloneSel(); }; m.appendChild(cl);
+    Object.keys(TPL).forEach(function(k){ var b = document.createElement('button'); b.className = 'wide'; b.textContent = '+ ' + k; b.onclick = function(){ ui.addm.style.display = 'none'; addTpl(k); }; m.appendChild(b); });
+  }
+  function execFmt(cmd, val){
+    if(!editTarget) return false;
+    try{ var s = getSelection(); if(lastRange){ s.removeAllRanges(); s.addRange(lastRange); } editTarget.focus(); document.execCommand('styleWithCSS', false, true); document.execCommand(cmd, false, val); return true; }catch(e){ return false; }
+  }
+  function bar(){
+    sh.innerHTML = '<style>:host{all:initial}*{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}#ov{position:fixed;border:2px solid #e11d48;background:rgba(225,29,72,.08);pointer-events:none;z-index:2147483646;display:none}'
+      + '#bar{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#1f2937;color:#fff;padding:6px 8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;direction:rtl;font-size:13px;max-height:45vh;overflow:auto}'
+      + 'button{background:#374151;color:#fff;border:1px solid #6b7280;border-radius:7px;padding:5px 9px;cursor:pointer;font-size:13px}button:hover{background:#4b5563}button.on{background:#0f766e}button.pri{background:#15803d}button.dng{background:#b91c1c}button:disabled{opacity:.4}'
+      + 'input[type=color]{width:34px;height:28px;padding:0;border:1px solid #6b7280;border-radius:6px;background:none;cursor:pointer}label{display:inline-flex;align-items:center;gap:3px}'
+      + '#info{flex:1 1 100%;color:#fcd34d;font-size:12px;min-height:16px}#toast{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:7px 14px;border-radius:8px;z-index:2147483647;opacity:0;transition:opacity .3s;font-size:13px;pointer-events:none;direction:rtl;max-width:90vw;text-align:center}'
+      + '.pop{position:fixed;bottom:78px;right:8px;width:min(430px,94vw);max-height:56vh;overflow:auto;background:#111827;color:#fff;border:1px solid #6b7280;border-radius:10px;z-index:2147483647;direction:rtl;padding:8px;display:none}'
+      + '.ph{font-weight:bold;margin-bottom:6px;font-size:13px}.pr{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #374151;font-size:12px}.wide{width:100%;margin-top:6px}'
+      + '.pg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.pl{display:flex;flex-direction:column;align-items:stretch;font-size:11px;gap:2px;color:#d1d5db}.pl input,.pl select,.pop textarea{background:#1f2937;color:#fff;border:1px solid #6b7280;border-radius:6px;padding:4px;width:100%;font-size:12px}.pop textarea{direction:ltr;font-family:monospace}</style>'
+      + '<div id="ov"></div><div id="bar"><div id="info"></div></div><div class="pop" id="panel"></div><div class="pop" id="props"></div><div class="pop" id="addm"></div><div id="toast"></div>';
+    var b = sh.querySelector('#bar');
+    ui.ov = sh.querySelector('#ov'); ui.panel = sh.querySelector('#panel'); ui.props = sh.querySelector('#props'); ui.addm = sh.querySelector('#addm'); ui.toast = sh.querySelector('#toast'); ui.info = sh.querySelector('#info');
+    function btn(t, title, fn, cls){ var x = document.createElement('button'); x.textContent = t; x.title = title || ''; if(cls) x.className = cls; x.onclick = fn; b.appendChild(x); return x; }
+    function clr(t, fn){ var l = document.createElement('label'); l.textContent = t; var i = document.createElement('input'); i.type = 'color'; i.oninput = function(){ fn(i.value); }; l.appendChild(i); b.appendChild(l); return i; }
+    ui.modeBtn = btn('🖱 تصفح الدرس', 'بدّل بين تحديد العناصر وتصفّح الدرس (للانتقال بين صفحاته وتجربته)', function(){
+      commitText(); mode = mode === 'edit' ? 'browse' : 'edit'; ui.modeBtn.textContent = mode === 'edit' ? '🖱 تصفح الدرس' : '✏ العودة للتحديد'; ui.modeBtn.className = mode === 'browse' ? 'on' : '';
+      if(mode === 'browse') select(null); toast(mode === 'edit' ? 'وضع التحديد والتحرير' : 'وضع التصفح: الدرس يعمل بشكل طبيعي');
+    });
+    btn('✎ تحرير النص', 'اكتب مباشرة داخل العنصر المحدد (أو انقر عليه مرتين)', function(){ if(editTarget) commitText(); else startText(sel); });
+    btn('A−', 'تصغير الخط', function(){ fontStep(-2); }); btn('A+', 'تكبير الخط', function(){ fontStep(2); });
+    ui.fg = clr('الخط', function(v){ if(editTarget && lastRange && !lastRange.collapsed){ execFmt('foreColor', v); } else style({color: v}); });
+    ui.bg = clr('الخلفية', function(v){ style({'background-color': v}); });
+    ui.bd = clr('الإطار', function(v){ style({border: '2px solid ' + v}); });
+    btn('B', 'عريض (لجزء من النص أثناء الكتابة، وإلا للعنصر كله)', function(){ if(editTarget && execFmt('bold')) return; if(!sel) return toast('حدّد عنصرًا أولًا'); style({'font-weight': (parseInt(getComputedStyle(sel).fontWeight, 10) >= 600) ? '400' : '700'}); });
+    btn('I', 'مائل', function(){ if(editTarget && execFmt('italic')) return; if(!sel) return toast('حدّد عنصرًا أولًا'); style({'font-style': getComputedStyle(sel).fontStyle === 'italic' ? 'normal' : 'italic'}); });
+    btn('U', 'تسطير', function(){ if(editTarget && execFmt('underline')) return; if(!sel) return toast('حدّد عنصرًا أولًا'); style({'text-decoration': /underline/.test(getComputedStyle(sel).textDecorationLine) ? 'none' : 'underline'}); });
+    btn('⇥', 'محاذاة لليمين', function(){ style({'text-align': 'right'}); }); btn('≡', 'توسيط', function(){ style({'text-align': 'center'}); }); btn('⇤', 'محاذاة لليسار', function(){ style({'text-align': 'left'}); });
+    btn('↔+', 'زيادة العرض', function(){ sizeStep('width', 1.1); }); btn('↔−', 'إنقاص العرض', function(){ sizeStep('width', 0.9); });
+    btn('↕+', 'زيادة الارتفاع', function(){ sizeStep('height', 1.1); }); btn('↕−', 'إنقاص الارتفاع', function(){ sizeStep('height', 0.9); });
+    btn('⇧ تقديم', 'نقل العنصر قبل السابق له (تغيير موضع البطاقة أو الإجابة). يمكنك أيضًا سحبه فوق عنصر مجاور، أو Alt+سحب لإزاحته بحرية', function(){ move(-1); });
+    btn('⇩ تأخير', 'نقل العنصر بعد التالي له', function(){ move(1); });
+    btn('⬆ الأب', 'تحديد العنصر الحاوي', function(){ if(sel && sel.parentElement) select(sel.parentElement); });
+    btn('🖼 تغيير الصورة', 'استبدال الصورة المحددة بصورة من جهازك (أو تعيين صورة خلفية لأي عنصر)', pickImage);
+    btn('➕ إضافة', 'إضافة بطاقة أو عنصر جديد أو نسخ عنصر', function(){ buildAddMenu(); togglePop('addm'); });
+    btn('⚙ خصائص', 'خصائص متقدمة: الخط، الإطار، الحواف، الهوامش، الأبعاد، الإزاحة، الظل، CSS مخصّص', function(){ togglePop('props'); });
+    btn('🗑 حذف/إخفاء', 'حذف العنصر المضاف، أو إخفاء العنصر الأصلي (يمكن استعادته من قائمة التعديلات)', delSel);
+    btn('↺ استعادة', 'إرجاع العنصر المحدد لحالته الأصلية', restoreSel);
+    ui.cnt = btn('', 'قائمة التعديلات', function(){ togglePop('panel'); });
+    btn('💾 حفظ', 'حفظ التعديلات في الدرس', function(){ commitText(); post('save', {edits: ops}); dirty = false; refreshCount(); }, 'pri');
+    btn('✕ خروج', 'الخروج من وضع التحرير', function(){ commitText(); if(dirty && !confirm('توجد تعديلات غير محفوظة. هل تريد الخروج دون حفظ؟')) return; post('exit'); }, 'dng');
+    refreshCount(); select(null);
+  }
+  function inEd(e){ var p = e.composedPath ? e.composedPath() : []; return p.indexOf(host) >= 0; }
+  function block(e){ if(mode !== 'edit' || inEd(e)) return false; if(editTarget && editTarget.contains(e.target)) return false; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); return true; }
+  function initEditor(){
+    host = document.createElement('div'); host.id = '__ha_host'; document.documentElement.appendChild(host); sh = host.attachShadow({mode: 'open'}); bar();
+    document.documentElement.style.paddingBottom = '130px';
+    ['click', 'mouseup', 'touchstart', 'touchend', 'pointerup', 'auxclick', 'contextmenu', 'submit'].forEach(function(t){
+      document.addEventListener(t, function(e){ if(t === 'click' && mode === 'edit' && !inEd(e) && !(editTarget && editTarget.contains(e.target))){ var was = drag && drag.moved; block(e); if(!was) select(e.target); return; } block(e); }, true);
+    });
+    document.addEventListener('dblclick', function(e){ if(mode === 'edit' && !inEd(e)){ e.preventDefault(); startText(e.target); } }, true);
+    document.addEventListener('pointerdown', function(e){
+      if(mode !== 'edit' || inEd(e) || (editTarget && editTarget.contains(e.target))) return;
+      block(e); drag = (sel && sel.contains(e.target) && sel.parentElement) ? {x: e.clientX, y: e.clientY, moved: false} : null;
+    }, true);
+    document.addEventListener('mousedown', function(e){ block(e); }, true);
+    document.addEventListener('pointermove', function(e){ if(drag && !drag.moved && Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 8){ drag.moved = true; toast(e.altKey ? 'اترك لإزاحة العنصر' : 'اسحب فوق عنصر مجاور ثم اترك (Alt = إزاحة حرة)'); } }, true);
+    document.addEventListener('pointerup', function(e){
+      if(!drag) return; var d = drag; setTimeout(function(){ drag = null; }, 0); if(!d.moved || !sel) return;
+      if(e.altKey){ var o = offsets(); style({transform: 'translate(' + Math.round(o[0] + e.clientX - d.x) + 'px,' + Math.round(o[1] + e.clientY - d.y) + 'px)'}); return; }
+      var par = sel.parentElement, hit = document.elementsFromPoint(e.clientX, e.clientY), tgt = null;
+      for(var i = 0; i < hit.length && !tgt; i++){ var x = hit[i]; while(x && x.parentElement !== par) x = x.parentElement; if(x && x !== sel) tgt = x; }
+      if(!tgt) return;
+      var after = !!(sel.compareDocumentPosition(tgt) & Node.DOCUMENT_POSITION_FOLLOWING);
+      par.insertBefore(sel, after ? tgt.nextSibling : tgt); recordOrder(par); place();
+    }, true);
+    document.addEventListener('selectionchange', function(){ if(!editTarget) return; var s = getSelection(); if(s.rangeCount && editTarget.contains(s.anchorNode)) lastRange = s.getRangeAt(0).cloneRange(); });
+    document.addEventListener('keydown', function(e){
+      if(inEd(e)) return;
+      if(e.key === 'Escape'){ if(editTarget) commitText(); else select(null); e.stopPropagation(); return; }
+      if(mode === 'edit' && !editTarget){ if(e.key === 'Delete' && sel){ delSel(); } e.stopPropagation(); }
+    }, true);
+    window.addEventListener('scroll', place, true); window.addEventListener('resize', place); setInterval(place, 400);
+    window.addEventListener('message', function(e){
+      var d = e.data; if(!d || d.__ha !== 1) return;
+      if(d.type === 'saved') toast('تم حفظ التعديلات في الدرس ✔');
+      else if(d.type === 'image') onImage(d);
+      else if(d.type === 'image-fail') { pendingImg = null; toast(d.msg || 'تعذّر تحميل الصورة'); }
+    });
+  }
+  function init(){
+    mo = new MutationObserver(schedule); applyOps();
+    if(cfg.edit) initEditor();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+}
+
+function htmlAppBootScript(cfg){
+  const json = JSON.stringify({ edits:(cfg && cfg.edits) || [], edit:!!(cfg && cfg.edit), dirty:!!(cfg && cfg.dirty), media:(cfg && cfg.media) || {} }).replace(/</g, "\\u003c");
+  return '<script>(' + __haBoot.toString() + ')(' + json + ');<\/script>';
+}
+function htmlAppPrepareDoc(html, cfg){
   html = String(html);
-  if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m=>m+HTMLAPP_SHIM);
+  const inj = HTMLAPP_SHIM + htmlAppBootScript(cfg);
+  if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m=>m+inj);
   const dt = /^\s*<!doctype[^>]*>/i.exec(html);
-  return dt ? html.slice(0,dt[0].length) + HTMLAPP_SHIM + html.slice(dt[0].length) : HTMLAPP_SHIM + html;
+  return dt ? html.slice(0,dt[0].length) + inj + html.slice(dt[0].length) : inj + html;
+}
+async function htmlAppResolveEdits(edits){      // يجلب صور التعديلات (المحفوظة في MediaStore) ليحقنها داخل الإطار
+  const media = {}, mids = new Set();
+  (edits || []).forEach(o=>{
+    if(!o) return;
+    if(o.k === "img" && o.mid && !o.v) mids.add(o.mid);
+    if(o.k === "add") String(o.h || "").replace(/data-ed-mid="([^"]+)"/g, (m, i)=>{ mids.add(i); return m; });
+  });
+  for(const id of mids){ try{ media[id] = await MediaStore.get(id); }catch(e){} }
+  return media;
+}
+async function htmlAppImageToDataUrl(file){
+  if(!/^image\//.test(file.type)) throw new Error("الملف ليس صورة");
+  const raw = await new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); r.readAsDataURL(file); });
+  if(file.type === "image/svg+xml" || file.type === "image/gif"){ if(raw.length > 2.5e6) throw new Error("الصورة كبيرة جدًا"); return raw; }
+  const img = await new Promise((res, rej)=>{ const i = new Image(); i.onload = ()=>res(i); i.onerror = ()=>rej(new Error("تعذّرت قراءة الصورة")); i.src = raw; });
+  const sc = Math.min(1, 1400 / Math.max(img.width, img.height)), png = file.type === "image/png";
+  const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+  const g = c.getContext("2d"); if(!png){ g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); } g.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL(png && raw.length < 400000 ? "image/png" : "image/jpeg", 0.85);
+}
+function htmlAppPickImage(reply){      // reply({type:"image", v, mid}) أو reply({type:"image-fail", msg})
+  const go = ()=>{
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    inp.addEventListener("change", async ()=>{
+      const f = inp.files && inp.files[0]; if(!f){ reply({ type:"image-fail", msg:"لم يُختر ملف" }); return; }
+      try{
+        const v = await htmlAppImageToDataUrl(f); let mid = "";
+        try{ mid = await MediaStore.put(v); }catch(e){ if(v.length > 450000) throw new Error("تعذّر رفع الصورة (تحقق من الاتصال)"); }
+        reply({ type:"image", v, mid });
+      }catch(e){ reply({ type:"image-fail", msg:(e && e.message) || "تعذّر تحميل الصورة" }); }
+    });
+    inp.click();
+  };
+  if(navigator.userActivation && !navigator.userActivation.isActive){
+    const ov = document.createElement("div"); ov.style.cssText = "position:fixed; inset:0; z-index:100001; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center;";
+    ov.innerHTML = '<div style="background:#fff; padding:20px; border-radius:12px; text-align:center;"><div style="margin-bottom:12px; font-weight:800;">اختر صورة من جهازك</div><button type="button" class="chip-btn accent" id="haImgGo">📂 اختيار صورة</button> <button type="button" class="chip-btn" id="haImgNo">إلغاء</button></div>';
+    document.body.appendChild(ov);
+    ov.querySelector("#haImgGo").addEventListener("click", ()=>{ ov.remove(); go(); });
+    ov.querySelector("#haImgNo").addEventListener("click", ()=>{ ov.remove(); reply({ type:"image-fail", msg:"أُلغي" }); });
+  } else go();
 }
 function htmlAppMountEl(q, opts){
   opts = opts || {};
@@ -6986,21 +7432,32 @@ function htmlAppMountEl(q, opts){
   const bar = document.createElement("div");
   bar.style.cssText = "display:flex; gap:8px; align-items:center; padding:6px 10px; background:#f4f6f5; border-bottom:1px solid #bbb; flex-wrap:wrap;";
   bar.innerHTML = '<span class="ha-title" style="flex:1 1 160px; font-weight:800; font-size:14px;"></span><button type="button" class="chip-btn ha-reload">⟳ إعادة تشغيل</button><button type="button" class="chip-btn ha-full">⛶ ملء الشاشة</button>';
-  bar.querySelector(".ha-title").textContent = q.title || "درس تفاعلي";
+  bar.querySelector(".ha-title").textContent = (opts.edit ? "✏ وضع التحرير — " : "") + (q.title || "درس تفاعلي");
+  if(opts.edit) bar.querySelector(".ha-reload").style.display = "none";
   const host = document.createElement("div");
   const H = opts.height || "calc(100vh - 200px)";
   host.style.cssText = "position:relative; width:100%; min-height:480px; height:" + H + ";";
   const status = document.createElement("div");
   status.style.cssText = "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; font-weight:800; color:#444; background:#fff; z-index:1;";
   host.appendChild(status); wrap.appendChild(bar); wrap.appendChild(host);
-  let frame = null, full = false;
+  let frame = null, full = false, curUrl = null, seen = false;
+  const onMsg = e=>{
+    if(!frame || e.source !== frame.contentWindow) return;
+    const d = e.data; if(!d || d.__ha !== 1) return;
+    if(d.type === "save" && opts.onSave){ opts.onSave(Array.isArray(d.edits) ? d.edits : []); try{ frame.contentWindow.postMessage({ __ha:1, type:"saved" }, "*"); }catch(x){} }
+    else if(d.type === "exit" && opts.onExit) opts.onExit();
+    else if(d.type === "pick-image"){ const fw = frame && frame.contentWindow; htmlAppPickImage(m=>{ try{ fw.postMessage(Object.assign({ __ha:1 }, m), "*"); }catch(x){} }); }
+    else if(d.type === "restart" && opts.onRestart) opts.onRestart(Array.isArray(d.edits) ? d.edits : [], !!d.dirty);
+  };
+  window.addEventListener("message", onMsg);
+  const gc = setInterval(()=>{ if(wrap.isConnected){ seen = true; } else if(seen){ clearInterval(gc); window.removeEventListener("message", onMsg); if(curUrl){ try{ URL.revokeObjectURL(curUrl); }catch(e){} curUrl = null; } } }, 20000);
   function setFull(on){
     full = on;
     if(on){ wrap.style.cssText = baseCss + "position:fixed; inset:0; z-index:99999; margin:0; border-radius:0; border:0;"; host.style.height = "auto"; host.style.flex = "1 1 auto"; host.style.minHeight = "0"; }
     else { wrap.style.cssText = baseCss; host.style.height = H; host.style.flex = ""; host.style.minHeight = "480px"; }
     bar.querySelector(".ha-full").textContent = on ? "✕ خروج من ملء الشاشة" : "⛶ ملء الشاشة";
   }
-  const onKey = e=>{ if(e.key==="Escape" && full) setFull(false); if(!wrap.isConnected) document.removeEventListener("keydown", onKey); };
+  const onKey = e=>{ if(e.key==="Escape" && full && !opts.edit) setFull(false); if(!wrap.isConnected) document.removeEventListener("keydown", onKey); };
   document.addEventListener("keydown", onKey);
   bar.querySelector(".ha-full").addEventListener("click", ()=>setFull(!full));
   async function load(){
@@ -7013,34 +7470,96 @@ function htmlAppMountEl(q, opts){
       const b = document.createElement("button"); b.type = "button"; b.className = "chip-btn accent"; b.style.marginTop = "10px"; b.textContent = "إعادة المحاولة"; b.addEventListener("click", load);
       status.appendChild(s); status.appendChild(b); return;
     }
-    const url = URL.createObjectURL(new Blob([htmlAppPrepareDoc(html)], { type:"text/html;charset=utf-8" }));
+    const media = await htmlAppResolveEdits(q.edits);
+    const url = URL.createObjectURL(new Blob([htmlAppPrepareDoc(html, { edits:q.edits, edit:!!opts.edit, dirty:!!opts.dirty, media })], { type:"text/html;charset=utf-8" }));
     frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts allow-forms allow-popups allow-modals allow-downloads");
     frame.setAttribute("allow", "autoplay; fullscreen");
     frame.setAttribute("allowfullscreen", "");
     frame.title = q.title || "درس تفاعلي";
     frame.style.cssText = "width:100%; height:100%; border:0; background:#fff; display:block;";
-    frame.addEventListener("load", ()=>{ status.style.display = "none"; setTimeout(()=>URL.revokeObjectURL(url), 1500); });
+    if(curUrl) try{ URL.revokeObjectURL(curUrl); }catch(e){}
+    curUrl = url;     // يبقى الرابط صالحًا ما دام الإطار موجودًا: نقل الإطار في DOM يعيد تحميله من نفس الرابط
+    frame.addEventListener("load", ()=>{ status.style.display = "none"; });
     frame.src = url; host.appendChild(frame);
   }
   bar.querySelector(".ha-reload").addEventListener("click", load);
+  if(opts.edit) setFull(true);
   load();
   return wrap;
+}
+/* محرّر الكود المصدر: تحرير النص الكامل للدرس + بحث واستبدال (يشمل بيانات الأسئلة والإجابات داخل الكود). الصور المضمّنة تُستبدل بعلامات مؤقتة لتبقى الكتابة سريعة. */
+async function openHtmlSourceEditor(state, onSaved){
+  const old = document.getElementById("haSrcOverlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.id = "haSrcOverlay";
+  ov.style.cssText = "position:fixed; inset:0; z-index:100000; background:#fff; display:flex; flex-direction:column; padding:10px; gap:8px; direction:rtl;";
+  ov.innerHTML = '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"><b style="flex:1 1 200px;">📝 الكود المصدر للدرس — بحث واستبدال</b><button type="button" class="chip-btn accent" id="haSave">💾 حفظ الكود</button><button type="button" class="chip-btn danger" id="haCancel">✕ إلغاء</button></div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;"><input type="text" id="haFind" placeholder="ابحث عن…" style="flex:1 1 160px;"><input type="text" id="haRepl" placeholder="استبدل بـ…" style="flex:1 1 160px;"><button type="button" class="chip-btn" id="haNext">بحث ⏭</button><button type="button" class="chip-btn" id="haCount">عدّ</button><button type="button" class="chip-btn accent" id="haAll">استبدال الكل</button><span id="haMsg" class="sub" style="margin:0;"></span></div>'
+    + '<div class="sub" style="margin:0;">ملاحظة: الصور والصوتيات المضمّنة تظهر هنا كعلامة <code>@@MEDIAn@@</code> — لا تحذفها إلا إن أردت حذف الصورة. التعديل هنا يغيّر ملف الدرس نفسه (نصوصه وأسئلته وإجاباته).</div>'
+    + '<textarea id="haTa" spellcheck="false" style="flex:1 1 auto; width:100%; min-height:0; direction:ltr; unicode-bidi:plaintext; text-align:start; font-family:Consolas,monospace; font-size:13px; line-height:1.5; white-space:pre; overflow:auto; resize:none;"></textarea>';
+  document.body.appendChild(ov);
+  const $ = id=>ov.querySelector("#"+id), ta = $("haTa"), msg = t=>{ $("haMsg").textContent = t || ""; };
+  ta.value = "جارٍ التحميل…"; ta.disabled = true;
+  let html; try{ html = await htmlAppGetHtml(state); }catch(e){ ta.value = "تعذّر تحميل الدرس: " + (e && e.message || e); return; }
+  const media = [];
+  ta.value = String(html).replace(/data:([a-z]+\/[a-z0-9.+-]+);base64,[A-Za-z0-9+\/=]{200,}/gi, (m, mt)=>{ media.push(m); return "data:" + mt + ";base64,@@MEDIA" + (media.length-1) + "@@"; });
+  ta.disabled = false;
+  const count = (s, f)=> f ? s.split(f).length - 1 : 0;
+  $("haCount").addEventListener("click", ()=>msg(count(ta.value, $("haFind").value) + " مطابقة"));
+  $("haNext").addEventListener("click", ()=>{
+    const f = $("haFind").value; if(!f) return;
+    let i = ta.value.indexOf(f, ta.selectionEnd); if(i < 0) i = ta.value.indexOf(f);
+    if(i < 0){ msg("لا توجد مطابقة"); return; }
+    ta.focus(); ta.setSelectionRange(i, i + f.length); msg("");
+  });
+  $("haAll").addEventListener("click", ()=>{
+    const f = $("haFind").value; if(!f){ msg("اكتب النص المراد استبداله"); return; }
+    const n = count(ta.value, f); if(!n){ msg("لا توجد مطابقة"); return; }
+    if(!confirm("استبدال " + n + " مطابقة؟")) return;
+    ta.value = ta.value.split(f).join($("haRepl").value); msg("تم استبدال " + n);
+  });
+  $("haCancel").addEventListener("click", ()=>ov.remove());
+  $("haSave").addEventListener("click", async ()=>{
+    const out = ta.value.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,@@MEDIA(\d+)@@/gi, (m, i)=> media[+i] || m);
+    if(!htmlAppLooksValid(out)){ msg("المحتوى لا يبدو ملف HTML صالحًا"); return; }
+    try{
+      msg("جارٍ الحفظ…");
+      const r = await htmlAppStore(out);
+      delete state.mediaId; delete state.html; Object.assign(state, r); state.size = out.length; state.title = htmlAppTitleOf(out, state.title);
+      ov.remove(); if(onSaved) onSaved();
+    }catch(e){ msg("تعذّر الحفظ: " + (e && e.message || e)); }
+  });
 }
 function buildHtmlAppBlock(saved){
   const el = makeBlockShell("درس HTML تفاعلي");
   const body = el.querySelector(".qblock-body");
-  body.innerHTML = '<div class="toolbar" style="align-items:center;"><button type="button" class="chip-btn accent ha-pick">📂 اختيار ملف HTML</button><span class="ha-info sub" style="margin:0;"></span><input type="file" class="ha-file" accept=".html,.htm,text/html" style="display:none;"></div><div class="ha-prev"></div><div class="msg ha-msg"></div>';
+  body.innerHTML = '<div class="toolbar" style="align-items:center;"><button type="button" class="chip-btn accent ha-pick">📂 اختيار ملف HTML</button><button type="button" class="chip-btn ha-vis" title="تعديل النصوص والألوان والخطوط ومواضع البطاقات والإجابات بالنقر والسحب">🎨 تحرير مرئي</button><button type="button" class="chip-btn ha-src" title="تحرير كود الدرس مع بحث واستبدال (النصوص والأسئلة والإجابات)">📝 الكود المصدر</button><button type="button" class="chip-btn danger ha-reset" title="يحذف كل التعديلات المرئية ويعيد الدرس كما رُفع">↺ مسح التعديلات المرئية</button><span class="ha-info sub" style="margin:0;"></span><input type="file" class="ha-file" accept=".html,.htm,text/html" style="display:none;"></div><div class="ha-prev"></div><div class="msg ha-msg"></div>';
   const info = body.querySelector(".ha-info"), prev = body.querySelector(".ha-prev"), msg = body.querySelector(".ha-msg"), inp = body.querySelector(".ha-file");
   let state = null;
   const setMsg = (t, err)=>{ msg.textContent = t || ""; msg.className = t ? ("msg show" + (err ? " err" : "")) : "msg"; };
+  const changed = ()=>el.dispatchEvent(new Event("change", { bubbles:true }));
   function show(){
     prev.innerHTML = "";
+    const has = !!state;
+    ["ha-vis","ha-src","ha-reset"].forEach(c=>{ body.querySelector("."+c).style.display = has ? "" : "none"; });
     if(!state){ info.textContent = "لم يُختر ملف بعد. اختر ملف الدرس التفاعلي (.html) لتشغيله هنا وتقديمه للطلاب."; return; }
-    info.textContent = (state.name ? state.name + " — " : "") + (state.size ? (state.size/1024).toFixed(0) + " ك.ب" : "");
+    const ne = (state.edits || []).length;
+    info.textContent = (state.name ? state.name + " — " : "") + (state.size ? (state.size/1024).toFixed(0) + " ك.ب" : "") + (ne ? " — " + ne + " تعديل مرئي" : "");
     prev.appendChild(htmlAppMountEl(state, { height:"560px" }));
   }
+  function enterEdit(work, dirty){
+    prev.innerHTML = "";
+    prev.appendChild(htmlAppMountEl(Object.assign({}, state, { edits: work }), {
+      edit:true, dirty:!!dirty,
+      onSave: eds=>{ state.edits = eds.map(o=>{ if(o && o.k === "img" && o.mid){ const c = Object.assign({}, o); delete c.v; return c; } return o; }); changed(); setMsg("تم حفظ التعديلات المرئية ✔"); },
+      onExit: ()=>show(),
+      onRestart: (eds, d)=>enterEdit(eds, d)
+    }));
+  }
   body.querySelector(".ha-pick").addEventListener("click", ()=>inp.click());
+  body.querySelector(".ha-vis").addEventListener("click", ()=>{ setMsg(""); enterEdit((state && state.edits) || [], false); });
+  body.querySelector(".ha-src").addEventListener("click", ()=>{ setMsg(""); openHtmlSourceEditor(state, ()=>{ changed(); show(); setMsg("تم حفظ الكود ✔ (قد تحتاج التعديلات المرئية لمراجعة إن تغيّرت النصوص التي تستهدفها)"); }); });
+  body.querySelector(".ha-reset").addEventListener("click", ()=>{ if(!state || !(state.edits||[]).length){ setMsg("لا توجد تعديلات مرئية."); return; } if(!confirm("حذف كل التعديلات المرئية وإعادة الدرس كما رُفع؟")) return; state.edits = []; changed(); show(); setMsg("تم مسح التعديلات المرئية."); });
   inp.addEventListener("change", async ()=>{
     const f = inp.files && inp.files[0]; inp.value = ""; if(!f) return;
     try{
@@ -7048,13 +7567,12 @@ function buildHtmlAppBlock(saved){
       const txt = await new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); r.readAsText(f, "utf-8"); });
       const exp = htmlAppFileToExport(txt, f.name), q = exp.data[0];
       const r = await htmlAppStore(txt);
-      state = { title:q.title, name:q.name, size:q.size }; Object.assign(state, r);
+      state = { title:q.title, name:q.name, size:q.size, edits:[] }; Object.assign(state, r);
       const ht = el.querySelector(".htitle"); if(ht && ht.value==="درس HTML تفاعلي") ht.value = q.title;
-      setMsg("تم رفع الدرس وحفظه ✔"); show();
-      el.dispatchEvent(new Event("change", { bubbles:true }));
+      setMsg("تم رفع الدرس وحفظه ✔"); show(); changed();
     }catch(e){ setMsg("تعذّر: " + (e && e.message || e), true); }
   });
-  if(saved && (saved.mediaId || saved.html)){ state = { title:saved.title||"", name:saved.name||"", size:saved.size||0 }; if(saved.mediaId) state.mediaId = saved.mediaId; else state.html = saved.html; }
+  if(saved && (saved.mediaId || saved.html)){ state = { title:saved.title||"", name:saved.name||"", size:saved.size||0, edits:Array.isArray(saved.edits) ? saved.edits : [] }; if(saved.mediaId) state.mediaId = saved.mediaId; else state.html = saved.html; }
   show();
   el.getHtmlAppData = ()=> (state && (state.mediaId || state.html)) ? Object.assign({ type:"htmlapp" }, state) : null;
   return el;
@@ -10119,6 +10637,7 @@ function openSpellBoard(q, noCheck, list, startIdx){
   ov.__sabClose = close;
   function onEsc(e){ if(e.key==="Escape" && !(e.target && (e.target.tagName==="INPUT" || e.target.tagName==="SELECT"))) close(); }
   ov.innerHTML = `<div class="sab-top">
+      <button type="button" class="chip-btn" id="sabPrev" title="عرض الكلمة السابقة">◀ السابق</button>
       <h3>اكتب ما يُملى عليك — كل طالب في مربعه</h3>
       <span class="sab-badge" id="sabWordNo"></span>
       <span class="sab-tools" id="sabTools"></span>
@@ -10176,6 +10695,7 @@ function openSpellBoard(q, noCheck, list, startIdx){
     stopAudio();
     $("sabWordNo").textContent = words.length>1 ? ("الكلمة "+(wi+1)+" من "+words.length) : "كلمة واحدة";
     const nx = $("sabNext"); nx.style.display = words.length>1 ? "" : "none";
+    const pv = $("sabPrev"); pv.style.display = words.length>1 ? "" : "none"; pv.disabled = wi <= 0;
     nx.disabled = wi >= words.length-1; nx.textContent = nx.disabled ? "✔ آخر كلمة" : "⏭ الكلمة التالية";
     const tools = $("sabTools"); tools.innerHTML = "";
     if(!noCheck && cur.hint){
@@ -10208,7 +10728,10 @@ function openSpellBoard(q, noCheck, list, startIdx){
       const kW = (w - 11*3) / 12.1;
       const kH = (((h - fixedH) * 0.74) - 4*3) / 5;
       const k = Math.max(30, Math.min(120, Math.floor(Math.min(kW, kH))));
-      p.style.setProperty("--k", k+"px");
+      // ارتفاع المفاتيح: يزيد نصف الارتفاع الحالي (×1.5) دون تغيير العرض، بشرط أن يبقى لمربع الكتابة حدّه الأدنى
+      const kvMax = Math.floor((h - fixedH - 70 - 12 - 12) / 5);
+      const kv = Math.max(k, Math.min(Math.floor(k * 1.5), kvMax));
+      p.style.setProperty("--k", k+"px"); p.style.setProperty("--kv", kv+"px");
     });
   }
   function render(){
@@ -10275,6 +10798,7 @@ function openSpellBoard(q, noCheck, list, startIdx){
   $("sabClear").addEventListener("click", ()=>{ for(let i=0;i<values.length;i++) values[i] = ""; locked = false; ov.classList.remove("sab-timeup"); render(); });
   $("sabClose").addEventListener("click", close);
   $("sabNext").addEventListener("click", ()=>{ if(wi < words.length-1){ wi++; mountWord(); } });
+  $("sabPrev").addEventListener("click", ()=>{ if(wi > 0){ wi--; mountWord(); } });
   mountWord();
 }
 
@@ -12608,12 +13132,12 @@ function renderMindBankWindow(view){
    أضافهم بنفسه (عبر علامة addedByTeacher)، فلا تظهر له بيانات طلاب معلم آخر.
    ============================================================ */
 function studentBelongsToTeacher(s, t){
-  if(!s || !s.selfRegistered || !t) return false;
-  if(!(t.grades||[]).includes(s.grade)) return false;
-  const classes = (t.classes||[]).map(String);
-  if(classes.length && !classes.includes(String(s.cls))) return false;
-  if(t.institution && s.institution && Sec.norm(t.institution)!==Sec.norm(s.institution)) return false;
-  return true;
+  // الطالب «طالب هذا المعلم» إذا كان صفه وفصله ضمن ما أُسند للمعلم في جدول «بيانات المعلمين» (مبدأ أقل الصلاحيات:
+  // بلا إسناد لا يرى شيئًا) — بغض النظر عمّن أضاف الطالب (مدير المؤسسة أو المعلم أو التسجيل الذاتي).
+  if(!s || !t) return false;
+  const grades = (t.grades||[]), classes = (t.classes||[]).map(String);
+  if(!grades.length || !classes.length) return false;
+  return grades.includes(s.grade) && classes.includes(String(s.cls));
 }
 function renderMyStudentsWindow(view, role){
   const teacherUsername = session.user.username;
@@ -12623,12 +13147,16 @@ function renderMyStudentsWindow(view, role){
   const isBroadRole = (role==="admin"||role==="orgadmin") || role==="coordinator";
   view.innerHTML = `
     <h2>${isBroadRole ? "بيانات الطلاب" : "بيانات طلابي"}</h2>
-    <p class="sub">${isBroadRole ? "بيانات جميع الطلاب المسجّلين في المنصة، ويمكنك من هنا تفعيل أي طالب أو تعديل بياناته." : 'أضف طلابك هنا وستُدرج تلقائيًا في جدول "بيانات الطلاب" العام لدى المشرف العام، مع بقاء بيانات طلاب المعلمين الآخرين مخفية عنك.'}</p>
+    <p class="sub">${isBroadRole ? "بيانات جميع الطلاب المسجّلين في المنصة، ويمكنك من هنا تفعيل أي طالب أو تعديل بياناته." : 'طلاب الصفوف والفصول المسندة إليك فقط (من جدول "بيانات الطلاب" لدى مدير المؤسسة). اختر الصف والفصل من القوائم لعرض طلابهما، ولا تظهر لك بيانات أي طالب خارج إسنادك.'}</p>
     <div class="toolbar" style="flex-wrap:wrap; gap:8px;">
       <button class="chip-btn accent" id="myStAddBtn">➕ إضافة طالب</button>
       <button class="chip-btn" id="myStActivateAllBtn">✅ تفعيل الجميع</button>
       <button class="chip-btn" onclick="printSection('myStTableWrap')">طباعة</button>
       <button class="chip-btn" id="myStExportBtn">تصدير إكسل</button>
+    </div>
+    <div class="toolbar" style="margin-top:4px; flex-wrap:wrap; gap:8px; align-items:center;">
+      <label style="margin:0; white-space:nowrap;">الصف</label><select id="myStFGrade" style="width:auto;"></select>
+      <label style="margin:0; white-space:nowrap;">الفصل</label><select id="myStFCls" style="width:auto;"></select>
     </div>
     <div class="toolbar" style="margin-top:4px;">
       <label style="margin:0; white-space:nowrap;">بحث عن طالب</label>
@@ -12639,13 +13167,23 @@ function renderMyStudentsWindow(view, role){
   `;
   // بند 7: قائمة بأسماء الطلاب (اقتراح تلقائي عند الكتابة) بجانب مربع البحث أعلاه،
   // لتسهيل الوصول إلى طالب بعينه بسرعة بدل تصفح كل الصفوف يدويًا.
+  const meRec = ()=> (DB.teachers.find(t=>t && t.username===teacherUsername) || session.user || {});
+  const scopeGrades = ()=> isBroadRole ? ALL_GRADES.slice() : ((meRec().grades)||[]).slice();
+  const scopeClasses = ()=> isBroadRole ? allClassesInUse() : ((meRec().classes)||[]).map(String);
+  let fGradeV = "", fClsV = "";
   function mine(){
     const all = DB.students.map((r,i)=>({r,i}));
-    if(isBroadRole) return all;
-    const me = DB.teachers.find(t=>t && t.username===teacherUsername) || session.user || {};
-    // الطالب المسجَّل ذاتيًا يظهر عند المعلم الذي يدرّس صفه (وفصله إن حُدِّدت فصول للمعلم) وفي مؤسسته،
-    // إضافةً إلى من أضافهم المعلم بنفسه. الجدول نفسه DB.students فيتطابق مع واجهة المشرف العام فورًا.
-    return all.filter(x=> x.r.addedByTeacher===teacherUsername || studentBelongsToTeacher(x.r, me));
+    let out;
+    if(isBroadRole) out = all;
+    else {
+      // الجدول نفسه DB.students الذي يديره مدير المؤسسة: يظهر للمعلم طلاب صفوفه وفصوله المسندة فقط،
+      // إضافةً إلى من أضافهم بنفسه ولم يُحدَّد صفهم/فصلهم بعد (ليتمكن من إكمال بياناتهم).
+      const me = meRec();
+      out = all.filter(x=> studentBelongsToTeacher(x.r, me) || (x.r.addedByTeacher===teacherUsername && (!x.r.grade || !x.r.cls)));
+    }
+    if(fGradeV) out = out.filter(x=>x.r.grade===fGradeV);
+    if(fClsV) out = out.filter(x=>String(x.r.cls)===String(fClsV));
+    return out;
   }
   function editable(val, onSave, isNewDefault){
     const span = document.createElement("span");
@@ -12665,6 +13203,13 @@ function renderMyStudentsWindow(view, role){
   // زر العين على إظهارها فعلًا عند الضغط (كان يبدّل نوع الحقل فقط دون أن يضع فيه أي قيمة).
   function passwordField(val, onSave){ return makePasswordField(val, onSave); }
   let searchTerm = "";
+  (function initFilters(){
+    const g = document.getElementById("myStFGrade"), c = document.getElementById("myStFCls");
+    g.innerHTML = '<option value="">' + (isBroadRole ? "كل الصفوف" : "كل صفوفي") + '</option>' + scopeGrades().map(x=>`<option value="${regEsc(x)}">${regEsc(x)}</option>`).join("");
+    c.innerHTML = '<option value="">' + (isBroadRole ? "كل الفصول" : "كل فصولي") + '</option>' + scopeClasses().map(x=>`<option value="${regEsc(x)}">${regEsc(x)}</option>`).join("");
+    g.addEventListener("change", ()=>{ fGradeV = g.value; draw(); });
+    c.addEventListener("change", ()=>{ fClsV = c.value; draw(); });
+  })();
   function draw(){
     const wrap = document.getElementById("myStTableWrap");
     const namesList = document.getElementById("myStNamesList");
@@ -12679,15 +13224,16 @@ function renderMyStudentsWindow(view, role){
       else { const ids = new Set(mine().map(x=>x.r)); DB.students = DB.students.filter(s=>!ids.has(s)); }
       saveDB(); draw();
     };
-    const classOptions = allClassesInUse();
+    const classOptions = scopeClasses();
+    const gradeOptions = scopeGrades();
     t.innerHTML = `<thead><tr><th>م</th><th>اسم المستخدم</th><th>الصف</th><th>الفصل</th><th>كلمة المرور</th><th>التفعيل</th><th></th></tr></thead><tbody></tbody>`;
     const tb = t.querySelector("tbody");
-    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty-note">${searchTerm.trim() ? "لا توجد نتائج مطابقة للبحث" : "لم تُضف أي طلاب بعد"}</td></tr>`; }
+    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty-note">${searchTerm.trim() ? "لا توجد نتائج مطابقة للبحث" : (!isBroadRole && !(scopeGrades().length && scopeClasses().length) ? "لم تُسند إليك صفوف وفصول بعد. راجع مدير المؤسسة لإسنادها في جدول بيانات المعلمين." : "لا يوجد طلاب في الصفوف والفصول المحددة")}</td></tr>`; }
     rows.forEach(({r,i}, serial)=>{
       const tr=document.createElement("tr");
       tr.innerHTML=`<td>${serial+1}</td><td class="c-user"></td>
-        <td><select class="cs-grade"><option value="">—</option>${ALL_GRADES.map(g=>`<option value="${g}" ${r.grade===g?"selected":""}>${g}</option>`).join("")}</select></td>
-        <td><select class="cs-class"><option value="">—</option>${classOptions.map(c=>`<option value="${c}" ${String(r.cls)===c?"selected":""}>${c}</option>`).join("")}<option value="__new__">+ إضافة فصل جديد</option></select></td>
+        <td><select class="cs-grade"><option value="">—</option>${gradeOptions.map(g=>`<option value="${g}" ${r.grade===g?"selected":""}>${g}</option>`).join("")}</select></td>
+        <td><select class="cs-class"><option value="">—</option>${classOptions.map(c=>`<option value="${c}" ${String(r.cls)===c?"selected":""}>${c}</option>`).join("")}${isBroadRole ? '<option value="__new__">+ إضافة فصل جديد</option>' : ""}</select></td>
         <td class="c-pass"></td>
         <td><button class="chip-btn ${r.active?'accent':''}" style="padding:4px 10px;">${r.active?'✅ مفعّل':'⛔ تفعيل'}</button></td>
         <td><button class="icon-btn danger">🗑</button></td>`;
@@ -12715,7 +13261,7 @@ function renderMyStudentsWindow(view, role){
   document.getElementById("myStSearch").addEventListener("input", (e)=>{ searchTerm = e.target.value; draw(); });
   window.__refreshMyStudents = draw;
   document.getElementById("myStAddBtn").addEventListener("click", ()=>{
-    DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:"", cls:"", active:false, addedByTeacher:teacherUsername, __isNew:true});
+    DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:fGradeV, cls:fClsV, active:false, addedByTeacher:teacherUsername, __isNew:true});
     saveDB(); draw();
   });
   // بند 12/7: زر "تفعيل الجميع" — يُفعّل دفعة واحدة كل الطلاب الظاهرين حاليًا في الجدول
