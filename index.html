@@ -6101,13 +6101,13 @@ function renderFormsWindow(view, role, bankMode){
             <button class="chip-btn" id="fExportOne" title="تصدير النموذج المحدد حاليًا كملف JSON">⬇ تصدير المحدد</button>
             <button class="chip-btn" id="fExportAll" title="تصدير كل ما يطابق الفصل/الصف/المادة الحاليين في ملف واحد">⬇ تصدير الكل (الفلتر الحالي)</button>
             <button class="chip-btn accent" id="fImportModels" title="استيراد ملف JSON واحد أو عدة ملفات دفعة واحدة (نموذج واحد أو عدة نماذج) تم تصديرها من هذه المنصة">📥 استيراد نماذج</button>
-            <input type="file" id="fImportModelsFile" accept=".json,application/json" multiple style="display:none;">
+            <input type="file" id="fImportModelsFile" accept=".json,application/json,.html,.htm,text/html" multiple style="display:none;">
           </div>
           <div id="fCopyToBox"></div>
         </div>
         <div class="section" id="toolsSection" style="border-bottom:none;">
           <h3>الأدوات والإضافات</h3>
-          ${lessonMode ? '<div class="empty-note" style="font-size:12.5px;">ستُضاف أدوات هذه النافذة لاحقًا.</div>' : ""}
+          ${lessonMode ? '<button class="tool-btn" data-tool="htmlapp">➕ إضافة درس HTML تفاعلي (ملف جاهز)</button>' : ""}
           <button class="tool-btn" data-tool="grammar">➕ إضافة نموذج نحوي</button>
           <button class="tool-btn" data-tool="reading">➕ إضافة سؤال فهم المقروء</button>
           <button class="tool-btn" data-tool="mcq">➕ إضافة سؤال اختياري</button>
@@ -6456,15 +6456,15 @@ function renderFormsWindow(view, role, bankMode){
     }
     const model = DB[MKEY].find(m=>m.id===sel);
     if(!model){ alert("تعذّر العثور على العنصر المحدد."); return; }
-    downloadJSON(modelExportPayload(model), (model.title||"نموذج").replace(/[\\\/:*?"<>|]/g,"_")+".json");
+    htmlAppInlineExport(modelExportPayload(model)).then(p=>downloadJSON(p, (model.title||"نموذج").replace(/[\\\/:*?"<>|]/g,"_")+".json")).catch(()=>alert("تعذّر تحميل محتوى الدرس للتصدير، تحقق من الاتصال."));
   });
   document.getElementById("fExportAll").addEventListener("click", ()=>{
     const term=fTerm.value, grade=fGrade.value, subject=fSubject.value;
     if(!term||!grade||!subject){ alert("من فضلك حدد الفصل الدراسي والصف والمادة أولًا لتحديد ما سيُصدَّر."); return; }
     const list = matchingModels(term, grade, subject);
     if(!list.length){ alert("لا توجد عناصر مطابقة للفلتر الحالي لتصديرها."); return; }
-    downloadJSON({__gamma7Export: EXPORT_KIND+"-batch", __exportVersion:1, items: list.map(modelExportPayload)},
-      `${bankMode?"بنوك":"نماذج"}_${grade}_${subject}.json`);
+    Promise.all(list.map(m=>htmlAppInlineExport(modelExportPayload(m)))).then(items=>downloadJSON({__gamma7Export: EXPORT_KIND+"-batch", __exportVersion:1, items},
+      `${bankMode?"بنوك":(lessonMode?"دروس":"نماذج")}_${grade}_${subject}.json`)).catch(()=>alert("تعذّر تحميل محتوى الدروس للتصدير، تحقق من الاتصال."));
   });
   document.getElementById("fImportModels").addEventListener("click", ()=> document.getElementById("fImportModelsFile").click());
   document.getElementById("fImportModelsFile").addEventListener("change", async (e)=>{
@@ -6477,9 +6477,14 @@ function renderFormsWindow(view, role, bankMode){
     let ok=0, denied=0, bad=0, badFiles=0;
     for(const file of files){
       let json;
-      try{ json = JSON.parse(await readText(file)); }
+      try{
+        const __txt = await readText(file);
+        if(/\.html?$/i.test(file.name)){ if(!lessonMode) throw new Error("html"); json = htmlAppFileToExport(__txt, file.name); }
+        else json = JSON.parse(__txt);
+      }
       catch(err){ badFiles++; continue; }
       const items = Array.isArray(json && json.items) ? json.items : [json];
+      for(const __it of items){ if(__it && Array.isArray(__it.data) && __it.data.some(q=>q && q.type==="htmlapp")){ try{ await htmlAppPrepareData(__it.data); }catch(err){ __it.data = null; } } }
       items.forEach(it=>{
         if(!it || typeof it!=="object" || !Array.isArray(it.data)){ bad++; return; }
         // إصلاح: الوجهة هي ما اختاره المعلم الآن في الفصل/الصف/المادة (فيمكن استيراد نموذج صدّر من الخامس إلى السادس أو لمادة/مؤسسة أخرى)؛
@@ -6508,7 +6513,7 @@ function renderFormsWindow(view, role, bankMode){
     saveDB();
     refreshNumbers();
     const readFiles = files.length - badFiles;
-    tnToast(`تم استيراد ${ok} ${bankMode?"بنكًا":"نموذجًا"}` + (files.length>1 ? ` من ${readFiles} ملف` : "") + "." +
+    tnToast(`تم استيراد ${ok} ${bankMode?"بنكًا":(lessonMode?"درسًا":"نموذجًا")}` + (files.length>1 ? ` من ${readFiles} ملف` : "") + "." +
       (denied?` رُفض ${denied} خارج صلاحياتك.`:"") + (bad?` وتجاهُل ${bad} عنصر غير صالح.`:"") + (badFiles?` وتعذّرت قراءة ${badFiles} ملف (ليس JSON صالحًا).`:""),
       (!ok && (denied||bad||badFiles)) ? "err" : undefined);
   });
@@ -6924,11 +6929,151 @@ function renderFormsWindow(view, role, bankMode){
   }
 }
 
+/* =====================================================================
+   درس HTML تفاعلي (type:"htmlapp"): يشغّل ملف HTML كاملًا (JS/CSS/صور/صوت) كما هو داخل إطار iframe معزول.
+   - التخزين: نص الملف يُرفع إلى MediaStore (عقدة platform-media المقسّمة لقطع) ويُحفظ في الدرس مُعرّفه فقط (mediaId).
+     وإن تعذّر الرفع (بلا اتصال) ولم يتجاوز الملف الحد، يُحفظ نصه داخل الدرس مؤقتًا (html).
+   - العزل: sandbox بلا allow-same-origin، فلا يصل كود الدرس إلى بيانات المنصة أو جلسة المستخدم أو Firebase.
+   - التصدير/الاستيراد: JSON الصادر يحوي نص الملف كاملًا (self-contained) ويُعاد رفعه عند الاستيراد.
+   ===================================================================== */
+const HTMLAPP_INLINE_MAX = 1200000;      // أقصى حجم يُقبل حفظه داخل الدرس نفسه عند تعذّر MediaStore
+const HTMLAPP_FILE_MAX   = 12 * 1024 * 1024;
+const HTMLAPP_SHIM = '<script>(function(){function mk(){var d={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}["localStorage","sessionStorage"].forEach(function(n){try{window[n].getItem("x")}catch(e){try{Object.defineProperty(window,n,{value:mk(),configurable:true})}catch(e2){}}})})();<\/script>';
+function htmlAppTitleOf(html, fallback){
+  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || "");
+  const t = m ? m[1].replace(/<[^>]*>/g,"").replace(/\s+/g," ").trim() : "";
+  return t || fallback || "درس تفاعلي";
+}
+function htmlAppLooksValid(html){ return typeof html==="string" && html.length>20 && /<(html|body|div|script|p|h1|section)[\s>]/i.test(html); }
+function htmlAppFileToExport(html, filename){
+  if(!htmlAppLooksValid(html)) throw new Error("ليس ملف HTML صالحًا");
+  if(html.length > HTMLAPP_FILE_MAX) throw new Error("الملف أكبر من الحد المسموح");
+  const base = String(filename||"").replace(/\.html?$/i,"");
+  const title = htmlAppTitleOf(html, base);
+  return { title, customTitle:true, kind:"model", data:[{ type:"htmlapp", title, name:String(filename||""), size:html.length, html }] };
+}
+async function htmlAppStore(html){
+  try{ return { mediaId: await MediaStore.put(html) }; }
+  catch(e){ if(html.length <= HTMLAPP_INLINE_MAX) return { html }; throw new Error("تعذّر رفع الدرس إلى قاعدة البيانات (تحقق من الاتصال)"); }
+}
+async function htmlAppPrepareData(data){      // يرفع أي html مضمَّن إلى MediaStore ويستبدله بمُعرّف
+  for(const q of data){
+    if(q && q.type==="htmlapp" && typeof q.html==="string" && q.html && !q.mediaId){
+      const r = await htmlAppStore(q.html);
+      if(r.mediaId){ q.mediaId = r.mediaId; delete q.html; }
+    }
+  }
+}
+function htmlAppGetHtml(q){ return q && q.html ? Promise.resolve(q.html) : MediaStore.get(q && q.mediaId); }
+async function htmlAppInlineExport(payload){   // يجعل التصدير مكتفيًا بذاته: يضمّن النص بدل المُعرّف
+  const data = await Promise.all((payload.data||[]).map(async q=>{
+    if(q && q.type==="htmlapp" && !q.html && q.mediaId){ const c = Object.assign({}, q, { html: await MediaStore.get(q.mediaId) }); delete c.mediaId; return c; }
+    return q;
+  }));
+  return Object.assign({}, payload, { data });
+}
+function htmlAppPrepareDoc(html){
+  html = String(html);
+  if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m=>m+HTMLAPP_SHIM);
+  const dt = /^\s*<!doctype[^>]*>/i.exec(html);
+  return dt ? html.slice(0,dt[0].length) + HTMLAPP_SHIM + html.slice(dt[0].length) : HTMLAPP_SHIM + html;
+}
+function htmlAppMountEl(q, opts){
+  opts = opts || {};
+  const wrap = document.createElement("div"); wrap.className = "htmlapp-wrap";
+  const baseCss = "background:#fff; border:2px solid #111; border-radius:10px; overflow:hidden; display:flex; flex-direction:column; margin:8px 0;";
+  wrap.style.cssText = baseCss;
+  const bar = document.createElement("div");
+  bar.style.cssText = "display:flex; gap:8px; align-items:center; padding:6px 10px; background:#f4f6f5; border-bottom:1px solid #bbb; flex-wrap:wrap;";
+  bar.innerHTML = '<span class="ha-title" style="flex:1 1 160px; font-weight:800; font-size:14px;"></span><button type="button" class="chip-btn ha-reload">⟳ إعادة تشغيل</button><button type="button" class="chip-btn ha-full">⛶ ملء الشاشة</button>';
+  bar.querySelector(".ha-title").textContent = q.title || "درس تفاعلي";
+  const host = document.createElement("div");
+  const H = opts.height || "calc(100vh - 200px)";
+  host.style.cssText = "position:relative; width:100%; min-height:480px; height:" + H + ";";
+  const status = document.createElement("div");
+  status.style.cssText = "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; font-weight:800; color:#444; background:#fff; z-index:1;";
+  host.appendChild(status); wrap.appendChild(bar); wrap.appendChild(host);
+  let frame = null, full = false;
+  function setFull(on){
+    full = on;
+    if(on){ wrap.style.cssText = baseCss + "position:fixed; inset:0; z-index:99999; margin:0; border-radius:0; border:0;"; host.style.height = "auto"; host.style.flex = "1 1 auto"; host.style.minHeight = "0"; }
+    else { wrap.style.cssText = baseCss; host.style.height = H; host.style.flex = ""; host.style.minHeight = "480px"; }
+    bar.querySelector(".ha-full").textContent = on ? "✕ خروج من ملء الشاشة" : "⛶ ملء الشاشة";
+  }
+  const onKey = e=>{ if(e.key==="Escape" && full) setFull(false); if(!wrap.isConnected) document.removeEventListener("keydown", onKey); };
+  document.addEventListener("keydown", onKey);
+  bar.querySelector(".ha-full").addEventListener("click", ()=>setFull(!full));
+  async function load(){
+    if(frame){ frame.remove(); frame = null; }
+    status.style.display = "flex"; status.textContent = "جارٍ تحميل الدرس…";
+    let html;
+    try{ html = await htmlAppGetHtml(q); if(!html) throw new Error("المحتوى فارغ"); }
+    catch(e){
+      status.innerHTML = ""; const s = document.createElement("div"); s.textContent = "تعذّر تحميل الدرس: " + (e && e.message || e);
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip-btn accent"; b.style.marginTop = "10px"; b.textContent = "إعادة المحاولة"; b.addEventListener("click", load);
+      status.appendChild(s); status.appendChild(b); return;
+    }
+    const url = URL.createObjectURL(new Blob([htmlAppPrepareDoc(html)], { type:"text/html;charset=utf-8" }));
+    frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts allow-forms allow-popups allow-modals allow-downloads");
+    frame.setAttribute("allow", "autoplay; fullscreen");
+    frame.setAttribute("allowfullscreen", "");
+    frame.title = q.title || "درس تفاعلي";
+    frame.style.cssText = "width:100%; height:100%; border:0; background:#fff; display:block;";
+    frame.addEventListener("load", ()=>{ status.style.display = "none"; setTimeout(()=>URL.revokeObjectURL(url), 1500); });
+    frame.src = url; host.appendChild(frame);
+  }
+  bar.querySelector(".ha-reload").addEventListener("click", load);
+  load();
+  return wrap;
+}
+function buildHtmlAppBlock(saved){
+  const el = makeBlockShell("درس HTML تفاعلي");
+  const body = el.querySelector(".qblock-body");
+  body.innerHTML = '<div class="toolbar" style="align-items:center;"><button type="button" class="chip-btn accent ha-pick">📂 اختيار ملف HTML</button><span class="ha-info sub" style="margin:0;"></span><input type="file" class="ha-file" accept=".html,.htm,text/html" style="display:none;"></div><div class="ha-prev"></div><div class="msg ha-msg"></div>';
+  const info = body.querySelector(".ha-info"), prev = body.querySelector(".ha-prev"), msg = body.querySelector(".ha-msg"), inp = body.querySelector(".ha-file");
+  let state = null;
+  const setMsg = (t, err)=>{ msg.textContent = t || ""; msg.className = t ? ("msg show" + (err ? " err" : "")) : "msg"; };
+  function show(){
+    prev.innerHTML = "";
+    if(!state){ info.textContent = "لم يُختر ملف بعد. اختر ملف الدرس التفاعلي (.html) لتشغيله هنا وتقديمه للطلاب."; return; }
+    info.textContent = (state.name ? state.name + " — " : "") + (state.size ? (state.size/1024).toFixed(0) + " ك.ب" : "");
+    prev.appendChild(htmlAppMountEl(state, { height:"560px" }));
+  }
+  body.querySelector(".ha-pick").addEventListener("click", ()=>inp.click());
+  inp.addEventListener("change", async ()=>{
+    const f = inp.files && inp.files[0]; inp.value = ""; if(!f) return;
+    try{
+      setMsg("جارٍ قراءة الملف ورفعه…");
+      const txt = await new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); r.readAsText(f, "utf-8"); });
+      const exp = htmlAppFileToExport(txt, f.name), q = exp.data[0];
+      const r = await htmlAppStore(txt);
+      state = { title:q.title, name:q.name, size:q.size }; Object.assign(state, r);
+      const ht = el.querySelector(".htitle"); if(ht && ht.value==="درس HTML تفاعلي") ht.value = q.title;
+      setMsg("تم رفع الدرس وحفظه ✔"); show();
+      el.dispatchEvent(new Event("change", { bubbles:true }));
+    }catch(e){ setMsg("تعذّر: " + (e && e.message || e), true); }
+  });
+  if(saved && (saved.mediaId || saved.html)){ state = { title:saved.title||"", name:saved.name||"", size:saved.size||0 }; if(saved.mediaId) state.mediaId = saved.mediaId; else state.html = saved.html; }
+  show();
+  el.getHtmlAppData = ()=> (state && (state.mediaId || state.html)) ? Object.assign({ type:"htmlapp" }, state) : null;
+  return el;
+}
+function renderHtmlLessonView(view, model){
+  const items = model.data.filter(q=>q && q.type==="htmlapp");
+  view.innerHTML = '<button class="chip-btn" id="hlBack">◀ رجوع</button><h2 style="margin-top:10px;"></h2><div id="hlHost"></div>';
+  view.querySelector("h2").textContent = model.title + " — " + (model.grade||"") + (model.subject ? " — " + model.subject : "");
+  document.getElementById("hlBack").addEventListener("click", ()=>renderStudentLessonsList(view));
+  const host = document.getElementById("hlHost");
+  items.forEach(q=>host.appendChild(htmlAppMountEl(q, { height:"calc(100vh - 210px)" })));
+}
+
 function serializeModel(model, warnings){
   warnings = warnings || [];
   const data = [];
   model.blocks.forEach(b=>{
     const el = b.el;
+    if(typeof el.getHtmlAppData === "function"){ const hd = el.getHtmlAppData(); if(hd) data.push(hd); return; }
     const mcqList = el.querySelector(".mcq-list");
     if(mcqList){
       const boxMode = el.dataset.boxMode==="1";
@@ -8170,6 +8315,7 @@ function buildBlockByTool(tool, savedData){
   else if(tool==="reorder") el = buildReorderBlock(savedData && savedData.correctOrder, savedData && savedData.hint, savedData);
   else if(tool==="mindmap") el = buildMindmapBlock(savedData && savedData.items, savedData && savedData.connections, savedData && savedData.bg, savedData);
   else if(tool==="classify") el = buildClassifyBlock(savedData);
+  else if(tool==="htmlapp") el = buildHtmlAppBlock(savedData);
   if(el){
     el.dataset.tool = tool;
     // بند 5: نتذكر آخر صيغة كتبها المعلم لرأس هذا النوع من الأسئلة، ونطبّقها تلقائيًا
@@ -8221,6 +8367,8 @@ function rebuildBlocksFromData(data){
       blocks.push({el: buildBlockByTool("classify", item)}); i++;
     } else if(item.type === "mindmap"){
       blocks.push({el: buildBlockByTool("mindmap", item)}); i++;
+    } else if(item.type === "htmlapp"){
+      blocks.push({el: buildBlockByTool("htmlapp", item)}); i++;
     } else {
       i++;
     }
@@ -10131,6 +10279,7 @@ function openSpellBoard(q, noCheck, list, startIdx){
 }
 
 function renderSolveView(view, model, forceRetry, justSubmitted){
+  if(model && model.lesson===true && Array.isArray(model.data) && model.data.length && model.data.every(q=>q && q.type==="htmlapp")){ renderHtmlLessonView(view, model); return; }
   view.innerHTML = `
     <button class="chip-btn" id="solveBack">◀ رجوع</button>
     <h2 style="margin-top:10px;">${model.title} — ${model.grade} — ${model.term}${model.subject ? " — "+model.subject : ""}</h2>
@@ -10173,6 +10322,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   const consumedGrammarIdx = new Set();
   model.data.forEach((q,idx)=>{
     if(consumedGrammarIdx.has(idx)) return;
+    if(q.type==="htmlapp"){ area.appendChild(htmlAppMountEl(q, { height:"75vh" })); return; }
     if(q.type==="reading"){
       const box = document.createElement("div");
       box.className="passage-box"; box.style.marginBottom="14px"; box.style.background="#fbfbfb";
