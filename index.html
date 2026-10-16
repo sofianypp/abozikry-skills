@@ -8457,7 +8457,7 @@ function attachMicGate(box, q){
   const btn = document.createElement("span"); btn.className = "micbtn on student"; btn.innerHTML = MIC_SVG; btn.setAttribute("role", "button"); btn.tabIndex = 0;
   btn.title = isMcq ? "اضغط واقرأ السؤال والخيارات بصوت واضح" : "اضغط واقرأ العبارة بصوت واضح";
   (isMcq ? host : (host.querySelector(".tf-stmt") || host)).insertBefore(btn, (isMcq ? host : (host.querySelector(".tf-stmt") || host)).firstChild);
-  const st = document.createElement("div"); st.className = "mic-status"; host.parentNode.insertBefore(st, host.nextSibling);
+  const st = document.createElement("div"); st.className = "mic-status"; const after = isMcq ? target : host; after.parentNode.insertBefore(st, after.nextSibling);   // أسفل السؤال كله لا بين السؤال والخيارات
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const msg = (html, cls)=>{ st.className = "mic-status" + (cls ? " " + cls : ""); st.innerHTML = html; };
   const lock = on=>{ target.classList.toggle("mic-locked", on); try{ target.inert = on; }catch(e){} };
