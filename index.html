@@ -771,6 +771,19 @@
   .bulb-stack{ display:inline-flex; flex-direction:column; align-items:center; gap:2px; flex:0 0 auto; }
   .qblock-actions .bulb, .qblock-actions .screenbtn, .qblock-actions .clipbtn{ font-size:16px; cursor:pointer; align-self:center; }
   .hint-tools{ display:inline-flex; gap:6px; align-items:center; }
+  /* 🎤 القراءة الإلزامية قبل الإجابة */
+  .micbtn{ display:inline-flex; width:26px; height:26px; cursor:pointer; color:#777; opacity:.45; align-items:center; justify-content:center; vertical-align:middle; flex:0 0 auto; }
+  .micbtn svg{ width:100%; height:100%; }
+  .micbtn.on{ color:#1e6fff; opacity:1; filter:drop-shadow(0 0 3px #4da3ff) drop-shadow(0 0 9px #1e90ff); }
+  .micbtn.student{ width:34px; height:34px; }
+  .micbtn.rec{ color:#e03131; filter:drop-shadow(0 0 9px #ff6b6b); animation:micPulse 1s ease-in-out infinite; }
+  .micbtn.done{ color:#2e7d4f; filter:drop-shadow(0 0 6px #4cc38a); }
+  @keyframes micPulse{ 50%{ transform:scale(1.22); } }
+  .mic-locked{ opacity:.4; pointer-events:none; filter:grayscale(.7); user-select:none; }
+  .mic-status{ margin:8px 0; padding:8px 12px; border-radius:10px; background:#eef5ff; border:1.5px solid #1e6fff; font-weight:800; font-size:15px; line-height:1.9; }
+  .mic-status.err{ background:#fde8e6; border-color:#c0392b; } .mic-status.ok{ background:#d9f2e3; border-color:#2e7d4f; }
+  .mic-word{ display:inline-flex; align-items:center; gap:6px; margin:3px; padding:2px 12px; border:2px solid #c0392b; border-radius:999px; background:#fff; font-size:22px; font-weight:900; }
+  .mic-word button{ border:none; background:none; cursor:pointer; font-size:19px; padding:0; }
   .mcq-head .hint-tools{ flex:0 0 auto; }
   .match-card .bulb, .match-card .screenbtn, .match-card .clipbtn{ margin-left:4px; vertical-align:middle; }
   .mindmap-area.mm-locked .mindbox .mb-handle .screenbtn, .mindmap-area.mm-locked .mindbox .mb-handle .clipbtn{ pointer-events:none; opacity:.55; }
@@ -8320,17 +8333,175 @@ function normalizeLink(u){
   }
   try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") ? x.href : ""; }catch(e){ return ""; }
 }
+/* =====================================================================
+   🎤 «اقرأ أولًا ثم أجب»: يمنع الحل العشوائي في أسئلة الاختيار من متعدد والصواب والخطأ.
+   المعلم يفعّل الميكروفون لكل سؤال (يتوهّج أزرق)، والطالب لا يستطيع الإجابة قبل أن يقرأ السؤال (والخيارات) بصوته
+   قراءة صحيحة بنسبة ≥ 75% (تحقق عبر التعرف على الكلام ar-SA ومحاذاة كلمات القراءة مع النص المطلوب).
+   ===================================================================== */
+const MIC_PASS = 0.75;            // الحد الأدنى لصحة القراءة
+const MIC_PRECISION_MIN = 0.5;    // حدّ أدنى لنسبة الكلام المطابق من كل ما قاله الطالب (يمنع اختراع كلام كثير)
+const MIC_SILENCE_MS = 500;       // نصف ثانية سكوت = إيقاف التسجيل
+const MIC_START_TIMEOUT_MS = 10000, MIC_MAX_MS = 60000;
+const MIC_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M12 14a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 0 0-7 0v5A3.5 3.5 0 0 0 12 14z"/><path d="M18.5 10.5a1 1 0 1 0-2 0 4.5 4.5 0 0 1-9 0 1 1 0 1 0-2 0 6.5 6.5 0 0 0 5.5 6.42V19H9.5a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2H13v-2.08a6.5 6.5 0 0 0 5.5-6.42z"/></svg>';
+function micNorm(s){
+  return String(s == null ? "" : s).normalize("NFKC")
+    .replace(/[ً-ٰٟـۖ-ۭ]/g, "")
+    .replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
+    .replace(/[٠-٩]/g, d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d))
+    .replace(/[^ء-يa-zA-Z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function micWords(text){       // [{n: كلمة مطبَّعة, o: الكلمة الأصلية بتشكيلها}]
+  const out = [];
+  String(text || "").split(/\s+/).forEach(tok=>{
+    const n = micNorm(tok); if(!n) return;
+    n.split(" ").forEach(p=>{ if(p) out.push({ n:p, o:tok.replace(/[«»"“”()\[\]{}؟?!،,.:;؛…]/g, "") || tok }); });
+  });
+  return out;
+}
+function micLev(a, b){
+  const m = a.length, n = b.length; if(!m) return n; if(!n) return m;
+  let prev = Array.from({length:n+1}, (_,j)=>j);
+  for(let i=1;i<=m;i++){ const cur = [i]; for(let j=1;j<=n;j++){ cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1] ? 0 : 1)); } prev = cur; }
+  return prev[n];
+}
+function micSame(a, b){
+  if(a === b) return true;
+  const a2 = a.replace(/^ال/, ""), b2 = b.replace(/^ال/, "");
+  if(a2 && a2 === b2) return true;
+  const m = Math.max(a2.length, b2.length), mn = Math.min(a2.length, b2.length);
+  if(mn <= 2) return false;
+  return 1 - micLev(a2, b2) / m >= 0.75;
+}
+/* يحاذي كلمات القراءة مع النص المطلوب (أطول تتابع متطابق مع التسامح في الأخطاء الصغيرة)، ويعيد النسبة والكلمات الفائتة */
+function micScore(expectedText, spokenText){
+  const E = micWords(expectedText), R = micWords(spokenText), m = E.length, n = R.length;
+  const dp = Array.from({length:m+1}, ()=>new Array(n+1).fill(0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+    dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1], micSame(E[i-1].n, R[j-1].n) ? dp[i-1][j-1] + 1 : 0);
+  }
+  const hit = new Array(m).fill(false); let i = m, j = n;
+  while(i > 0 && j > 0){
+    if(micSame(E[i-1].n, R[j-1].n) && dp[i][j] === dp[i-1][j-1] + 1){ hit[i-1] = true; i--; j--; }
+    else if(dp[i-1][j] >= dp[i][j-1]) i--; else j--;
+  }
+  const matched = hit.filter(Boolean).length;
+  const score = m ? matched / m : 1, precision = n ? matched / n : 0;
+  return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= MIC_PASS && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
+}
+let __micActive = null;
+function micRecord(onInterim){       // يعيد {promise, stop}
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let stopFn = ()=>{};
+  const promise = new Promise(resolve=>{
+    const rec = new SR(); rec.lang = "ar-SA"; rec.interimResults = true; rec.maxAlternatives = 1;
+    rec.continuous = !/Android/i.test(navigator.userAgent);      // أندرويد يكرّر النص التراكمي في الوضع المستمر
+    const parts = []; let text = "", heard = false, last = 0, done = false, err = "", fb = null, timer = null; const t0 = Date.now();
+    function finish(){ if(done) return; done = true; clearInterval(timer); clearTimeout(fb); resolve({ text, heard, error: err }); }
+    function stop(){ if(done) return; try{ rec.stop(); }catch(e){} clearTimeout(fb); fb = setTimeout(finish, 1500); }
+    stopFn = stop;
+    rec.onresult = e=>{
+      for(let k = e.resultIndex; k < e.results.length; k++) parts[k] = e.results[k][0].transcript;
+      text = parts.filter(Boolean).join(" ").trim();
+      if(text){ heard = true; last = Date.now(); if(onInterim) onInterim(text); }
+    };
+    rec.onerror = e=>{ err = e.error || "error"; };
+    rec.onend = finish;
+    timer = setInterval(()=>{
+      const now = Date.now();
+      if(heard && now - last > MIC_SILENCE_MS) stop();
+      else if(!heard && now - t0 > MIC_START_TIMEOUT_MS) stop();
+      else if(now - t0 > MIC_MAX_MS) stop();
+    }, 100);
+    try{ rec.start(); }catch(e){ err = "start"; finish(); }
+  });
+  return { promise, stop: ()=>stopFn() };
+}
+function micSpeak(word){
+  try{
+    const ss = window.speechSynthesis; if(!ss) return false;
+    const u = new SpeechSynthesisUtterance(String(word).replace(/…/g, ""));
+    const v = (ss.getVoices() || []).find(x=>/^ar[-_]SA/i.test(x.lang)) || (ss.getVoices() || []).find(x=>/^ar/i.test(x.lang));
+    u.lang = v ? v.lang : "ar-SA"; if(v) u.voice = v; u.rate = 0.75; ss.cancel(); ss.speak(u); return !!v;
+  }catch(e){ return false; }
+}
+/* ---------- المعلم: زر الميكروفون بجوار اللمبة (يتوهّج أزرق عند التفعيل) ---------- */
+function refreshMic(bulb){
+  const m = bulb && bulb._mic; if(!m) return;
+  const on = bulb.dataset.mic === "1"; m.classList.toggle("on", on);
+  m.title = on ? "القراءة الإلزامية مفعّلة: لا يجيب الطالب قبل أن يقرأ السؤال بصوته (اضغط للإلغاء)" : "تفعيل القراءة الإلزامية: يقرأ الطالب السؤال بصوته قبل أن يتمكن من الإجابة";
+}
+function appendMicToggle(bulb){
+  queueMicrotask(()=>{
+    if(!bulb || bulb._mic || !bulb.parentNode) return;
+    const m = document.createElement("span"); m.className = "micbtn"; m.innerHTML = MIC_SVG;
+    const anchor = bulb._clip || bulb._screen || bulb; bulb.parentNode.insertBefore(m, anchor.nextSibling);
+    bulb._mic = m;
+    m.addEventListener("click", e=>{ e.stopPropagation(); bulb.dataset.mic = bulb.dataset.mic === "1" ? "" : "1"; refreshMic(bulb); m.dispatchEvent(new Event("change", { bubbles:true })); });
+    [ "mousedown" ].forEach(t=>m.addEventListener(t, e=>e.stopPropagation()));
+    refreshMic(bulb);
+  });
+}
+/* ---------- الطالب: بوابة القراءة ---------- */
+function attachMicGate(box, q){
+  const isMcq = q.type === "mcq";
+  const target = isMcq ? box.querySelector(".options-grid") : box.querySelector(".tf-choice");
+  const host = isMcq ? box.querySelector(".mcq-head") : box.querySelector(".qrow");
+  if(!target || !host) return;
+  const btn = document.createElement("span"); btn.className = "micbtn on student"; btn.innerHTML = MIC_SVG; btn.setAttribute("role", "button"); btn.tabIndex = 0;
+  btn.title = isMcq ? "اضغط واقرأ السؤال والخيارات بصوت واضح" : "اضغط واقرأ العبارة بصوت واضح";
+  host.insertBefore(btn, host.firstChild);
+  const st = document.createElement("div"); st.className = "mic-status"; host.parentNode.insertBefore(st, host.nextSibling);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const msg = (html, cls)=>{ st.className = "mic-status" + (cls ? " " + cls : ""); st.innerHTML = html; };
+  const lock = on=>{ target.classList.toggle("mic-locked", on); try{ target.inert = on; }catch(e){} };
+  function unlock(){ lock(false); btn.classList.remove("rec"); btn.classList.add("done"); }
+  if(!SR){ lock(false); msg("⚠ متصفحك لا يدعم التعرف على الصوت (جرّب Chrome أو Edge)، فلا يمكن التحقق من قراءتك — يمكنك الإجابة مباشرة.", "err"); return; }
+  lock(true);
+  msg(isMcq ? "🎤 اضغط على الميكروفون واقرأ <b>السؤال ثم الخيارات كلها</b> بصوت واضح لتفتح لك الإجابة." : "🎤 اضغط على الميكروفون واقرأ <b>العبارة</b> بصوت واضح لتفتح لك الإجابة.");
+  const expectedText = ()=>{
+    let t = isMcq ? (box.querySelector(".mcq-qtext") || {}).textContent : (box.querySelector(".tf-stmt") || {}).textContent;
+    if(isMcq && !q.boxMode){ [...box.querySelectorAll(".options-grid label")].filter(l=>l.offsetParent !== null || l.style.display !== "none").forEach(l=>{ const s = l.querySelector("span"); if(s) t += " " + s.textContent; }); }
+    return t || "";
+  };
+  async function go(){
+    if(__micActive && __micActive.btn === btn){ __micActive.ctl.stop(); return; }
+    if(__micActive){ __micActive.ctl.stop(); }
+    const exp = expectedText();
+    btn.classList.add("rec"); msg("🔴 أستمع إليك… اقرأ الآن، وسأتوقف تلقائيًا عندما تسكت قليلًا.");
+    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); });
+    __micActive = { btn, ctl };
+    const r = await ctl.promise; __micActive = null; btn.classList.remove("rec");
+    if(r.error === "not-allowed" || r.error === "service-not-allowed"){ msg("⚠ لم يُسمح باستخدام الميكروفون. اسمح للمتصفح باستخدامه من شريط العنوان ثم أعد المحاولة.", "err"); return; }
+    if(r.error === "network"){ msg("⚠ يحتاج التعرف على الصوت إلى اتصال بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.", "err"); return; }
+    if(r.error === "audio-capture"){ msg("⚠ لم يُعثر على ميكروفون يعمل في جهازك.", "err"); return; }
+    if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى.", "err"); return; }
+    const res = micScore(exp, r.text), pct = Math.round(res.score * 100);
+    if(res.ok){ unlock(); msg("✔ أحسنت! قراءتك صحيحة (" + pct + "%). يمكنك الآن اختيار الإجابة.", "ok"); return; }
+    const shown = res.missed.slice(0, 12);
+    msg("<div>أعد القراءة لأنك أخطأت في بعض الكلمات <span style='font-weight:600'>(صحة القراءة " + pct + "% والمطلوب 75% على الأقل)</span></div>"
+      + (shown.length ? "<div style='margin-top:4px'>الكلمات التي أخطأت فيها:</div><div class='mic-words'></div>" : ""), "err");
+    const wb = st.querySelector(".mic-words");
+    if(wb){
+      shown.forEach(w=>{ const c = document.createElement("span"); c.className = "mic-word"; const t = document.createElement("span"); t.textContent = w; const b = document.createElement("button"); b.type = "button"; b.title = "استمع للكلمة"; b.textContent = "🔊"; b.addEventListener("click", ()=>{ if(!micSpeak(w) && !window.__micNoVoiceWarned){ window.__micNoVoiceWarned = true; } }); c.appendChild(t); c.appendChild(b); wb.appendChild(c); });
+      if(res.missed.length > shown.length){ const more = document.createElement("span"); more.textContent = "… و" + (res.missed.length - shown.length) + " كلمات أخرى"; wb.appendChild(more); }
+    }
+  }
+  btn.addEventListener("click", e=>{ e.stopPropagation(); go(); });
+  btn.addEventListener("keydown", e=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); go(); } });
+}
 function mediaOf(bulb){
   const d = bulb && bulb.dataset, o = {};
   if(d && d.mediaId){ o.mediaId = d.mediaId; o.mediaType = d.mediaType || "image"; }          // المسار الجديد: مُعرّف فقط
   else if(d && d.media){ o.media = d.media; o.mediaType = d.mediaType || "image"; }          // قديم (غير مرفوع): احتياط
   if(d && d.link){ o.link = d.link; }
+  if(d && d.mic === "1"){ o.mic = true; }
   return o;
 }
 function restoreMedia(bulb, saved){
   if(bulb && saved && saved.mediaId){ bulb.dataset.mediaId = saved.mediaId; bulb.dataset.mediaType = saved.mediaType || "image"; }
   else if(bulb && saved && saved.media){ bulb.dataset.media = saved.media; bulb.dataset.mediaType = saved.mediaType || "image"; }
   if(bulb && saved && saved.link){ const n = normalizeLink(saved.link); if(n) bulb.dataset.link = n; }
+  if(bulb && saved && saved.mic){ bulb.dataset.mic = "1"; refreshMic(bulb); }
   refreshScreen(bulb);
 }
 function refreshScreen(bulb){
@@ -9387,7 +9558,7 @@ function buildMCQBlock(savedItems){
         ${[0,1,2,3].map(i=>`<label class="qrow"><input type="radio" name="mcq${num}"><input type="text" placeholder="خيار ${i+1}" style="flex:1;"></label>`).join("")}
       </div>`;
     const bulb = bulbButton();
-    row.querySelector(".qrow").appendChild(bulb);
+    row.querySelector(".qrow").appendChild(bulb); appendMicToggle(bulb);
     row.querySelector(".del").addEventListener("click", ()=>row.remove());
     if(saved){
       row.querySelector('input[type="text"]').value = saved.question || "";
@@ -9435,7 +9606,7 @@ function buildTFBlock(savedItems){
         </div>
       </div>`;
     const bulb = bulbButton();
-    row.querySelector(".qrow").appendChild(bulb);
+    row.querySelector(".qrow").appendChild(bulb); appendMicToggle(bulb);
     row.querySelectorAll(".tf-mark").forEach(m=>{
       m.addEventListener("click", ()=>{
         const already = m.classList.contains("selT")||m.classList.contains("selF");
@@ -10933,7 +11104,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       moveBulbIntoHead();
     } else if(q.type==="tf"){
       box.innerHTML += `<div class="qrow" style="align-items:center; justify-content:space-between; gap:12px;">
-        <div style="font-weight:700;">${q.statement}</div>
+        <div class="tf-stmt" style="font-weight:700;">${q.statement}</div>
         <div class="tf-choice" style="margin-top:0; flex-shrink:0;"><div class="tf-mark" data-v="true">✓</div><div class="tf-mark" data-v="false">✗</div></div>
       </div>`;
     } else if(q.type==="spellchoice"){
@@ -11008,6 +11179,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     }
     box.dataset.qidx = idx;
     area.appendChild(box);
+    if(q.mic && (q.type==="mcq" || q.type==="tf") && !already) attachMicGate(box, q);
   });
 
   // بند جديد: تخطيط خيارات السؤال الاختياري — صف أفقي واحد إن اتسعت المساحة لكل
