@@ -779,7 +779,9 @@
   .micbtn.rec{ color:#e03131; filter:drop-shadow(0 0 9px #ff6b6b); animation:micPulse 1s ease-in-out infinite; }
   .micbtn.done{ color:#2e7d4f; filter:drop-shadow(0 0 6px #4cc38a); }
   @keyframes micPulse{ 50%{ transform:scale(1.22); } }
-  .mic-locked{ opacity:.4; pointer-events:none; filter:grayscale(.7); user-select:none; }
+  .mic-locked{ pointer-events:none; user-select:none; cursor:not-allowed; }
+  .mic-status:empty{ display:none; }
+  .tf-stmt .micbtn.student{ margin-inline-end:8px; }
   .mic-status{ margin:8px 0; padding:8px 12px; border-radius:10px; background:#eef5ff; border:1.5px solid #1e6fff; font-weight:800; font-size:15px; line-height:1.9; }
   .mic-status.err{ background:#fde8e6; border-color:#c0392b; } .mic-status.ok{ background:#d9f2e3; border-color:#2e7d4f; }
   .mic-word{ display:inline-flex; align-items:center; gap:6px; margin:3px; padding:2px 12px; border:2px solid #c0392b; border-radius:999px; background:#fff; font-size:22px; font-weight:900; }
@@ -8340,8 +8342,9 @@ function normalizeLink(u){
    ===================================================================== */
 const MIC_PASS = 0.75;            // الحد الأدنى لصحة القراءة
 const MIC_PRECISION_MIN = 0.5;    // حدّ أدنى لنسبة الكلام المطابق من كل ما قاله الطالب (يمنع اختراع كلام كثير)
-const MIC_SILENCE_MS = 500;       // نصف ثانية سكوت = إيقاف التسجيل
-const MIC_START_TIMEOUT_MS = 10000, MIC_MAX_MS = 60000;
+const MIC_SILENCE_MS = 500;       // بعد قراءة آخر كلمة: نصف ثانية سكوت = إيقاف التسجيل
+const MIC_WAIT_MS = 10000;        // قبل قراءة آخر كلمة: ننتظر 10 ثوانٍ من السكوت
+const MIC_START_TIMEOUT_MS = 10000, MIC_MAX_MS = 120000;
 const MIC_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M12 14a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 0 0-7 0v5A3.5 3.5 0 0 0 12 14z"/><path d="M18.5 10.5a1 1 0 1 0-2 0 4.5 4.5 0 0 1-9 0 1 1 0 1 0-2 0 6.5 6.5 0 0 0 5.5 6.42V19H9.5a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2H13v-2.08a6.5 6.5 0 0 0 5.5-6.42z"/></svg>';
 function micNorm(s){
   return String(s == null ? "" : s).normalize("NFKC")
@@ -8389,7 +8392,7 @@ function micScore(expectedText, spokenText){
   return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= MIC_PASS && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
 }
 let __micActive = null;
-function micRecord(onInterim){       // يعيد {promise, stop}
+function micRecord(onInterim, isEnd){       // يعيد {promise, stop}
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let stopFn = ()=>{};
   const promise = new Promise(resolve=>{
@@ -8408,13 +8411,17 @@ function micRecord(onInterim){       // يعيد {promise, stop}
     rec.onend = finish;
     timer = setInterval(()=>{
       const now = Date.now();
-      if(heard && now - last > MIC_SILENCE_MS) stop();
+      if(heard && now - last > (isEnd && isEnd(text) ? MIC_SILENCE_MS : MIC_WAIT_MS)) stop();
       else if(!heard && now - t0 > MIC_START_TIMEOUT_MS) stop();
       else if(now - t0 > MIC_MAX_MS) stop();
     }, 100);
     try{ rec.start(); }catch(e){ err = "start"; finish(); }
   });
   return { promise, stop: ()=>stopFn() };
+}
+function micLastRead(expectedText, spokenText){      // هل قُرئت آخر كلمة مطلوبة (ضمن آخر كلمتين مسموعتين)؟
+  const E = micWords(expectedText), R = micWords(spokenText); if(!E.length || !R.length) return false;
+  const last = E[E.length-1].n; return R.slice(-2).some(w=>micSame(last, w.n));
 }
 function micSpeak(word){
   try{
@@ -8449,7 +8456,7 @@ function attachMicGate(box, q){
   if(!target || !host) return;
   const btn = document.createElement("span"); btn.className = "micbtn on student"; btn.innerHTML = MIC_SVG; btn.setAttribute("role", "button"); btn.tabIndex = 0;
   btn.title = isMcq ? "اضغط واقرأ السؤال والخيارات بصوت واضح" : "اضغط واقرأ العبارة بصوت واضح";
-  host.insertBefore(btn, host.firstChild);
+  (isMcq ? host : (host.querySelector(".tf-stmt") || host)).insertBefore(btn, (isMcq ? host : (host.querySelector(".tf-stmt") || host)).firstChild);
   const st = document.createElement("div"); st.className = "mic-status"; host.parentNode.insertBefore(st, host.nextSibling);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const msg = (html, cls)=>{ st.className = "mic-status" + (cls ? " " + cls : ""); st.innerHTML = html; };
@@ -8457,7 +8464,6 @@ function attachMicGate(box, q){
   function unlock(){ lock(false); btn.classList.remove("rec"); btn.classList.add("done"); }
   if(!SR){ lock(false); msg("⚠ متصفحك لا يدعم التعرف على الصوت (جرّب Chrome أو Edge)، فلا يمكن التحقق من قراءتك — يمكنك الإجابة مباشرة.", "err"); return; }
   lock(true);
-  msg(isMcq ? "🎤 اضغط على الميكروفون واقرأ <b>السؤال ثم الخيارات كلها</b> بصوت واضح لتفتح لك الإجابة." : "🎤 اضغط على الميكروفون واقرأ <b>العبارة</b> بصوت واضح لتفتح لك الإجابة.");
   const expectedText = ()=>{
     let t = isMcq ? (box.querySelector(".mcq-qtext") || {}).textContent : (box.querySelector(".tf-stmt") || {}).textContent;
     if(isMcq && !q.boxMode){ [...box.querySelectorAll(".options-grid label")].filter(l=>l.offsetParent !== null || l.style.display !== "none").forEach(l=>{ const s = l.querySelector("span"); if(s) t += " " + s.textContent; }); }
@@ -8467,8 +8473,9 @@ function attachMicGate(box, q){
     if(__micActive && __micActive.btn === btn){ __micActive.ctl.stop(); return; }
     if(__micActive){ __micActive.ctl.stop(); }
     const exp = expectedText();
+    lock(true); btn.classList.remove("done");     // أي محاولة جديدة تُغلق الإجابة حتى تنجح القراءة
     btn.classList.add("rec"); msg("🔴 أستمع إليك… اقرأ الآن، وسأتوقف تلقائيًا عندما تسكت قليلًا.");
-    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); });
+    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); }, t=>micLastRead(exp, t));
     __micActive = { btn, ctl };
     const r = await ctl.promise; __micActive = null; btn.classList.remove("rec");
     if(r.error === "not-allowed" || r.error === "service-not-allowed"){ msg("⚠ لم يُسمح باستخدام الميكروفون. اسمح للمتصفح باستخدامه من شريط العنوان ثم أعد المحاولة.", "err"); return; }
