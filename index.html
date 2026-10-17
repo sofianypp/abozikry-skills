@@ -8392,30 +8392,46 @@ function micScore(expectedText, spokenText){
   return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= MIC_PASS && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
 }
 let __micActive = null;
+function micIsTouch(){      // تابلت الأندرويد قد يرسل هوية "سطح مكتب" في Chrome، فلا نعتمد على كلمة Android وحدها
+  try{ if(navigator.userAgentData && navigator.userAgentData.mobile) return true; }catch(e){}
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints || 0) > 0;
+}
 function micRecord(onInterim, isEnd){       // يعيد {promise, stop}
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const single = micIsTouch();               // على الأجهزة اللمسية: جلسات قصيرة متتابعة (الوضع المستمر لا يعيد نتائج على بعض الأجهزة)
   let stopFn = ()=>{};
   const promise = new Promise(resolve=>{
-    const rec = new SR(); rec.lang = "ar-SA"; rec.interimResults = true; rec.maxAlternatives = 1;
-    rec.continuous = !/Android/i.test(navigator.userAgent);      // أندرويد يكرّر النص التراكمي في الوضع المستمر
-    const parts = []; let text = "", heard = false, last = 0, done = false, err = "", fb = null, timer = null; const t0 = Date.now();
-    function finish(){ if(done) return; done = true; clearInterval(timer); clearTimeout(fb); resolve({ text, heard, error: err }); }
-    function stop(){ if(done) return; try{ rec.stop(); }catch(e){} clearTimeout(fb); fb = setTimeout(finish, 1500); }
+    let committed = "", cur = "", heard = false, last = 0, done = false, stopping = false, err = "", fb = null, timer = null, rec = null; const t0 = Date.now();
+    const full = ()=>(committed + " " + cur).trim();
+    function finish(){ if(done) return; done = true; clearInterval(timer); clearTimeout(fb); resolve({ text: full(), heard, error: err }); }
+    function stop(){ if(done) return; stopping = true; try{ rec && rec.stop(); }catch(e){} clearTimeout(fb); fb = setTimeout(finish, 1500); }
     stopFn = stop;
-    rec.onresult = e=>{
-      for(let k = e.resultIndex; k < e.results.length; k++) parts[k] = e.results[k][0].transcript;
-      text = parts.filter(Boolean).join(" ").trim();
-      if(text){ heard = true; last = Date.now(); if(onInterim) onInterim(text); }
-    };
-    rec.onerror = e=>{ err = e.error || "error"; };
-    rec.onend = finish;
+    function begin(){
+      rec = new SR(); rec.lang = "ar-SA"; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = !single;
+      const parts = []; cur = "";
+      rec.onresult = e=>{
+        for(let k = e.resultIndex; k < e.results.length; k++) parts[k] = e.results[k][0].transcript;
+        cur = parts.filter(Boolean).join(" ").trim();
+        const text = full(); if(text){ heard = true; last = Date.now(); if(onInterim) onInterim(text); }
+      };
+      rec.onerror = e=>{ err = e.error || "error"; };
+      rec.onend = ()=>{
+        if(cur){ committed = (committed + " " + cur).trim(); cur = ""; }
+        if(done) return;
+        const fatal = err && err !== "no-speech" && err !== "aborted";
+        if(stopping || fatal || Date.now() - t0 > MIC_MAX_MS) return finish();
+        err = "";                                    // انتهت الجلسة من تلقاء نفسها: نبدأ جلسة جديدة ونحتفظ بما قيل
+        setTimeout(()=>{ if(!done && !stopping){ try{ begin(); }catch(e){ err = "start"; finish(); } } }, 150);
+      };
+      rec.start();
+    }
     timer = setInterval(()=>{
-      const now = Date.now();
+      const now = Date.now(), text = full();
       if(heard && now - last > (isEnd && isEnd(text) ? MIC_SILENCE_MS : MIC_WAIT_MS)) stop();
       else if(!heard && now - t0 > MIC_START_TIMEOUT_MS) stop();
       else if(now - t0 > MIC_MAX_MS) stop();
     }, 100);
-    try{ rec.start(); }catch(e){ err = "start"; finish(); }
+    try{ begin(); }catch(e){ err = "start"; finish(); }
   });
   return { promise, stop: ()=>stopFn() };
 }
@@ -8481,7 +8497,7 @@ function attachMicGate(box, q){
     if(r.error === "not-allowed" || r.error === "service-not-allowed"){ msg("⚠ لم يُسمح باستخدام الميكروفون. اسمح للمتصفح باستخدامه من شريط العنوان ثم أعد المحاولة.", "err"); return; }
     if(r.error === "network"){ msg("⚠ يحتاج التعرف على الصوت إلى اتصال بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.", "err"); return; }
     if(r.error === "audio-capture"){ msg("⚠ لم يُعثر على ميكروفون يعمل في جهازك.", "err"); return; }
-    if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى.", "err"); return; }
+    if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى." + (r.error ? " <span style='font-weight:600;color:#888'>(" + r.error + ")</span>" : ""), "err"); return; }
     const res = micScore(exp, r.text), pct = Math.round(res.score * 100);
     if(res.ok){ unlock(); msg("✔ أحسنت! قراءتك صحيحة (" + pct + "%). يمكنك الآن اختيار الإجابة.", "ok"); return; }
     const shown = res.missed.slice(0, 12);
