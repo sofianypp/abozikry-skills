@@ -8392,6 +8392,8 @@ function micScore(expectedText, spokenText){
   return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= MIC_PASS && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
 }
 let __micActive = null;
+function micMarkUnsupported(){ window.__micUnsupported = true; try{ sessionStorage.setItem("micUnsupported", "1"); }catch(e){} }
+function micIsUnsupported(){ if(window.__micUnsupported) return true; try{ return sessionStorage.getItem("micUnsupported") === "1"; }catch(e){ return false; } }
 function micIsTouch(){      // تابلت الأندرويد قد يرسل هوية "سطح مكتب" في Chrome، فلا نعتمد على كلمة Android وحدها
   try{ if(navigator.userAgentData && navigator.userAgentData.mobile) return true; }catch(e){}
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints || 0) > 0;
@@ -8481,6 +8483,7 @@ function attachMicGate(box, q){
   const lock = on=>{ target.classList.toggle("mic-locked", on); try{ target.inert = on; }catch(e){} };
   function unlock(){ lock(false); btn.classList.remove("rec"); btn.classList.add("done"); }
   if(!SR){ lock(false); msg("⚠ متصفحك لا يدعم التعرف على الصوت (جرّب Chrome أو Edge)، فلا يمكن التحقق من قراءتك — يمكنك الإجابة مباشرة.", "err"); return; }
+  if(micIsUnsupported()){ lock(false); msg("ℹ️ جهازك لا يدعم التحقق الصوتي من القراءة، فالإجابة مفتوحة. اقرأ السؤال بصوتك على أي حال.", ""); return; }
   lock(true);
   const expectedText = ()=>{
     let t = isMcq ? (box.querySelector(".mcq-qtext") || {}).textContent : (box.querySelector(".tf-stmt") || {}).textContent;
@@ -8501,10 +8504,19 @@ function attachMicGate(box, q){
     const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); }, t=>micLastRead(exp, t), btn._carry || "");
     __micActive = { btn, ctl };
     const r = await ctl.promise; __micActive = null; btn.classList.remove("rec");
-    if(r.error === "service-not-allowed"){ msg("⚠ خدمة التعرف على الصوت غير متاحة في هذا المتصفح أو الجهاز <span style='font-weight:600;color:#888'>(" + r.error + ")</span>. جرّب متصفحًا آخر أو جهازًا آخر.", "err"); return; }
-    if(r.error === "not-allowed"){ msg("⚠ رفض المتصفح خدمة التعرف على الصوت رغم أن الميكروفون يعمل <span style='font-weight:600;color:#888'>(" + r.error + ")</span>. جرّب إعادة تشغيل المتصفح أو استعمال متصفح آخر.", "err"); return; }
+    if(r.error === "service-not-allowed" || r.error === "not-allowed" || r.error === "language-not-supported"){
+      micMarkUnsupported(); unlock();
+      msg("ℹ️ لا يدعم جهازك أو متصفحك التحقق الصوتي من القراءة <span style='font-weight:600;color:#888'>(" + r.error + ")</span>، فتم فتح الإجابة لك. اقرأ السؤال بصوتك على أي حال.", "");
+      return;
+    }
     if(r.error === "network"){ msg("⚠ يحتاج التعرف على الصوت إلى اتصال بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.", "err"); return; }
     if(r.error === "audio-capture"){ msg("⚠ لم يُعثر على ميكروفون يعمل في جهازك.", "err"); return; }
+    if(!r.heard && (btn._none = (btn._none || 0) + 1) >= 2){
+      micMarkUnsupported(); unlock();
+      msg("ℹ️ لم يصل إلى الموقع أي نص من قراءتك بعد محاولتين، وقد يكون جهازك لا يدعم التحقق الصوتي، فتم فتح الإجابة لك.", "");
+      return;
+    }
+    if(r.heard) btn._none = 0;
     if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى." + (r.error ? " <span style='font-weight:600;color:#888'>(" + r.error + ")</span>" : ""), "err"); return; }
     const res = micScore(exp, r.text), pct = Math.round(res.score * 100);
     btn._carry = (!res.ok && r.cut) ? r.text : "";     // الجهاز قطع التسجيل عند وقفة: نكمل من حيث توقف الطالب
