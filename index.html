@@ -841,6 +841,66 @@
   #saBoardOverlay .sab-key.kasr{ background:#fff0e0; }
   #saBoardOverlay .sab-key.kasr .mk{ border-top:4px solid #c2570c; }
 </style>
+<style id="lvCss">
+  .lv-overlay{ position:fixed; inset:0; z-index:100000; background:#eef2f1; display:flex; flex-direction:column; direction:rtl; font-family:inherit; }
+  .lv-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 12px; background:#fff; border-bottom:2px solid var(--ink,#111); }
+  .lv-bar .lv-title{ flex:1 1 220px; font-weight:800; font-size:15px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lv-badge{ background:#d32f2f; color:#fff; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:800; }
+  .lv-badge.ok{ background:#2e7d32; }
+  .lv-badge.off{ background:#757575; }
+  .lv-body{ flex:1; display:flex; min-height:0; }
+  .lv-side{ width:310px; max-width:42vw; background:#fff; border-left:2px solid var(--ink,#111); display:flex; flex-direction:column; min-height:0; }
+  .lv-side h3{ margin:0; padding:10px 12px 4px; font-size:15px; }
+  .lv-side .lv-tools{ padding:4px 10px 8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .lv-side input[type=search]{ margin:0 10px 6px; padding:7px 9px; border:1.5px solid #bbb; border-radius:8px; font:inherit; }
+  .lv-list{ flex:1; overflow:auto; padding:0 8px 10px; }
+  .lv-row{ display:flex; align-items:center; gap:8px; padding:7px 8px; border:1.5px solid #ddd; border-radius:10px; margin:5px 0; background:#fafafa; }
+  .lv-row.on{ border-color:#2e7d32; background:#e8f5e9; }
+  .lv-row.offline{ opacity:.5; }
+  .lv-dot{ width:10px; height:10px; border-radius:50%; background:#9e9e9e; flex:none; }
+  .lv-row.online .lv-dot{ background:#2e7d32; }
+  .lv-name{ flex:1; font-weight:700; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lv-cls{ font-size:11px; color:#666; font-weight:600; }
+  .lv-grant{ border:1.5px solid var(--accent,#0f5c53); background:#fff; color:var(--accent,#0f5c53); border-radius:8px; padding:4px 9px; cursor:pointer; font:inherit; font-size:12px; font-weight:800; white-space:nowrap; }
+  .lv-row.on .lv-grant{ background:#c62828; border-color:#c62828; color:#fff; }
+  .lv-stage{ flex:1; overflow:auto; padding:14px 18px 60px; min-width:0; position:relative; }
+  .lv-hint{ margin:6px 12px; font-size:12px; color:#555; }
+  .lv-empty{ text-align:center; color:#777; padding:18px 8px; font-size:13px; }
+  /* حالة المشاهدة فقط: لا تفاعل مع المحتوى */
+  .lv-ro #lvView, .lv-ro #lvView *{ pointer-events:none !important; user-select:none; }
+  .lv-allowed #lvView, .lv-allowed #lvView *{ cursor:none !important; }
+  #lvView #solveBack, #lvView #solveSubmit, #lvView #testTimerBox, #lvView .mcq-fifty, #lvView > p.sub, #lvView #solveMsg{ display:none !important; }
+  /* مؤشر اليد */
+  .lv-hand{ position:fixed; left:0; top:0; pointer-events:none; z-index:2147483000; will-change:transform; transition:transform .06s linear, opacity .15s; }
+  .lv-hand-in{ position:absolute; left:-17px; top:-3px; display:flex; flex-direction:column; align-items:center; }
+  .lv-hand-ico{ font-size:34px; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+  .lv-hand-name{ margin-top:1px; background:var(--c,#d32f2f); color:#fff; border-radius:8px; padding:2px 9px; font-size:12px; font-weight:800; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.35); direction:rtl; }
+  /* الشريط العائم للطالب */
+  #lvPill{ position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99990; background:#c62828; color:#fff; border-radius:999px; padding:8px 16px; font-weight:800; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.35); display:none; align-items:center; gap:10px; direction:rtl; }
+  #lvPill button{ background:#fff; color:#c62828; border:0; border-radius:999px; padding:5px 14px; font:inherit; font-weight:800; cursor:pointer; }
+  .lv-toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:10px 18px; border-radius:10px; z-index:2147483100; font-weight:700; direction:rtl; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  /* نافذة الإعداد */
+  .lvs-box{ border:2px solid var(--ink,#111); border-radius:12px; padding:12px; margin:12px 0; background:#fff; }
+  .lvs-box h3{ margin:0 0 8px; font-size:15px; }
+  .lvs-row{ display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .lvs-row > div{ min-width:150px; }
+  .lvs-cards{ display:flex; flex-wrap:wrap; gap:8px; max-height:260px; overflow:auto; padding:4px; }
+  .lvs-cards .student-model-card.sel{ outline:4px solid #c62828; outline-offset:2px; }
+  .lvs-checks{ display:flex; flex-wrap:wrap; gap:8px 14px; }
+  .lvs-checks label{ display:flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; }
+  .lvs-students{ max-height:240px; overflow:auto; border:1.5px solid #ccc; border-radius:8px; padding:6px; display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:4px 10px; }
+  .lvs-sess{ display:flex; align-items:center; gap:10px; border:1.5px solid #ddd; border-radius:10px; padding:8px 10px; margin:6px 0; background:#fafafa; flex-wrap:wrap; }
+  .lvs-sess b{ flex:1 1 200px; }
+  
+  .lvm{ position:relative; display:inline-block; min-width:200px; }
+  .lvm-btn{ width:100%; text-align:right; border:1.5px solid #888; background:#fff; border-radius:8px; padding:8px 10px; font:inherit; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+  .lvm-panel{ display:none; position:absolute; z-index:50; top:100%; right:0; min-width:100%; max-width:340px; max-height:300px; overflow:auto; background:#fff; border:2px solid var(--ink,#111); border-radius:10px; padding:6px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+  .lvm.open .lvm-panel{ display:block; }
+  .lvm-panel label{ display:flex; gap:6px; align-items:center; padding:4px 6px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .lvm-panel label:hover{ background:#eef5f3; }
+  .lvm-panel input[type=search]{ width:100%; box-sizing:border-box; margin-bottom:4px; padding:6px 8px; border:1.5px solid #bbb; border-radius:6px; font:inherit; }
+  .lvm-all{ border-bottom:1.5px solid #ddd; margin-bottom:3px; color:var(--accent,#0f5c53); }
+</style>
 </head>
 <body>
 
@@ -4456,7 +4516,8 @@ document.getElementById("corrBellBtn").addEventListener("click", ()=>{
   const btn = document.querySelector(`#sidenav button[data-key="correspondence"]`);
   if(btn) btn.click();
 });
-document.getElementById("logoutBtn").addEventListener("click", ()=>{
+document.getElementById("logoutBtn").addEventListener("click", async ()=>{
+  try{ if(window.LIVE) await Promise.race([LIVE.onLogout(), new Promise(r=>setTimeout(r,3500))]); }catch(e){}
   flushSaveDBNow();
   stopTestTimerAndOverlays();
   session = null; currentRole = null;
@@ -4509,6 +4570,7 @@ const NAV = {
   teacher: [
     ["forms","النماذج التعليمية"],
     ["lessons","الشروح التفاعلية"],
+    ["live","الحصة المباشرة"],
     ["timetable","جدول الحصص والتواصل"],
     ["plans","توزيعة المنهج والخطة الأسبوعية"],
     ["essaygrading","تصحيح المقالي"],
@@ -4522,7 +4584,6 @@ const NAV = {
     ["tasksInbox","التكليفات الواردة"],
     ["correspondence","المراسلات الإدارية"],
     ["parentsLink","ربط أولياء الأمور بالطلاب"],
-    ["live","الحصة المباشرة"],
   ],
   parent: [
     ["parentscores","نتائج الأبناء"],
@@ -4532,12 +4593,12 @@ const NAV = {
     ["solved","نماذج تم حلها"],
     ["unsolved","نماذج لم تحلها"],
     ["lessons","الشروح التفاعلية"],
+    ["live","الحصة المباشرة"],
     ["timetable","جدول الحصص والتواصل"],
     ["scores","درجاتي وترتيبي"],
     ["mychallenges","التحديات"],
     ["attachments","المرفقات"],
     ["tasks","التكليفات"],
-    ["live","الحصة المباشرة"],
   ],
 };
 
@@ -15529,6 +15590,7 @@ function targetMatches(t, u){
 }
 function targetText(t){
   if(!t) return "";
+  if(t.desc) return t.desc;
   if(t.mode==="grade") return "الصف: "+t.grade+" (جميع الفصول)";
   if(t.mode==="class") return "الصف: "+t.grade+" — الفصول: "+(t.classes||[]).join("، ");
   return "طلاب محددون ("+((t.students||[]).length)+")";
@@ -15537,61 +15599,7 @@ function targetText(t){
 /* =====================================================================
    CSS
    ===================================================================== */
-(function injectCss(){
-  const st = document.createElement("style");
-  st.textContent = `
-  .lv-overlay{ position:fixed; inset:0; z-index:100000; background:#eef2f1; display:flex; flex-direction:column; direction:rtl; font-family:inherit; }
-  .lv-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 12px; background:#fff; border-bottom:2px solid var(--ink,#111); }
-  .lv-bar .lv-title{ flex:1 1 220px; font-weight:800; font-size:15px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .lv-badge{ background:#d32f2f; color:#fff; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:800; }
-  .lv-badge.ok{ background:#2e7d32; }
-  .lv-badge.off{ background:#757575; }
-  .lv-body{ flex:1; display:flex; min-height:0; }
-  .lv-side{ width:310px; max-width:42vw; background:#fff; border-left:2px solid var(--ink,#111); display:flex; flex-direction:column; min-height:0; }
-  .lv-side h3{ margin:0; padding:10px 12px 4px; font-size:15px; }
-  .lv-side .lv-tools{ padding:4px 10px 8px; display:flex; gap:6px; flex-wrap:wrap; }
-  .lv-side input[type=search]{ margin:0 10px 6px; padding:7px 9px; border:1.5px solid #bbb; border-radius:8px; font:inherit; }
-  .lv-list{ flex:1; overflow:auto; padding:0 8px 10px; }
-  .lv-row{ display:flex; align-items:center; gap:8px; padding:7px 8px; border:1.5px solid #ddd; border-radius:10px; margin:5px 0; background:#fafafa; }
-  .lv-row.on{ border-color:#2e7d32; background:#e8f5e9; }
-  .lv-row.offline{ opacity:.5; }
-  .lv-dot{ width:10px; height:10px; border-radius:50%; background:#9e9e9e; flex:none; }
-  .lv-row.online .lv-dot{ background:#2e7d32; }
-  .lv-name{ flex:1; font-weight:700; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .lv-cls{ font-size:11px; color:#666; font-weight:600; }
-  .lv-grant{ border:1.5px solid var(--accent,#0f5c53); background:#fff; color:var(--accent,#0f5c53); border-radius:8px; padding:4px 9px; cursor:pointer; font:inherit; font-size:12px; font-weight:800; white-space:nowrap; }
-  .lv-row.on .lv-grant{ background:#c62828; border-color:#c62828; color:#fff; }
-  .lv-stage{ flex:1; overflow:auto; padding:14px 18px 60px; min-width:0; position:relative; }
-  .lv-hint{ margin:6px 12px; font-size:12px; color:#555; }
-  .lv-empty{ text-align:center; color:#777; padding:18px 8px; font-size:13px; }
-  /* حالة المشاهدة فقط: لا تفاعل مع المحتوى */
-  .lv-ro #lvView, .lv-ro #lvView *{ pointer-events:none !important; user-select:none; }
-  .lv-allowed #lvView, .lv-allowed #lvView *{ cursor:none !important; }
-  #lvView #solveBack, #lvView #solveSubmit, #lvView #testTimerBox, #lvView .mcq-fifty, #lvView > p.sub, #lvView #solveMsg{ display:none !important; }
-  /* مؤشر اليد */
-  .lv-hand{ position:fixed; left:0; top:0; pointer-events:none; z-index:2147483000; will-change:transform; transition:transform .06s linear, opacity .15s; }
-  .lv-hand-in{ position:absolute; left:-17px; top:-3px; display:flex; flex-direction:column; align-items:center; }
-  .lv-hand-ico{ font-size:34px; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
-  .lv-hand-name{ margin-top:1px; background:var(--c,#d32f2f); color:#fff; border-radius:8px; padding:2px 9px; font-size:12px; font-weight:800; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.35); direction:rtl; }
-  /* الشريط العائم للطالب */
-  #lvPill{ position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99990; background:#c62828; color:#fff; border-radius:999px; padding:8px 16px; font-weight:800; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.35); display:none; align-items:center; gap:10px; direction:rtl; }
-  #lvPill button{ background:#fff; color:#c62828; border:0; border-radius:999px; padding:5px 14px; font:inherit; font-weight:800; cursor:pointer; }
-  .lv-toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:10px 18px; border-radius:10px; z-index:2147483100; font-weight:700; direction:rtl; box-shadow:0 4px 14px rgba(0,0,0,.4); }
-  /* نافذة الإعداد */
-  .lvs-box{ border:2px solid var(--ink,#111); border-radius:12px; padding:12px; margin:12px 0; background:#fff; }
-  .lvs-box h3{ margin:0 0 8px; font-size:15px; }
-  .lvs-row{ display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
-  .lvs-row > div{ min-width:150px; }
-  .lvs-cards{ display:flex; flex-wrap:wrap; gap:8px; max-height:260px; overflow:auto; padding:4px; }
-  .lvs-cards .student-model-card.sel{ outline:4px solid #c62828; outline-offset:2px; }
-  .lvs-checks{ display:flex; flex-wrap:wrap; gap:8px 14px; }
-  .lvs-checks label{ display:flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; }
-  .lvs-students{ max-height:240px; overflow:auto; border:1.5px solid #ccc; border-radius:8px; padding:6px; display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:4px 10px; }
-  .lvs-sess{ display:flex; align-items:center; gap:10px; border:1.5px solid #ddd; border-radius:10px; padding:8px 10px; margin:6px 0; background:#fafafa; flex-wrap:wrap; }
-  .lvs-sess b{ flex:1 1 200px; }
-  `;
-  document.head.appendChild(st);
-})();
+/* التنسيقات (CSS) موجودة في وسم <style id="lvCss"> الثابت أعلى الصفحة حتى لا تتغير بصمة فاحص التحديث. */
 
 function toast(msg, ms){
   const t = document.createElement("div"); t.className = "lv-toast"; t.textContent = msg;
@@ -15694,6 +15702,28 @@ async function openStage(sid, asTeacher){
   }
   announcePresence();
   refreshMode();
+  try{ sessionStorage.setItem("lv-resume", JSON.stringify({ sid, teacher:!!asTeacher, u:me() })); }catch(e){}
+  if(ST.teacher) watchTeacherPresence(); else ST.ref.child("c/_sc").get().then(s=>applyScroll(s.val())).catch(()=>{});
+}
+
+/* المعلم: عند انقطاعه (إغلاق المتصفح/الخروج) تُسجَّل لحظة الغياب في الخادم؛ وإن لم يعد خلال المهلة تنتهي الحصة للجميع.
+   المهلة تسمح بتحديث الصفحة (Refresh) دون إنهاء الحصة. */
+const GRACE_MS = 25000;
+function watchTeacherPresence(){
+  const conn = db().ref(".info/connected");
+  const h = conn.on("value", s=>{
+    if(!ST || !s.val()) return;
+    const a = ST.ref.child("ctl/off"), b = root().child("active/"+ST.sid+"/off");
+    a.set(null); b.set(null);
+    try{ a.onDisconnect().set(TS()); b.onDisconnect().set(TS()); }catch(e){}
+  });
+  ST.offs.push(()=>{ try{ conn.off("value", h); }catch(e){} });
+}
+function applyScroll(v){
+  if(!ST || !v || v.k===ST.key) return;
+  const el = ST.stageEl, max = el.scrollHeight - el.clientHeight;
+  ST.noScrollUntil = Date.now() + 300;
+  el.scrollTop = Math.max(0, Math.min(1, Number(v.f)||0)) * Math.max(0, max);
 }
 
 function renderContent(){
@@ -15759,7 +15789,8 @@ function placeAll(){
   });
 }
 function syncHands(cur){
-  cur = cur || {};
+  cur = Object.assign({}, cur || {});
+  if(cur._sc){ const sc = cur._sc; delete cur._sc; if(!ST.lastSc || ST.lastSc.t!==sc.t || ST.lastSc.k!==sc.k){ ST.lastSc = sc; applyScroll(sc); } }
   ST.hands.forEach((h,k)=>{ if(!cur[k] || k===ST.key){ h.remove(); ST.hands.delete(k); } });
   Object.keys(cur).forEach(k=>{
     if(k===ST.key) return;
@@ -15828,7 +15859,15 @@ function attachInput(){
     const d = { p, fx:(e.clientX-r.left)/r.width, fy:(e.clientY-r.top)/r.height, n:ST.name, t:TS() };
     ST.ref.child("c/"+ST.key).set(d);
   });
-  ST.stageEl.addEventListener("scroll", placeAll); ST.offs.push(()=>ST.stageEl.removeEventListener("scroll", placeAll));
+  const onScroll = ()=>{
+    placeAll();
+    if(!ST || Date.now() < (ST.noScrollUntil||0)) return;
+    const t = Date.now(); if(t - (ST.lastScrollSend||0) < 80){ clearTimeout(ST.scT); ST.scT = setTimeout(onScroll, 90); return; }
+    ST.lastScrollSend = t;
+    const el = ST.stageEl, max = el.scrollHeight - el.clientHeight;
+    ST.ref.child("c/_sc").set({ k:ST.key, f: max>0 ? el.scrollTop/max : 0, t:TS() });
+  };
+  ST.stageEl.addEventListener("scroll", onScroll); ST.offs.push(()=>ST.stageEl.removeEventListener("scroll", onScroll));
   window.addEventListener("resize", placeAll); ST.offs.push(()=>window.removeEventListener("resize", placeAll));
 }
 
@@ -15881,6 +15920,11 @@ function attachListeners(){
     const c = s.val();
     if(!c || c.status==="ended"){ if(!ST.teacher) toast("أنهى المعلم الحصة المباشرة"); setTimeout(()=>closeStage(true), ST.teacher?0:1500); return; }
     ST.allowAll = !!c.all;
+    if(!ST.teacher){
+      if(c.off && !ST.offTimer){
+        ST.offTimer = setTimeout(()=>{ ST && (toast("غادر المعلم الحصة المباشرة فانتهت"), closeStage(true)); }, GRACE_MS);
+      } else if(!c.off && ST.offTimer){ clearTimeout(ST.offTimer); ST.offTimer = null; }
+    }
     const ep = Number(c.epoch)||0;
     if(ep !== ST.epoch){ ST.epoch = ep; ST.mine.clear(); renderContent(); listenEvents(); if(!ST.teacher) toast("أعاد المعلم ضبط المحتوى"); }
     refreshMode();
@@ -15941,21 +15985,35 @@ function bindTeacherUi(){
     if(confirm("إعادة ضبط المحتوى لحالته الأولى عند جميع المشاركين؟ ستُمسح إجابات هذه الجولة.")) ST.ref.child("ctl/epoch").set((ST.epoch||0)+1);
   });
   q("#lvEnd", ov).addEventListener("click", ()=>{ if(confirm("إنهاء الحصة المباشرة لجميع الطلاب؟")) endSession(ST.sid); });
-  q("#lvHide", ov).addEventListener("click", ()=>closeStage(false, true));
+  q("#lvHide", ov).addEventListener("click", ()=>{ closeStage(false, true); try{ sessionStorage.removeItem("lv-resume"); }catch(e){} });
   drawSide();
 }
 
-async function endSession(sid){
+async function endSession(sid, wait){
   const R = root(); if(!R) return;
   try{ await R.child("s/"+sid+"/ctl/status").set("ended"); await R.child("active/"+sid).remove(); }catch(e){}
   if(ST && ST.sid===sid) closeStage(true);
-  setTimeout(()=>{ try{ R.child("s/"+sid).remove(); }catch(e){} }, 2500);
+  const rm = ()=>{ try{ return R.child("s/"+sid).remove(); }catch(e){} };
+  if(wait){ await new Promise(r=>setTimeout(r, 1200)); await rm(); } else setTimeout(rm, 2500);
 }
+/* عند تسجيل الخروج: المعلم تنتهي جميع حصصه المباشرة، والطالب يغادر الحصة فقط */
+LV.onLogout = async function(){
+  try{
+    try{ sessionStorage.removeItem("lv-resume"); }catch(e){}
+    if(!session || !db()) return;
+    if(session.role==="student"){ if(ST) closeStage(true); return; }
+    const R = root(), ids = new Set();
+    if(ST && ST.teacher) ids.add(ST.sid);
+    try{ const s = await R.child("active").get(); const all = s.val()||{}; Object.keys(all).forEach(k=>{ if(all[k].teacher===me()) ids.add(k); }); }catch(e){}
+    await Promise.all(Array.from(ids).map(id=>endSession(id, true)));
+  }catch(e){ console.warn("live logout", e); }
+};
 
 function closeStage(ended, keepSession){
   if(!ST) return;
   const S = ST; ST = null;
-  try{ S.offs.forEach(f=>{ try{ f(); }catch(e){} }); S.timers.forEach(clearInterval); }catch(e){}
+  try{ S.offs.forEach(f=>{ try{ f(); }catch(e){} }); S.timers.forEach(clearInterval); clearTimeout(S.offTimer); clearTimeout(S.scT); }catch(e){}
+  if(!keepSession){ try{ sessionStorage.removeItem("lv-resume"); }catch(e){} }
   try{
     if(!S.teacher){ S.ref.child("p/"+S.key+"/on").set(false); S.ref.child("c/"+S.key).remove(); }
     else if(S.handOn){ S.ref.child("c/"+S.key).remove(); }
@@ -15973,11 +16031,17 @@ function closeStage(ended, keepSession){
    ===================================================================== */
 let ACTIVE = {};
 LV.open = openStage;
+LV.open = openStage;
 LV.boot = async function(role){
   try{
     if(session && session.user && session.user.preview) return;
     if(!(await ready())) return;
     bindOffset();
+    // استئناف الحصة بعد تحديث المتصفح: الأحداث محفوظة في Firebase فتُعاد كاملة
+    try{
+      const rs = JSON.parse(sessionStorage.getItem("lv-resume")||"null");
+      if(rs && rs.sid && rs.u===me() && !ST) setTimeout(()=>openStage(rs.sid, !!rs.teacher && role!=="student"), 300);
+    }catch(e){}
     if(role!=="student") return;
     if(LV.__booted) return; LV.__booted = true;
     root().child("active").on("value", s=>{ ACTIVE = s.val() || {}; renderPill(); if(LV.__refreshPage) try{ LV.__refreshPage(); }catch(e){} });
@@ -15988,7 +16052,7 @@ function myLiveSessions(){
   if(!session || session.role!=="student") return [];
   const u = Object.assign({ username: me() }, session.user || {});
   return Object.keys(ACTIVE).map(k=>Object.assign({ id:k }, ACTIVE[k])).filter(s=>{
-    const fresh = !s.ts || (now() - s.ts) < 120000;
+    const fresh = (!s.ts || (now() - s.ts) < 120000) && !(s.off && (now() - s.off) > GRACE_MS);
     return fresh && targetMatches(s.target, u);
   });
 }
@@ -16020,56 +16084,108 @@ LV.renderStudent = function(view){
   LV.__refreshPage = draw; draw();
 };
 
+/* مربع اختيار متعدد (قائمة منسدلة بخانات اختيار + تحديد الكل) */
+function msel(host, o){
+  const box = document.createElement("div"); box.className = "lvm";
+  box.innerHTML = `<button type="button" class="lvm-btn"><span class="lvm-sum"></span><span>▾</span></button><div class="lvm-panel"></div>`;
+  host.innerHTML = ""; host.appendChild(box);
+  const btn = q(".lvm-btn", box), panel = q(".lvm-panel", box);
+  let known = new Set(), term = "";
+  function sum(items){
+    const n = o.sel.size;
+    q(".lvm-sum", box).textContent = !items.length ? "— لا توجد خيارات —" : n===0 ? (o.empty||"اختر...") : n===items.length ? ("الجميع ("+n+")") : (n<=2 ? Array.from(o.sel).slice(0,2).join("، ") : (n+" محدد من "+items.length));
+  }
+  function render(keepOpen){
+    const items = o.items();
+    const vals = new Set(items.map(x=>x.v));
+    // الخيارات الجديدة تُحدَّد تلقائيًا (الافتراضي: الجميع)، والمحذوفة تُزال من التحديد
+    items.forEach(x=>{ if(!known.has(x.v)){ known.add(x.v); if(o.autoAll!==false) o.sel.add(x.v); } });
+    Array.from(o.sel).forEach(v=>{ if(!vals.has(v)) o.sel.delete(v); });
+    Array.from(known).forEach(v=>{ if(!vals.has(v)) known.delete(v); });
+    const shown = items.filter(x=>!term || String(x.t).includes(term));
+    panel.innerHTML = (o.search?'<input type="search" placeholder="بحث...">':"") +
+      `<label class="lvm-all"><input type="checkbox" data-all ${items.length && o.sel.size===items.length?"checked":""}> تحديد الكل / إلغاء الكل</label>` +
+      shown.map(x=>`<label><input type="checkbox" data-v="${esc(x.v)}" ${o.sel.has(x.v)?"checked":""}> ${esc(x.t)}</label>`).join("");
+    const si = q("input[type=search]", panel);
+    if(si){ si.value = term; si.addEventListener("input", ()=>{ term = si.value.trim(); render(true); const n = q("input[type=search]", panel); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); }
+    q("[data-all]", panel).addEventListener("change", e=>{
+      if(e.target.checked) shown.forEach(x=>o.sel.add(x.v)); else shown.forEach(x=>o.sel.delete(x.v));
+      render(true); o.onChange && o.onChange();
+    });
+    qa("[data-v]", panel).forEach(c=>c.addEventListener("change", ()=>{ c.checked ? o.sel.add(c.dataset.v) : o.sel.delete(c.dataset.v); sum(items); const all = q("[data-all]", panel); if(all) all.checked = o.sel.size===items.length; o.onChange && o.onChange(); }));
+    sum(items);
+  }
+  btn.addEventListener("click", e=>{ e.stopPropagation(); box.classList.toggle("open"); });
+  panel.addEventListener("click", e=>e.stopPropagation());
+  const close = ()=>box.classList.remove("open");
+  document.addEventListener("click", close);
+  render();
+  return { refresh: render };
+}
+
 LV.renderTeacher = async function(view, role){
   if(!(await ready())){ view.innerHTML = '<h2>الحصة المباشرة</h2><div class="msg show err">هذه الميزة تتطلب إعداد Firebase والاتصال بالإنترنت.</div>'; return; }
   bindOffset();
-  const S = { kind:"model", grade:"", term:"", subject:"", contentId:null, aud:"grade", agrade:"", classes:new Set(), students:new Set(), cfilter:"", search:"" };
-  const gradesAllowed = (role==="teacher" && typeof assignedGradesFor==="function") ? assignedGradesFor() : [];
-  const inAllowed = g=>!gradesAllowed.length || gradesAllowed.includes(g);
-  const allContent = ()=>{
-    const base = S.kind==="lesson" ? (DB.banks||[]).filter(m=>m && m.lesson===true) : (DB.models||[]);
-    return base.filter(m=>m && m.data && m.data.length && inAllowed(m.grade));
+  const broad = role!=="teacher";
+  const meRec = ()=>(DB.teachers||[]).find(t=>t && t.username===me()) || (session.user||{});
+  const myGrades = ()=> broad ? ((typeof ALL_GRADES!=="undefined") ? ALL_GRADES.slice() : []) : ((meRec().grades)||[]).slice();
+  const mySubjects = ()=>{ if(broad) return []; const r = meRec(); const a = (r.subjects && r.subjects.length) ? r.subjects : (r.subject ? [r.subject] : []); return a.slice(); };
+  const myStudents = ()=>{
+    const all = (DB.students||[]).filter(s=>s && s.username);
+    if(broad) return all;
+    const r = meRec();
+    return all.filter(s=>{ try{ return studentBelongsToTeacher(s, r); }catch(e){ return false; } });
   };
-  const studentsAll = ()=>(DB.students||[]).filter(s=>s && s.username && inAllowed(s.grade));
+  const S = { kind:"model", term:"", grade:"", cls:"", subject:"", contentId:null,
+              gSel:new Set(), cSel:new Set(), sSel:new Set() };
+  const uniq = a=>Array.from(new Set(a.filter(x=>x!=null && x!==""))).sort((x,y)=>String(x).localeCompare(String(y),"ar",{numeric:true}));
+  const cl = s=>String(s.cls==null?"":s.cls);
+
+  const allContent = ()=>{
+    const gr = myGrades(), sb = mySubjects();
+    const base = S.kind==="lesson" ? (DB.banks||[]).filter(m=>m && m.lesson===true) : (DB.models||[]);
+    return base.filter(m=>m && m.data && m.data.length
+      && (!gr.length || gr.includes(m.grade))
+      && (!sb.length || !m.subject || sb.includes(m.subject)));
+  };
 
   view.innerHTML = `<h2>الحصة المباشرة التفاعلية</h2>
     <p class="sub">افتح نموذجًا أو اختبارًا أو شرحًا تفاعليًا مع طلابك لحظيًا أثناء حصتك على Teams أو Zoom؛ يدخل الطلاب المنصة فتظهر لهم دعوة الانضمام، وتتحكم أنت بمن يملك «مؤشر اليد».</p>
     <div class="lvs-box" id="lvsActive"></div>
     <div class="lvs-box"><h3>١) اختيار المحتوى</h3>
       <div class="lvs-row">
-        <div><label>نوع المحتوى</label><select id="lvsKind"><option value="model">نموذج / اختبار</option><option value="lesson">شرح تفاعلي (درس)</option></select></div>
-        <div><label>الصف الدراسي</label><select id="lvsGrade"></select></div>
         <div><label>الفصل الدراسي</label><select id="lvsTerm"><option value="">الكل</option><option>الفصل الأول</option><option>الفصل الثاني</option><option>الفصل الثالث</option></select></div>
+        <div><label>الصف</label><select id="lvsGrade"></select></div>
+        <div><label>الفصل</label><select id="lvsCls"></select></div>
         <div><label>المادة</label><select id="lvsSubject"></select></div>
+        <div><label>نوع المحتوى</label><select id="lvsKind"><option value="model">نموذج / اختبار</option><option value="lesson">شرح تفاعلي (درس)</option></select></div>
       </div>
       <div class="lvs-cards" id="lvsCards" style="margin-top:10px;"></div>
       <div id="lvsPicked" style="margin-top:6px;font-weight:800;color:var(--accent);"></div></div>
-    <div class="lvs-box"><h3>٢) تحديد الجمهور</h3>
-      <div class="lvs-checks" style="margin-bottom:8px;">
-        <label><input type="radio" name="lvsAud" value="grade" checked> صف دراسي بأكمله (جميع فصوله)</label>
-        <label><input type="radio" name="lvsAud" value="class"> فصل / فصول محددة</label>
-        <label><input type="radio" name="lvsAud" value="students"> طلاب محددون</label></div>
-      <div class="lvs-row"><div><label>الصف</label><select id="lvsAGrade"></select></div>
-        <div id="lvsClsFilterWrap" style="display:none;"><label>ترشيح الفصل</label><select id="lvsCF"></select></div>
-        <div id="lvsSearchWrap" style="display:none;"><label>بحث عن طالب</label><input type="search" id="lvsSearch" placeholder="اسم الطالب"></div></div>
-      <div id="lvsClasses" class="lvs-checks" style="margin-top:8px;display:none;"></div>
-      <div id="lvsStudWrap" style="display:none;margin-top:8px;">
-        <div style="margin-bottom:6px;"><button type="button" class="chip-btn" id="lvsAllVis">تحديد كل الظاهرين</button> <button type="button" class="chip-btn" id="lvsNoneVis">إلغاء التحديد</button> <span id="lvsCnt" style="font-weight:800;"></span></div>
-        <div class="lvs-students" id="lvsStuds"></div></div>
-      <div id="lvsAudInfo" style="margin-top:8px;font-weight:800;"></div></div>
+    <div class="lvs-box"><h3>٣) تحديد الجمهور</h3>
+      <div class="lvs-row">
+        <div><label>الصف (واحد أو أكثر)</label><div id="lvmG"></div></div>
+        <div><label>الفصل (واحد أو أكثر)</label><div id="lvmC"></div></div>
+        <div><label>الطالب (واحد أو أكثر)</label><div id="lvmS"></div></div>
+      </div>
+      <div id="lvsAudInfo" style="margin-top:10px;font-weight:800;"></div></div>
     <button class="primary-btn" id="lvsStart" style="width:auto;padding:13px 34px;">🔴 بدء الحصة المباشرة</button>
     <div class="msg" id="lvsMsg"></div>`;
-
+  // ترقيم العناوين بعد التحقق من الترتيب
+  qa(".lvs-box h3", view).forEach((h,i)=>{ if(i===1) h.textContent = "٢) تحديد الجمهور"; });
   const $ = id=>document.getElementById(id);
-  const uniq = a=>Array.from(new Set(a.filter(x=>x!=null && x!==""))).sort((x,y)=>String(x).localeCompare(String(y),"ar",{numeric:true}));
 
+  /* ----- المحتوى ----- */
   function drawFilters(){
-    const all = allContent();
-    const grades = uniq(all.map(m=>m.grade));
-    $("lvsGrade").innerHTML = '<option value="">كل الصفوف</option>' + grades.map(g=>`<option ${g===S.grade?"selected":""}>${esc(g)}</option>`).join("");
-    let l2 = all.filter(m=>!S.grade || m.grade===S.grade);
-    $("lvsSubject").innerHTML = '<option value="">كل المواد</option>' + uniq(l2.map(m=>m.subject)).map(x=>`<option ${x===S.subject?"selected":""}>${esc(x)}</option>`).join("");
     $("lvsTerm").value = S.term;
+    const gs = uniq(allContent().map(m=>m.grade).concat(myGrades()));
+    $("lvsGrade").innerHTML = '<option value="">كل الصفوف</option>' + gs.map(g=>`<option ${g===S.grade?"selected":""}>${esc(g)}</option>`).join("");
+    const studs = myStudents().filter(s=>!S.grade || String(s.grade)===S.grade);
+    $("lvsCls").innerHTML = '<option value="">كل الفصول</option>' + uniq(studs.map(cl)).map(c=>`<option ${c===S.cls?"selected":""}>${esc(c)}</option>`).join("");
+    const sb = mySubjects();
+    const subs = sb.length ? sb : uniq(allContent().map(m=>m.subject));
+    $("lvsSubject").innerHTML = '<option value="">كل المواد</option>' + subs.map(x=>`<option ${x===S.subject?"selected":""}>${esc(x)}</option>`).join("");
+    $("lvsKind").value = S.kind;
     drawCards();
   }
   function filtered(){
@@ -16086,69 +16202,46 @@ LV.renderTeacher = async function(view, role){
     qa(".student-model-card", box).forEach(c=>c.addEventListener("click", ()=>{
       S.contentId = c.dataset.id;
       const m = allContent().find(x=>x.id===S.contentId);
-      if(m && !S.agrade) S.agrade = m.grade;
-      drawCards(); drawAud();
+      if(m && m.grade){ S.gSel.clear(); S.gSel.add(m.grade); mG.refresh(); refreshAud(true); }
+      drawCards();
     }));
     const m = allContent().find(x=>x.id===S.contentId);
     $("lvsPicked").textContent = m ? ("المحدد: "+(m.title||"")+" — "+(m.grade||"")+" — "+(m.term||"")+(m.subject?" — "+m.subject:"")) : "";
   }
-  function gradeStudents(){ return studentsAll().filter(s=>String(s.grade)===String(S.agrade)); }
-  function drawAud(){
-    const gs = uniq(studentsAll().map(s=>s.grade));
-    if(S.agrade && !gs.includes(S.agrade)) gs.push(S.agrade);
-    if(!S.agrade && gs.length) S.agrade = gs[0];
-    $("lvsAGrade").innerHTML = gs.map(g=>`<option ${g===S.agrade?"selected":""}>${esc(g)}</option>`).join("");
-    const studs = gradeStudents(), cls = uniq(studs.map(s=>String(s.cls==null?"":s.cls)));
-    $("lvsClasses").style.display = S.aud==="class" ? "" : "none";
-    $("lvsClsFilterWrap").style.display = S.aud==="students" ? "" : "none";
-    $("lvsSearchWrap").style.display = S.aud==="students" ? "" : "none";
-    $("lvsStudWrap").style.display = S.aud==="students" ? "" : "none";
-    $("lvsClasses").innerHTML = cls.map(c=>`<label><input type="checkbox" value="${esc(c)}" ${S.classes.has(c)?"checked":""}> فصل ${esc(c)} <small>(${studs.filter(s=>String(s.cls==null?"":s.cls)===c).length})</small></label>`).join("") || '<span class="empty-note">لا فصول مسجّلة لهذا الصف.</span>';
-    qa("input", $("lvsClasses")).forEach(i=>i.addEventListener("change", ()=>{ i.checked ? S.classes.add(i.value) : S.classes.delete(i.value); drawInfo(); }));
-    $("lvsCF").innerHTML = '<option value="">كل الفصول</option>' + cls.map(c=>`<option ${c===S.cfilter?"selected":""}>${esc(c)}</option>`).join("");
-    drawStuds(); drawInfo();
-  }
-  function visStuds(){
-    return gradeStudents().filter(s=>(!S.cfilter || String(s.cls)===S.cfilter) && (!S.search || String(s.username).includes(S.search)));
-  }
-  function drawStuds(){
-    const vis = visStuds();
-    $("lvsStuds").innerHTML = vis.map(s=>`<label class="lvs-chk" style="display:flex;gap:5px;align-items:center;font-weight:700;"><input type="checkbox" value="${esc(s.username)}" ${S.students.has(s.username)?"checked":""}> ${esc(s.username)} <small style="color:#777;">${esc(s.cls||"")}</small></label>`).join("") || '<span class="empty-note">لا طلاب مطابقون.</span>';
-    qa("input", $("lvsStuds")).forEach(i=>i.addEventListener("change", ()=>{ i.checked ? S.students.add(i.value) : S.students.delete(i.value); drawInfo(); }));
-  }
-  function drawInfo(){
-    const gs = gradeStudents(); let n = 0;
-    if(S.aud==="grade") n = gs.length;
-    else if(S.aud==="class") n = gs.filter(s=>S.classes.has(String(s.cls==null?"":s.cls))).length;
-    else n = gs.filter(s=>S.students.has(s.username)).length;
-    $("lvsAudInfo").textContent = "عدد الطلاب المستهدفين: " + n;
-    $("lvsCnt").textContent = "المحدد: " + S.students.size;
-  }
-  function currentTarget(){
-    if(S.aud==="grade") return { mode:"grade", grade:S.agrade };
-    if(S.aud==="class") return { mode:"class", grade:S.agrade, classes:Array.from(S.classes) };
-    return { mode:"students", grade:S.agrade, students:Array.from(S.students) };
-  }
 
-  $("lvsKind").addEventListener("change", e=>{ S.kind = e.target.value; S.contentId = null; S.grade = S.subject = ""; drawFilters(); });
-  $("lvsGrade").addEventListener("change", e=>{ S.grade = e.target.value; S.subject = ""; drawFilters(); });
+  /* ----- الجمهور: الصف ← الفصل ← الطالب ----- */
+  const scoped = ()=>myStudents();
+  const gradeItems = ()=>uniq(myGrades().concat(scoped().map(s=>s.grade))).filter(g=>!myGrades().length || myGrades().includes(g)).map(g=>({v:g,t:g}));
+  const clsItems = ()=>uniq(scoped().filter(s=>S.gSel.has(String(s.grade))).map(cl)).map(c=>({v:c,t:"فصل "+c}));
+  const studItems = ()=>scoped().filter(s=>S.gSel.has(String(s.grade)) && S.cSel.has(cl(s)))
+      .sort((a,b)=>String(a.username).localeCompare(String(b.username),"ar")).map(s=>({v:s.username,t:s.username+(s.cls?"  ("+s.cls+")":"")}));
+  let mG, mC, mS;
+  function info(){ $("lvsAudInfo").textContent = "عدد الطلاب المستهدفين: " + S.sSel.size; }
+  function refreshAud(fromGrade){
+    if(fromGrade){ mC.refresh(); }
+    mS.refresh(); info();
+  }
+  // أول مرة: نبدأ بلا صفوف محددة (يختار المعلم أو يُحدَّد صف المحتوى تلقائيًا)
+  mG = msel($("lvmG"), { sel:S.gSel, items:gradeItems, autoAll:false, empty:"اختر الصف", onChange:()=>{ mC.refresh(); mS.refresh(); info(); } });
+  mC = msel($("lvmC"), { sel:S.cSel, items:clsItems, empty:"اختر الفصل", onChange:()=>{ mS.refresh(); info(); } });
+  mS = msel($("lvmS"), { sel:S.sSel, items:studItems, search:true, empty:"اختر الطلاب", onChange:info });
+  info();
+
+  /* ----- أحداث ----- */
   $("lvsTerm").addEventListener("change", e=>{ S.term = e.target.value; drawCards(); });
+  $("lvsGrade").addEventListener("change", e=>{ S.grade = e.target.value; S.cls = ""; drawFilters(); });
+  $("lvsCls").addEventListener("change", e=>{ S.cls = e.target.value; // الفصل هنا يختصر تحديد الجمهور: يحدّد هذا الفصل فقط في قائمة الجمهور
+    if(S.cls){ if(S.grade){ S.gSel.clear(); S.gSel.add(S.grade); mG.refresh(); mC.refresh(); } S.cSel.clear(); S.cSel.add(S.cls); mC.refresh(); mS.refresh(); info(); } });
   $("lvsSubject").addEventListener("change", e=>{ S.subject = e.target.value; drawCards(); });
-  qa("input[name=lvsAud]", view).forEach(r=>r.addEventListener("change", ()=>{ S.aud = r.value; drawAud(); }));
-  $("lvsAGrade").addEventListener("change", e=>{ S.agrade = e.target.value; S.classes.clear(); S.students.clear(); S.cfilter = ""; drawAud(); });
-  $("lvsCF").addEventListener("change", e=>{ S.cfilter = e.target.value; drawStuds(); });
-  $("lvsSearch").addEventListener("input", e=>{ S.search = e.target.value.trim(); drawStuds(); });
-  $("lvsAllVis").addEventListener("click", ()=>{ visStuds().forEach(s=>S.students.add(s.username)); drawStuds(); drawInfo(); });
-  $("lvsNoneVis").addEventListener("click", ()=>{ visStuds().forEach(s=>S.students.delete(s.username)); drawStuds(); drawInfo(); });
+  $("lvsKind").addEventListener("change", e=>{ S.kind = e.target.value; S.contentId = null; drawFilters(); });
 
   $("lvsStart").addEventListener("click", async ()=>{
     const msg = $("lvsMsg"); msg.className = "msg show err";
     const m = allContent().find(x=>x.id===S.contentId);
     if(!m){ msg.textContent = "اختر المحتوى أولًا."; return; }
-    const t = currentTarget();
-    if(!t.grade){ msg.textContent = "حدّد الصف."; return; }
-    if(t.mode==="class" && !t.classes.length){ msg.textContent = "حدّد فصلًا واحدًا على الأقل."; return; }
-    if(t.mode==="students" && !t.students.length){ msg.textContent = "حدّد طالبًا واحدًا على الأقل."; return; }
+    const students = Array.from(S.sSel);
+    if(!students.length){ msg.textContent = "حدّد الصف والفصل والطلاب المستهدفين (طالب واحد على الأقل)."; return; }
+    const t = { mode:"students", students, desc:"الصفوف: "+Array.from(S.gSel).join("، ")+" — الفصول: "+Array.from(S.cSel).join("، ")+" — "+students.length+" طالب" };
     const sid = "L" + Date.now().toString(36);
     const title = (m.title||"") + " — " + (m.grade||"") + (m.subject?" — "+m.subject:"");
     const R = root();
@@ -16159,12 +16252,15 @@ LV.renderTeacher = async function(view, role){
     msg.className = "msg"; openStage(sid, true);
   });
 
-  // الحصص النشطة للمعلم
+  /* ----- الحصص النشطة ----- */
   const act = $("lvsActive");
   const drawActive = (all)=>{
     if(!view.isConnected) return;
     const mine = Object.keys(all||{}).map(k=>Object.assign({id:k}, all[k])).filter(s=>s.teacher===me());
-    act.innerHTML = '<h3>حصصي المباشرة الجارية</h3>' + (mine.length ? mine.map(s=>`<div class="lvs-sess"><b>🔴 ${esc(s.title||"")}</b><span>${esc(targetText(s.target))}</span>
+    // حصص انقطع معلمها (أُغلق المتصفح) تُنهى تلقائيًا
+    mine.filter(s=>s.off && (now()-s.off)>GRACE_MS && !(ST && ST.sid===s.id)).forEach(s=>endSession(s.id));
+    const live = mine.filter(s=>!(s.off && (now()-s.off)>GRACE_MS));
+    act.innerHTML = '<h3>حصصي المباشرة الجارية</h3>' + (live.length ? live.map(s=>`<div class="lvs-sess"><b>🔴 ${esc(s.title||"")}</b><span>${esc(targetText(s.target))}</span>
       <button class="primary-btn" style="width:auto;padding:7px 16px;" data-r="${esc(s.id)}">استئناف</button><button class="chip-btn" style="color:#c62828;" data-e="${esc(s.id)}">إنهاء</button></div>`).join("") : '<div class="empty-note">لا توجد حصة جارية.</div>');
     qa("[data-r]", act).forEach(b=>b.addEventListener("click", ()=>openStage(b.dataset.r, true)));
     qa("[data-e]", act).forEach(b=>b.addEventListener("click", ()=>{ if(confirm("إنهاء هذه الحصة؟")) endSession(b.dataset.e); }));
@@ -16172,7 +16268,7 @@ LV.renderTeacher = async function(view, role){
   const aref = root().child("active");
   aref.on("value", s=>{ if(!view.isConnected){ aref.off(); return; } drawActive(s.val()); });
 
-  drawFilters(); drawAud();
+  drawFilters();
 };
 })();
 
