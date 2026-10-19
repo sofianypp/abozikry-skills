@@ -4490,6 +4490,7 @@ const NAV = {
     ["banks","بنوك الأسئلة"],
     ["forms","النماذج التعليمية"],
     ["mindbank","بنك الخرائط الذهنية"],
+    ["live","الحصة المباشرة"],
   ],
   coordinator: [
     ["analysis","تحليل النتائج"],
@@ -4503,6 +4504,7 @@ const NAV = {
     ["mindbank","بنك الخرائط الذهنية"],
     ["mystudents","بيانات الطلاب"],
     ["parentsLink","ربط أولياء الأمور بالطلاب"],
+    ["live","الحصة المباشرة"],
   ],
   teacher: [
     ["forms","النماذج التعليمية"],
@@ -4520,6 +4522,7 @@ const NAV = {
     ["tasksInbox","التكليفات الواردة"],
     ["correspondence","المراسلات الإدارية"],
     ["parentsLink","ربط أولياء الأمور بالطلاب"],
+    ["live","الحصة المباشرة"],
   ],
   parent: [
     ["parentscores","نتائج الأبناء"],
@@ -4534,6 +4537,7 @@ const NAV = {
     ["mychallenges","التحديات"],
     ["attachments","المرفقات"],
     ["tasks","التكليفات"],
+    ["live","الحصة المباشرة"],
   ],
 };
 
@@ -4551,6 +4555,7 @@ function buildSidenav(role){
     nav.appendChild(b);
     if(i===0){ b.classList.add("active"); renderView(role,key); }
   });
+  try{ if(window.LIVE) LIVE.boot(role); }catch(e){}
 }
 function selectNav(role,key,btn){
   document.querySelectorAll("#sidenav button").forEach(b=>b.classList.remove("active"));
@@ -4584,6 +4589,7 @@ function renderView(role,key){
   if(key==="aboutedit"){ renderAboutEditWindow(view); return; }
   if(key==="mindbank"){ renderMindBankWindow(view); return; }
   if(key==="lessons"){ if(role==="student") renderStudentLessonsList(view); else renderFormsWindow(view, role, "lesson"); return; }
+  if(key==="live"){ if(role==="student") LIVE.renderStudent(view); else LIVE.renderTeacher(view, role); return; }
   if(key==="timetable"){ renderCommTable(view, role); return; }
   if(key==="plans"){ renderPlansWindow(view, role); return; }
   if(key==="classtt"){ renderClassTTWindow(view, role); return; }
@@ -8392,50 +8398,30 @@ function micScore(expectedText, spokenText){
   return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= MIC_PASS && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
 }
 let __micActive = null;
-function micMarkUnsupported(){ window.__micUnsupported = true; try{ sessionStorage.setItem("micUnsupported", "1"); }catch(e){} }
-function micIsUnsupported(){ if(window.__micUnsupported) return true; try{ return sessionStorage.getItem("micUnsupported") === "1"; }catch(e){ return false; } }
-function micIsTouch(){      // تابلت الأندرويد قد يرسل هوية "سطح مكتب" في Chrome، فلا نعتمد على كلمة Android وحدها
-  try{ if(navigator.userAgentData && navigator.userAgentData.mobile) return true; }catch(e){}
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints || 0) > 0;
-}
-function micRecord(onInterim, isEnd, seed){       // يعيد {promise, stop}
+function micRecord(onInterim, isEnd){       // يعيد {promise, stop}
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const single = micIsTouch();               // على الأجهزة اللمسية: جلسات قصيرة متتابعة (الوضع المستمر لا يعيد نتائج على بعض الأجهزة)
   let stopFn = ()=>{};
   const promise = new Promise(resolve=>{
-    let committed = seed || "", cut = false, cur = "", heard = false, last = 0, done = false, stopping = false, err = "", fb = null, timer = null, rec = null, restarts = 0; const t0 = Date.now();
-    const full = ()=>(committed + " " + cur).trim();
-    function finish(){ if(done) return; done = true; clearInterval(timer); clearTimeout(fb); resolve({ text: full(), heard, error: err, cut }); }
-    function stop(){ if(done) return; stopping = true; try{ rec && rec.stop(); }catch(e){} clearTimeout(fb); fb = setTimeout(finish, 1500); }
+    const rec = new SR(); rec.lang = "ar-SA"; rec.interimResults = true; rec.maxAlternatives = 1;
+    rec.continuous = !/Android/i.test(navigator.userAgent);      // أندرويد يكرّر النص التراكمي في الوضع المستمر
+    const parts = []; let text = "", heard = false, last = 0, done = false, err = "", fb = null, timer = null; const t0 = Date.now();
+    function finish(){ if(done) return; done = true; clearInterval(timer); clearTimeout(fb); resolve({ text, heard, error: err }); }
+    function stop(){ if(done) return; try{ rec.stop(); }catch(e){} clearTimeout(fb); fb = setTimeout(finish, 1500); }
     stopFn = stop;
-    function begin(){
-      rec = new SR(); rec.lang = "ar-SA"; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = !single;
-      const parts = []; cur = "";
-      rec.onresult = e=>{
-        for(let k = e.resultIndex; k < e.results.length; k++) parts[k] = e.results[k][0].transcript;
-        cur = parts.filter(Boolean).join(" ").trim();
-        const text = full(); if(text){ heard = true; last = Date.now(); if(onInterim) onInterim(text); }
-      };
-      rec.onerror = e=>{ err = e.error || "error"; };
-      rec.onend = ()=>{
-        if(cur){ committed = (committed + " " + cur).trim(); cur = ""; }
-        if(done) return;
-        // أندرويد يشترط لمسة من المستخدم لبدء كل جلسة: رفض الجلسة المُعاد تشغيلها آليًا ليس مشكلة إذن ميكروفون، فنكتفي بما قيل
-        if(restarts > 0 && /not-allowed/.test(err)){ if(heard){ err = ""; cut = !stopping; } return finish(); }
-        const fatal = err && err !== "no-speech" && err !== "aborted";
-        if(stopping || fatal || Date.now() - t0 > MIC_MAX_MS) return finish();
-        err = "";                                    // انتهت الجلسة من تلقاء نفسها: نبدأ جلسة جديدة ونحتفظ بما قيل
-        setTimeout(()=>{ if(!done && !stopping){ try{ restarts++; begin(); }catch(e){ err = "start"; finish(); } } }, 150);
-      };
-      rec.start();
-    }
+    rec.onresult = e=>{
+      for(let k = e.resultIndex; k < e.results.length; k++) parts[k] = e.results[k][0].transcript;
+      text = parts.filter(Boolean).join(" ").trim();
+      if(text){ heard = true; last = Date.now(); if(onInterim) onInterim(text); }
+    };
+    rec.onerror = e=>{ err = e.error || "error"; };
+    rec.onend = finish;
     timer = setInterval(()=>{
-      const now = Date.now(), text = full();
+      const now = Date.now();
       if(heard && now - last > (isEnd && isEnd(text) ? MIC_SILENCE_MS : MIC_WAIT_MS)) stop();
       else if(!heard && now - t0 > MIC_START_TIMEOUT_MS) stop();
       else if(now - t0 > MIC_MAX_MS) stop();
     }, 100);
-    try{ begin(); }catch(e){ err = "start"; finish(); }
+    try{ rec.start(); }catch(e){ err = "start"; finish(); }
   });
   return { promise, stop: ()=>stopFn() };
 }
@@ -8483,7 +8469,6 @@ function attachMicGate(box, q){
   const lock = on=>{ target.classList.toggle("mic-locked", on); try{ target.inert = on; }catch(e){} };
   function unlock(){ lock(false); btn.classList.remove("rec"); btn.classList.add("done"); }
   if(!SR){ lock(false); msg("⚠ متصفحك لا يدعم التعرف على الصوت (جرّب Chrome أو Edge)، فلا يمكن التحقق من قراءتك — يمكنك الإجابة مباشرة.", "err"); return; }
-  if(micIsUnsupported()){ lock(false); msg("ℹ️ جهازك لا يدعم التحقق الصوتي من القراءة، فالإجابة مفتوحة. اقرأ السؤال بصوتك على أي حال.", ""); return; }
   lock(true);
   const expectedText = ()=>{
     let t = isMcq ? (box.querySelector(".mcq-qtext") || {}).textContent : (box.querySelector(".tf-stmt") || {}).textContent;
@@ -8495,34 +8480,18 @@ function attachMicGate(box, q){
     if(__micActive){ __micActive.ctl.stop(); }
     const exp = expectedText();
     lock(true); btn.classList.remove("done");     // أي محاولة جديدة تُغلق الإجابة حتى تنجح القراءة
-    // نطلب الميكروفون صراحةً أولًا (داخل لمسة الطالب) ليظهر طلب الإذن وليتضح سبب أي فشل
-    if(!window.__micPermOk && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-      try{ const s0 = await navigator.mediaDevices.getUserMedia({ audio:true }); s0.getTracks().forEach(x=>x.stop()); window.__micPermOk = true; }
-      catch(e){ msg("⚠ تعذّر فتح الميكروفون <span style='font-weight:600;color:#888'>(" + (e && e.name || "error") + (location.protocol !== "https:" && location.hostname !== "localhost" ? " — الصفحة ليست على https" : "") + ")</span>. اسمح للمتصفح باستخدام الميكروفون لهذا الموقع ثم أعد المحاولة.", "err"); return; }
-    }
     btn.classList.add("rec"); msg("🔴 أستمع إليك… اقرأ الآن، وسأتوقف تلقائيًا عندما تسكت قليلًا.");
-    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); }, t=>micLastRead(exp, t), btn._carry || "");
+    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); }, t=>micLastRead(exp, t));
     __micActive = { btn, ctl };
     const r = await ctl.promise; __micActive = null; btn.classList.remove("rec");
-    if(r.error === "service-not-allowed" || r.error === "not-allowed" || r.error === "language-not-supported"){
-      micMarkUnsupported(); unlock();
-      msg("ℹ️ لا يدعم جهازك أو متصفحك التحقق الصوتي من القراءة <span style='font-weight:600;color:#888'>(" + r.error + ")</span>، فتم فتح الإجابة لك. اقرأ السؤال بصوتك على أي حال.", "");
-      return;
-    }
+    if(r.error === "not-allowed" || r.error === "service-not-allowed"){ msg("⚠ لم يُسمح باستخدام الميكروفون. اسمح للمتصفح باستخدامه من شريط العنوان ثم أعد المحاولة.", "err"); return; }
     if(r.error === "network"){ msg("⚠ يحتاج التعرف على الصوت إلى اتصال بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.", "err"); return; }
     if(r.error === "audio-capture"){ msg("⚠ لم يُعثر على ميكروفون يعمل في جهازك.", "err"); return; }
-    if(!r.heard && (btn._none = (btn._none || 0) + 1) >= 2){
-      micMarkUnsupported(); unlock();
-      msg("ℹ️ لم يصل إلى الموقع أي نص من قراءتك بعد محاولتين، وقد يكون جهازك لا يدعم التحقق الصوتي، فتم فتح الإجابة لك.", "");
-      return;
-    }
-    if(r.heard) btn._none = 0;
-    if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى." + (r.error ? " <span style='font-weight:600;color:#888'>(" + r.error + ")</span>" : ""), "err"); return; }
+    if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى.", "err"); return; }
     const res = micScore(exp, r.text), pct = Math.round(res.score * 100);
-    btn._carry = (!res.ok && r.cut) ? r.text : "";     // الجهاز قطع التسجيل عند وقفة: نكمل من حيث توقف الطالب
     if(res.ok){ unlock(); msg("✔ أحسنت! قراءتك صحيحة (" + pct + "%). يمكنك الآن اختيار الإجابة.", "ok"); return; }
     const shown = res.missed.slice(0, 12);
-    msg("<div>أعد القراءة لأنك أخطأت في بعض الكلمات <span style='font-weight:600'>(صحة القراءة " + pct + "% والمطلوب 75% على الأقل)</span></div>" + (btn._carry ? "<div style='font-weight:600'>توقف التسجيل عند سكوتك. اضغط الميكروفون وأكمل القراءة من حيث توقفت.</div>" : "")
+    msg("<div>أعد القراءة لأنك أخطأت في بعض الكلمات <span style='font-weight:600'>(صحة القراءة " + pct + "% والمطلوب 75% على الأقل)</span></div>"
       + (shown.length ? "<div style='margin-top:4px'>الكلمات التي أخطأت فيها:</div><div class='mic-words'></div>" : ""), "err");
     const wb = st.querySelector(".mic-words");
     if(wb){
@@ -15505,6 +15474,707 @@ function renderParentsWindow(view, role){
 }
 
 /* ملاحظة: renderParentScores مدمجة مباشرة في مكانها الأصلي داخل الملف الرئيسي (تدعم تعدد الأبناء). */
+
+</script>
+<script>
+/* =====================================================================
+   ===== الحصة المباشرة التفاعلية (Live Class) — مؤشر اليد + مزامنة لحظية =====
+   فكرة العمل:
+   - المعلم يختار نموذجًا/اختبارًا/شرحًا + الجمهور (صف كامل / فصل / طلاب محددون) ثم يبدأ الحصة.
+   - الجميع يفتحون نفس المحتوى بنفس الشكل (بذرة عشوائية مشتركة لترتيب البطاقات).
+   - كل إجراء يقوم به من يملك "مؤشر اليد" (نقر، سحب وإفلات، توصيل بخط، كتابة) يُسجَّل كحدث
+     في Firebase ويُعاد تنفيذه عند الجميع بالترتيب نفسه، فتتطابق الشاشات لحظيًا.
+   - المعلم يمنح المؤشر لطالب أو لجميع الطلاب من القائمة الجانبية، ويظهر اسم الطالب أسفل المؤشر.
+   - لا تُحفظ أي نتائج في DB.results أثناء الحصة المباشرة (هي حصة تفاعلية لا اختبار رسمي).
+   مسار Firebase: live/<orgId>/active/<sid> و live/<orgId>/s/<sid>/{meta,ctl,p,g,c,ev/<epoch>}
+   ===================================================================== */
+(function(){
+"use strict";
+const LV = window.LIVE = {};
+const esc = s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const q = (s,r)=>(r||document).querySelector(s);
+const qa = (s,r)=>Array.from((r||document).querySelectorAll(s));
+
+/* ---------- اتصال Firebase ---------- */
+function db(){
+  try{
+    if(typeof firebase==="undefined" || typeof firebaseConfigured!=="function" || !firebaseConfigured()) return null;
+    if(!firebaseDB){ if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); firebaseDB = firebase.database(); }
+    return firebaseDB;
+  }catch(e){ return null; }
+}
+function orgId(){ return (session && session.orgId) || (typeof SCOPE!=="undefined" && SCOPE.orgId) || "org_default"; }
+function root(){ const d=db(); return d ? d.ref("live/"+orgId()) : null; }
+function TS(){ return firebase.database.ServerValue.TIMESTAMP; }
+async function ready(){ try{ if(typeof ensureFirebaseAuth==="function") await ensureFirebaseAuth(); }catch(e){} return !!db(); }
+let OFF = 0, offBound = false;
+function bindOffset(){ if(offBound || !db()) return; offBound = true; try{ db().ref(".info/serverTimeOffset").on("value", s=>{ OFF = s.val()||0; }); }catch(e){} }
+function now(){ return Date.now() + OFF; }
+
+function fkey(s){ return "u" + Number(hash53(String(s||""))).toString(36); }
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const PALETTE = ["#d32f2f","#1976d2","#388e3c","#f57c00","#7b1fa2","#00838f","#c2185b","#5d4037","#455a64","#afb42b"];
+function colorOf(k){ let h=0; for(const c of String(k)) h=(h*31+c.charCodeAt(0))>>>0; return PALETTE[h%PALETTE.length]; }
+function me(){ return (session && session.user && session.user.username) || "مستخدم"; }
+function isTeacherRole(){ return session && session.role && session.role!=="student"; }
+
+/* ---------- الجمهور ---------- */
+function targetMatches(t, u){
+  if(!t || !u) return false;
+  const g = String(u.grade||""), c = String(u.cls==null?"":u.cls);
+  if(t.mode==="grade") return g===String(t.grade);
+  if(t.mode==="class") return g===String(t.grade) && (t.classes||[]).map(String).includes(c);
+  if(t.mode==="students") return (t.students||[]).map(x=>String(x).trim()).includes(String(u.username||"").trim());
+  return false;
+}
+function targetText(t){
+  if(!t) return "";
+  if(t.mode==="grade") return "الصف: "+t.grade+" (جميع الفصول)";
+  if(t.mode==="class") return "الصف: "+t.grade+" — الفصول: "+(t.classes||[]).join("، ");
+  return "طلاب محددون ("+((t.students||[]).length)+")";
+}
+
+/* =====================================================================
+   CSS
+   ===================================================================== */
+(function injectCss(){
+  const st = document.createElement("style");
+  st.textContent = `
+  .lv-overlay{ position:fixed; inset:0; z-index:100000; background:#eef2f1; display:flex; flex-direction:column; direction:rtl; font-family:inherit; }
+  .lv-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 12px; background:#fff; border-bottom:2px solid var(--ink,#111); }
+  .lv-bar .lv-title{ flex:1 1 220px; font-weight:800; font-size:15px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lv-badge{ background:#d32f2f; color:#fff; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:800; }
+  .lv-badge.ok{ background:#2e7d32; }
+  .lv-badge.off{ background:#757575; }
+  .lv-body{ flex:1; display:flex; min-height:0; }
+  .lv-side{ width:310px; max-width:42vw; background:#fff; border-left:2px solid var(--ink,#111); display:flex; flex-direction:column; min-height:0; }
+  .lv-side h3{ margin:0; padding:10px 12px 4px; font-size:15px; }
+  .lv-side .lv-tools{ padding:4px 10px 8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .lv-side input[type=search]{ margin:0 10px 6px; padding:7px 9px; border:1.5px solid #bbb; border-radius:8px; font:inherit; }
+  .lv-list{ flex:1; overflow:auto; padding:0 8px 10px; }
+  .lv-row{ display:flex; align-items:center; gap:8px; padding:7px 8px; border:1.5px solid #ddd; border-radius:10px; margin:5px 0; background:#fafafa; }
+  .lv-row.on{ border-color:#2e7d32; background:#e8f5e9; }
+  .lv-row.offline{ opacity:.5; }
+  .lv-dot{ width:10px; height:10px; border-radius:50%; background:#9e9e9e; flex:none; }
+  .lv-row.online .lv-dot{ background:#2e7d32; }
+  .lv-name{ flex:1; font-weight:700; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lv-cls{ font-size:11px; color:#666; font-weight:600; }
+  .lv-grant{ border:1.5px solid var(--accent,#0f5c53); background:#fff; color:var(--accent,#0f5c53); border-radius:8px; padding:4px 9px; cursor:pointer; font:inherit; font-size:12px; font-weight:800; white-space:nowrap; }
+  .lv-row.on .lv-grant{ background:#c62828; border-color:#c62828; color:#fff; }
+  .lv-stage{ flex:1; overflow:auto; padding:14px 18px 60px; min-width:0; position:relative; }
+  .lv-hint{ margin:6px 12px; font-size:12px; color:#555; }
+  .lv-empty{ text-align:center; color:#777; padding:18px 8px; font-size:13px; }
+  /* حالة المشاهدة فقط: لا تفاعل مع المحتوى */
+  .lv-ro #lvView, .lv-ro #lvView *{ pointer-events:none !important; user-select:none; }
+  .lv-allowed #lvView, .lv-allowed #lvView *{ cursor:none !important; }
+  #lvView #solveBack, #lvView #solveSubmit, #lvView #testTimerBox, #lvView .mcq-fifty, #lvView > p.sub, #lvView #solveMsg{ display:none !important; }
+  /* مؤشر اليد */
+  .lv-hand{ position:fixed; left:0; top:0; pointer-events:none; z-index:2147483000; will-change:transform; transition:transform .06s linear, opacity .15s; }
+  .lv-hand-in{ position:absolute; left:-17px; top:-3px; display:flex; flex-direction:column; align-items:center; }
+  .lv-hand-ico{ font-size:34px; line-height:1; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+  .lv-hand-name{ margin-top:1px; background:var(--c,#d32f2f); color:#fff; border-radius:8px; padding:2px 9px; font-size:12px; font-weight:800; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.35); direction:rtl; }
+  /* الشريط العائم للطالب */
+  #lvPill{ position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99990; background:#c62828; color:#fff; border-radius:999px; padding:8px 16px; font-weight:800; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.35); display:none; align-items:center; gap:10px; direction:rtl; }
+  #lvPill button{ background:#fff; color:#c62828; border:0; border-radius:999px; padding:5px 14px; font:inherit; font-weight:800; cursor:pointer; }
+  .lv-toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:10px 18px; border-radius:10px; z-index:2147483100; font-weight:700; direction:rtl; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  /* نافذة الإعداد */
+  .lvs-box{ border:2px solid var(--ink,#111); border-radius:12px; padding:12px; margin:12px 0; background:#fff; }
+  .lvs-box h3{ margin:0 0 8px; font-size:15px; }
+  .lvs-row{ display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .lvs-row > div{ min-width:150px; }
+  .lvs-cards{ display:flex; flex-wrap:wrap; gap:8px; max-height:260px; overflow:auto; padding:4px; }
+  .lvs-cards .student-model-card.sel{ outline:4px solid #c62828; outline-offset:2px; }
+  .lvs-checks{ display:flex; flex-wrap:wrap; gap:8px 14px; }
+  .lvs-checks label{ display:flex; align-items:center; gap:5px; font-weight:700; cursor:pointer; }
+  .lvs-students{ max-height:240px; overflow:auto; border:1.5px solid #ccc; border-radius:8px; padding:6px; display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:4px 10px; }
+  .lvs-sess{ display:flex; align-items:center; gap:10px; border:1.5px solid #ddd; border-radius:10px; padding:8px 10px; margin:6px 0; background:#fafafa; flex-wrap:wrap; }
+  .lvs-sess b{ flex:1 1 200px; }
+  `;
+  document.head.appendChild(st);
+})();
+
+function toast(msg, ms){
+  const t = document.createElement("div"); t.className = "lv-toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), ms||2800);
+}
+
+/* =====================================================================
+   مسارات العناصر داخل المسرح (لإعادة تنفيذ الإجراءات)
+   ===================================================================== */
+function pathOf(el, rootEl){
+  const p = [];
+  while(el && el!==rootEl){
+    const par = el.parentNode; if(!par) return null;
+    p.push(Array.prototype.indexOf.call(par.childNodes, el)); el = par;
+  }
+  return el===rootEl ? p.reverse().join(".") : null;
+}
+function resolvePath(path, rootEl){
+  if(path==null) return null;
+  let el = rootEl; if(path==="") return el;
+  for(const i of String(path).split(".")){ el = el && el.childNodes[+i]; if(!el) return null; }
+  return el;
+}
+
+/* =====================================================================
+   المسرح (Stage)
+   ===================================================================== */
+let ST = null;
+
+function findContent(meta){
+  const list = meta.kind==="lesson" ? (DB.banks||[]) : (DB.models||[]);
+  return list.find(m=>m && m.id===meta.contentId) || null;
+}
+
+async function openStage(sid, asTeacher){
+  if(ST) return;
+  if(!(await ready())){ alert("الحصة المباشرة تتطلب اتصال Firebase."); return; }
+  bindOffset();
+  const ref = root().child("s/"+sid);
+  let meta, ctl;
+  try{
+    const [ms, cs] = await Promise.all([ref.child("meta").get(), ref.child("ctl").get()]);
+    meta = ms.val(); ctl = cs.val();
+  }catch(e){ alert("تعذّر الدخول إلى الحصة المباشرة (تحقق من قواعد Firebase للمسار live)."); return; }
+  if(!meta || !ctl || ctl.status==="ended"){ toast("انتهت هذه الحصة المباشرة."); return; }
+  const model = findContent(meta);
+  if(!model){ alert("تعذّر العثور على محتوى الحصة في بياناتك."); return; }
+
+  ST = {
+    sid, ref, meta, model, teacher: !!asTeacher, key: asTeacher ? "T" : fkey(me()), name: asTeacher ? "المعلم" : me(),
+    epoch: Number(ctl.epoch)||0, allowAll: !!ctl.all, grants: {}, parts: {}, hands: new Map(), mine: new Set(),
+    handOn: false, offs: [], timers: [], dragSrc: null, lineSrc: null, replaying: false, lastSend: 0, lastCur: null, vTimers: new Map()
+  };
+  ST.seed = Number(meta.seed)||1;
+  ST.allowed = ST.teacher || ST.allowAll;
+
+  // نُزيح محتوى الصفحة الحالية جانبًا كي لا تتعارض المعرّفات (solveArea ...) مع شاشة الحل
+  const viewArea = document.getElementById("viewArea");
+  ST.stash = document.createDocumentFragment();
+  if(viewArea){ while(viewArea.firstChild) ST.stash.appendChild(viewArea.firstChild); }
+
+  const ov = document.createElement("div"); ov.className = "lv-overlay"; ov.id = "lvOverlay"; ST.ov = ov;
+  ov.innerHTML = `
+    <div class="lv-bar">
+      <span class="lv-badge" id="lvLive">● مباشر</span>
+      <span class="lv-title">${esc(meta.title||"")}</span>
+      <span class="lv-badge ok" id="lvMode"></span>
+      ${ST.teacher ? `<span class="lv-badge off" id="lvCount">المتصلون: 0</span>
+        <button class="chip-btn" id="lvHandToggle" title="إظهار/إخفاء مؤشر المعلم للطلاب">🖐 مؤشري: متوقف</button>
+        <button class="chip-btn" id="lvReset" title="إعادة المحتوى لحالته الأولى عند الجميع">🔄 إعادة ضبط</button>
+        <button class="chip-btn" id="lvEnd" style="color:#c62828;">⏹ إنهاء الحصة</button>
+        <button class="chip-btn" id="lvHide" title="تصغير: الرجوع للمنصة مع بقاء الحصة مفتوحة">▾ تصغير</button>`
+        : `<button class="chip-btn" id="lvLeave">⟵ مغادرة الحصة</button>`}
+    </div>
+    <div class="lv-body">
+      ${ST.teacher ? `<aside class="lv-side">
+        <h3>👥 المشاركون في الحصة</h3>
+        <div class="lv-tools">
+          <button class="chip-btn" id="lvAllOn">✋ منح الجميع</button>
+          <button class="chip-btn" id="lvAllOff">⛔ سحب من الجميع</button>
+        </div>
+        <input type="search" id="lvSearch" placeholder="بحث عن طالب...">
+        <div class="lv-list" id="lvList"></div>
+        <div class="lv-hint">اضغط «منح المؤشر» بجانب اسم الطالب ليظهر له مؤشر اليد ويتفاعل مع المحتوى، ويظهر اسمه أسفل المؤشر لدى الجميع.</div>
+      </aside>` : ""}
+      <div class="lv-stage" id="lvStage"><div id="lvView"></div></div>
+    </div>`;
+  document.body.appendChild(ov);
+  ST.stageEl = q("#lvStage", ov); ST.viewEl = q("#lvView", ov);
+
+  renderContent();
+  attachInput();
+  attachListeners();
+  ST.timers.push(setInterval(placeAll, 400));
+  if(ST.teacher){
+    bindTeacherUi();
+    ST.timers.push(setInterval(()=>{ try{ root().child("active/"+sid+"/ts").set(TS()); }catch(e){} }, 30000));
+  } else {
+    q("#lvLeave", ov).addEventListener("click", ()=>closeStage());
+  }
+  announcePresence();
+  refreshMode();
+}
+
+function renderContent(){
+  const view = ST.viewEl;
+  const m = Object.assign({}, ST.model, { testMode:false, testDuration:0, scheduledAt:0 });
+  const orig = Math.random; Math.random = mulberry32((ST.seed + ST.epoch*7919)>>>0);
+  try{ renderSolveView(view, m, true); }
+  catch(e){ console.error(e); view.innerHTML = '<div class="msg show err">تعذّر عرض المحتوى في الحصة المباشرة.</div>'; }
+  finally{ Math.random = orig; }
+  ST.isHtmlApp = !!view.querySelector(".htmlapp-wrap");
+  ST.stageEl.scrollTop = 0;
+  const submit = view.querySelector("#solveSubmit"); if(submit) submit.style.display = "none";
+}
+
+/* ---------- حالة السماح ---------- */
+function computeAllowed(){ return ST.teacher || ST.allowAll || !!ST.grants[ST.key]; }
+function refreshMode(){
+  if(!ST) return;
+  const was = ST.allowed;
+  ST.allowed = computeAllowed();
+  ST.ov.classList.toggle("lv-ro", !ST.allowed);
+  ST.ov.classList.toggle("lv-allowed", ST.allowed && (!ST.teacher || ST.handOn));
+  const badge = q("#lvMode", ST.ov);
+  if(badge){
+    if(ST.teacher){ badge.textContent = "أنت المعلم — تتحكم بالمحتوى"; }
+    else if(ST.allowed){ badge.textContent = "✋ معك مؤشر اليد — تفاعل الآن"; badge.className = "lv-badge ok"; }
+    else { badge.textContent = "👁 وضع المشاهدة — بانتظار منحك المؤشر"; badge.className = "lv-badge off"; }
+  }
+  if(!ST.teacher && was !== ST.allowed){
+    toast(ST.allowed ? "✋ منحك المعلم مؤشر اليد، يمكنك التفاعل الآن" : "تم سحب مؤشر اليد منك");
+    if(!ST.allowed){ try{ ST.ref.child("c/"+ST.key).remove(); }catch(e){} }
+  }
+  updateMyHand();
+  if(ST.teacher) drawSide();
+}
+
+/* ---------- المؤشرات (الأيدي) ---------- */
+function makeHand(key, name){
+  const h = document.createElement("div"); h.className = "lv-hand"; h.style.setProperty("--c", colorOf(key));
+  h.innerHTML = `<div class="lv-hand-in"><div class="lv-hand-ico">👆</div><div class="lv-hand-name"></div></div>`;
+  q(".lv-hand-name", h).textContent = name || "";
+  document.body.appendChild(h); return h;
+}
+function updateMyHand(){
+  const show = ST.allowed && (!ST.teacher || ST.handOn);
+  if(show && !ST.myHand){ ST.myHand = makeHand(ST.key, ST.name); ST.myHand.style.opacity = "0"; }
+  if(ST.myHand) ST.myHand.style.display = show ? "" : "none";
+}
+function placeAt(h, x, y, visible){
+  h.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  h.style.opacity = visible ? "1" : "0";
+}
+function placeAll(){
+  if(!ST) return;
+  const sr = ST.stageEl.getBoundingClientRect();
+  ST.hands.forEach(h=>{
+    const d = h.__d; if(!d) return;
+    const el = resolvePath(d.p, ST.viewEl);
+    if(!el || !el.getBoundingClientRect){ h.style.opacity = "0"; return; }
+    const r = el.getBoundingClientRect();
+    const x = r.left + d.fx*r.width, y = r.top + d.fy*r.height;
+    placeAt(h, x, y, x>=sr.left && x<=sr.right && y>=sr.top && y<=sr.bottom);
+  });
+}
+function syncHands(cur){
+  cur = cur || {};
+  ST.hands.forEach((h,k)=>{ if(!cur[k] || k===ST.key){ h.remove(); ST.hands.delete(k); } });
+  Object.keys(cur).forEach(k=>{
+    if(k===ST.key) return;
+    const d = cur[k]; let h = ST.hands.get(k);
+    if(!h){ h = makeHand(k, d.n || (ST.parts[k]&&ST.parts[k].n) || ""); ST.hands.set(k, h); }
+    h.__d = d; q(".lv-hand-name", h).textContent = d.n || "";
+  });
+  placeAll();
+}
+
+/* ---------- التقاط إجراءات المستخدم ---------- */
+function inView(el){ return !!(el && ST && ST.viewEl.contains(el)); }
+function emit(a){
+  if(!ST || !ST.allowed) return;
+  try{
+    const r = ST.ref.child("ev/"+ST.epoch).push();
+    ST.mine.add(r.key);
+    r.set({ k:ST.key, n:ST.name, a, ts:TS() });
+  }catch(e){ console.warn("live emit", e); }
+}
+function attachInput(){
+  const on = (t, type, fn, cap)=>{ t.addEventListener(type, fn, cap!==false); ST.offs.push(()=>t.removeEventListener(type, fn, cap!==false)); };
+  const trusted = e=>ST && e.isTrusted && !ST.replaying;
+
+  on(ST.ov, "click", e=>{
+    if(!trusted(e) || !ST.allowed || !inView(e.target)) return;
+    const p = pathOf(e.target, ST.viewEl); if(p!=null) emit({t:"c", p});
+  });
+  on(ST.ov, "dragstart", e=>{ if(trusted(e) && inView(e.target)) ST.dragSrc = pathOf(e.target, ST.viewEl); });
+  on(ST.ov, "drop", e=>{
+    if(!trusted(e) || !ST.allowed || ST.dragSrc==null || !inView(e.target)) return;
+    const p = pathOf(e.target, ST.viewEl); if(p!=null) emit({t:"d", s:ST.dragSrc, p});
+  });
+  on(ST.ov, "dragend", e=>{ if(trusted(e)) ST.dragSrc = null; });
+
+  // توصيل الأسئلة بخط (النقطة .dot) — فأرة أو لمس
+  const lineStart = e=>{ if(!trusted(e)) return; const d = e.target.closest && e.target.closest(".dot"); if(d && inView(d)) ST.lineSrc = pathOf(d, ST.viewEl); };
+  const lineEnd = e=>{
+    if(!trusted(e) || ST.lineSrc==null) return;
+    const pt = (e.changedTouches && e.changedTouches[0]) || e;
+    const under = document.elementFromPoint(pt.clientX, pt.clientY);
+    const card = under && under.closest && under.closest(".match-card");
+    const src = ST.lineSrc; ST.lineSrc = null;
+    if(ST.allowed && card && inView(card)){ const p = pathOf(card, ST.viewEl); if(p!=null) emit({t:"l", s:src, p}); }
+  };
+  on(ST.ov, "mousedown", lineStart); on(ST.ov, "touchstart", lineStart);
+  on(document, "mouseup", lineEnd); on(document, "touchend", lineEnd);
+
+  // الكتابة والقوائم
+  const valFn = e=>{
+    if(!trusted(e) || !ST.allowed) return;
+    const el = e.target; if(!inView(el) || !el.matches || !el.matches("textarea, select, input:not([type=radio]):not([type=checkbox]):not([type=button])")) return;
+    const p = pathOf(el, ST.viewEl); if(p==null) return;
+    clearTimeout(ST.vTimers.get(p));
+    ST.vTimers.set(p, setTimeout(()=>emit({t:"v", p, v:el.value}), 150));
+  };
+  on(ST.ov, "input", valFn); on(ST.ov, "change", valFn);
+
+  // مؤشر اليد: يتبع الإصبع/الفأرة محليًا فورًا ويُبَث للآخرين
+  on(ST.ov, "pointermove", e=>{
+    if(!ST.allowed || (ST.teacher && !ST.handOn)) return;
+    if(ST.myHand){ placeAt(ST.myHand, e.clientX, e.clientY, true); }
+    if(!inView(e.target)) return;
+    const t = Date.now(); if(t - ST.lastSend < 70) return; ST.lastSend = t;
+    const el = e.target, r = el.getBoundingClientRect(); const p = pathOf(el, ST.viewEl); if(p==null || !r.width || !r.height) return;
+    const d = { p, fx:(e.clientX-r.left)/r.width, fy:(e.clientY-r.top)/r.height, n:ST.name, t:TS() };
+    ST.ref.child("c/"+ST.key).set(d);
+  });
+  ST.stageEl.addEventListener("scroll", placeAll); ST.offs.push(()=>ST.stageEl.removeEventListener("scroll", placeAll));
+  window.addEventListener("resize", placeAll); ST.offs.push(()=>window.removeEventListener("resize", placeAll));
+}
+
+/* ---------- إعادة تنفيذ إجراءات الآخرين ---------- */
+function fakeDnD(src, dst){
+  let dt = null; try{ dt = new DataTransfer(); }catch(e){}
+  const fire = (type, t)=>{
+    let ev; try{ ev = new DragEvent(type, { bubbles:true, cancelable:true, dataTransfer:dt, view:window }); }
+    catch(e){ ev = new Event(type, { bubbles:true, cancelable:true }); try{ ev.dataTransfer = dt; }catch(_){} }
+    t.dispatchEvent(ev);
+  };
+  fire("dragstart", src); fire("dragenter", dst); fire("dragover", dst); fire("drop", dst); fire("dragend", src);
+}
+function center(el){ const r = el.getBoundingClientRect(); return { x:r.left+r.width/2, y:r.top+r.height/2 }; }
+function fakeLine(dot, card){
+  const r = card.getBoundingClientRect();
+  if(r.top < 0 || r.bottom > innerHeight){ try{ card.scrollIntoView({ block:"nearest" }); }catch(e){} }
+  const a = center(dot), b = center(card);
+  dot.dispatchEvent(new MouseEvent("mousedown", { bubbles:true, cancelable:true, clientX:a.x, clientY:a.y, view:window }));
+  document.dispatchEvent(new MouseEvent("mouseup", { bubbles:true, cancelable:true, clientX:b.x, clientY:b.y, view:window }));
+}
+function applyAction(a){
+  if(!ST || !a) return;
+  ST.replaying = true;
+  try{
+    const el = resolvePath(a.p, ST.viewEl);
+    if(a.t==="c" && el) el.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true, view:window }));
+    else if(a.t==="v" && el){ el.value = a.v; el.dispatchEvent(new Event("input", { bubbles:true })); el.dispatchEvent(new Event("change", { bubbles:true })); }
+    else if(a.t==="d"){ const s = resolvePath(a.s, ST.viewEl); if(s && el) fakeDnD(s, el); }
+    else if(a.t==="l"){ const s = resolvePath(a.s, ST.viewEl); if(s && el) fakeLine(s, el); }
+  }catch(e){ console.warn("live apply", e); }
+  finally{ ST.replaying = false; }
+  placeAll();
+}
+
+/* ---------- الاستماع إلى Firebase ---------- */
+function listenEvents(){
+  if(ST.evRef){ try{ ST.evRef.off(); }catch(e){} }
+  ST.evRef = ST.ref.child("ev/"+ST.epoch);
+  ST.evRef.on("child_added", snap=>{
+    if(!ST || ST.mine.has(snap.key)) return;
+    const v = snap.val(); if(v && v.a) applyAction(v.a);
+  });
+}
+function attachListeners(){
+  const R = ST.ref;
+  listenEvents();
+  R.child("ctl").on("value", s=>{
+    if(!ST) return;
+    const c = s.val();
+    if(!c || c.status==="ended"){ if(!ST.teacher) toast("أنهى المعلم الحصة المباشرة"); setTimeout(()=>closeStage(true), ST.teacher?0:1500); return; }
+    ST.allowAll = !!c.all;
+    const ep = Number(c.epoch)||0;
+    if(ep !== ST.epoch){ ST.epoch = ep; ST.mine.clear(); renderContent(); listenEvents(); if(!ST.teacher) toast("أعاد المعلم ضبط المحتوى"); }
+    refreshMode();
+  });
+  R.child("g").on("value", s=>{ if(!ST) return; ST.grants = s.val() || {}; refreshMode(); });
+  R.child("p").on("value", s=>{ if(!ST) return; ST.parts = s.val() || {}; if(ST.teacher){ drawSide(); updateCount(); } });
+  R.child("c").on("value", s=>{ if(!ST) return; syncHands(s.val()); });
+  ST.offs.push(()=>{ try{ R.child("ctl").off(); R.child("g").off(); R.child("p").off(); R.child("c").off(); if(ST.evRef) ST.evRef.off(); }catch(e){} });
+}
+function announcePresence(){
+  if(ST.teacher) return;
+  const u = session.user || {};
+  const pr = ST.ref.child("p/"+ST.key);
+  pr.set({ n:ST.name, g:u.grade||"", cls:u.cls==null?"":String(u.cls), on:true, ts:TS() });
+  try{ pr.onDisconnect().update({ on:false }); }catch(e){}
+}
+
+/* ---------- واجهة المعلم داخل الحصة ---------- */
+function updateCount(){
+  const n = Object.values(ST.parts).filter(p=>p && p.on).length;
+  const el = q("#lvCount", ST.ov); if(el) el.textContent = "المتصلون: " + n;
+}
+function drawSide(){
+  if(!ST || !ST.teacher) return;
+  const box = q("#lvList", ST.ov); if(!box) return;
+  const term = (q("#lvSearch", ST.ov).value||"").trim();
+  const rows = Object.keys(ST.parts).map(k=>Object.assign({ k }, ST.parts[k])).filter(p=>p && p.n)
+    .filter(p=>!term || String(p.n).includes(term))
+    .sort((a,b)=>(b.on?1:0)-(a.on?1:0) || String(a.n).localeCompare(String(b.n), "ar"));
+  if(!rows.length){ box.innerHTML = '<div class="lv-empty">لم ينضم أي طالب بعد. اطلب منهم تسجيل الدخول للمنصة، وستظهر لهم دعوة للانضمام.</div>'; return; }
+  box.innerHTML = rows.map(p=>{
+    const gr = ST.allowAll || !!ST.grants[p.k];
+    return `<div class="lv-row ${p.on?"online":"offline"} ${gr?"on":""}" data-k="${esc(p.k)}">
+      <span class="lv-dot"></span><span class="lv-name">${esc(p.n)}</span><span class="lv-cls">${esc(p.cls||"")}</span>
+      <button class="lv-grant" data-k="${esc(p.k)}">${gr?"⛔ سحب":"✋ منح المؤشر"}</button></div>`;
+  }).join("");
+  qa(".lv-grant", box).forEach(b=>b.addEventListener("click", ()=>{
+    const k = b.dataset.k, cur = ST.allowAll || !!ST.grants[k];
+    if(ST.allowAll && cur){ // كان الجميع مسموحًا: نحوّل إلى منح فردي لمن عداه
+      const g = {}; Object.keys(ST.parts).forEach(x=>{ if(x!==k) g[x] = true; });
+      ST.ref.child("g").set(g); ST.ref.child("ctl/all").set(false); return;
+    }
+    ST.ref.child("g/"+k).set(cur ? null : true);
+  }));
+}
+function bindTeacherUi(){
+  const ov = ST.ov;
+  q("#lvSearch", ov).addEventListener("input", drawSide);
+  q("#lvAllOn", ov).addEventListener("click", ()=>ST.ref.child("ctl/all").set(true));
+  q("#lvAllOff", ov).addEventListener("click", ()=>{ ST.ref.child("ctl/all").set(false); ST.ref.child("g").remove(); });
+  q("#lvHandToggle", ov).addEventListener("click", e=>{
+    ST.handOn = !ST.handOn;
+    e.target.textContent = "🖐 مؤشري: " + (ST.handOn ? "ظاهر" : "متوقف");
+    if(!ST.handOn){ try{ ST.ref.child("c/"+ST.key).remove(); }catch(_){} }
+    refreshMode();
+  });
+  q("#lvReset", ov).addEventListener("click", ()=>{
+    if(confirm("إعادة ضبط المحتوى لحالته الأولى عند جميع المشاركين؟ ستُمسح إجابات هذه الجولة.")) ST.ref.child("ctl/epoch").set((ST.epoch||0)+1);
+  });
+  q("#lvEnd", ov).addEventListener("click", ()=>{ if(confirm("إنهاء الحصة المباشرة لجميع الطلاب؟")) endSession(ST.sid); });
+  q("#lvHide", ov).addEventListener("click", ()=>closeStage(false, true));
+  drawSide();
+}
+
+async function endSession(sid){
+  const R = root(); if(!R) return;
+  try{ await R.child("s/"+sid+"/ctl/status").set("ended"); await R.child("active/"+sid).remove(); }catch(e){}
+  if(ST && ST.sid===sid) closeStage(true);
+  setTimeout(()=>{ try{ R.child("s/"+sid).remove(); }catch(e){} }, 2500);
+}
+
+function closeStage(ended, keepSession){
+  if(!ST) return;
+  const S = ST; ST = null;
+  try{ S.offs.forEach(f=>{ try{ f(); }catch(e){} }); S.timers.forEach(clearInterval); }catch(e){}
+  try{
+    if(!S.teacher){ S.ref.child("p/"+S.key+"/on").set(false); S.ref.child("c/"+S.key).remove(); }
+    else if(S.handOn){ S.ref.child("c/"+S.key).remove(); }
+  }catch(e){}
+  S.hands.forEach(h=>h.remove()); if(S.myHand) S.myHand.remove();
+  S.ov.remove();
+  const viewArea = document.getElementById("viewArea");
+  if(viewArea){ viewArea.innerHTML = ""; viewArea.appendChild(S.stash); }
+  if(LV.__refreshPage) try{ LV.__refreshPage(); }catch(e){}
+  renderPill();
+}
+
+/* =====================================================================
+   جانب الطالب: اكتشاف الحصص الموجّهة له
+   ===================================================================== */
+let ACTIVE = {};
+LV.open = openStage;
+LV.boot = async function(role){
+  try{
+    if(session && session.user && session.user.preview) return;
+    if(!(await ready())) return;
+    bindOffset();
+    if(role!=="student") return;
+    if(LV.__booted) return; LV.__booted = true;
+    root().child("active").on("value", s=>{ ACTIVE = s.val() || {}; renderPill(); if(LV.__refreshPage) try{ LV.__refreshPage(); }catch(e){} });
+    setInterval(renderPill, 20000);
+  }catch(e){ console.warn("live boot", e); }
+};
+function myLiveSessions(){
+  if(!session || session.role!=="student") return [];
+  const u = Object.assign({ username: me() }, session.user || {});
+  return Object.keys(ACTIVE).map(k=>Object.assign({ id:k }, ACTIVE[k])).filter(s=>{
+    const fresh = !s.ts || (now() - s.ts) < 120000;
+    return fresh && targetMatches(s.target, u);
+  });
+}
+function renderPill(){
+  let pill = document.getElementById("lvPill");
+  if(!session || session.role!=="student" || ST){ if(pill) pill.style.display = "none"; return; }
+  const list = myLiveSessions();
+  if(!list.length){ if(pill) pill.style.display = "none"; return; }
+  if(!pill){ pill = document.createElement("div"); pill.id = "lvPill"; document.body.appendChild(pill); }
+  const s = list[0];
+  pill.innerHTML = `<span>🔴 حصة مباشرة: ${esc(s.title||"")}</span><button type="button">انضم الآن</button>`;
+  q("button", pill).onclick = ()=>openStage(s.id, false);
+  pill.style.display = "flex";
+}
+
+/* =====================================================================
+   نافذة «الحصة المباشرة» في القائمة الجانبية
+   ===================================================================== */
+LV.renderStudent = function(view){
+  const draw = ()=>{
+    if(!view.isConnected) return;
+    const list = myLiveSessions();
+    view.innerHTML = `<h2>الحصة المباشرة</h2>
+      <p class="sub">عندما يبدأ معلمك حصة مباشرة موجّهة لك تظهر هنا (وتظهر أيضًا شارة حمراء أعلى الشاشة). افتح الحصة وتابع مع المعلم؛ وحين يمنحك المعلم مؤشر اليد ✋ تستطيع الاختيار والسحب والإفلات.</p>
+      ${list.length ? list.map(s=>`<div class="lvs-sess"><b>🔴 ${esc(s.title||"")}</b><span>${esc(s.tname||"المعلم")}</span><button class="primary-btn" style="width:auto;padding:8px 20px;" data-sid="${esc(s.id)}">انضم</button></div>`).join("")
+        : '<div class="empty-note">لا توجد حصة مباشرة موجّهة إليك الآن.</div>'}`;
+    qa("[data-sid]", view).forEach(b=>b.addEventListener("click", ()=>openStage(b.dataset.sid, false)));
+  };
+  LV.__refreshPage = draw; draw();
+};
+
+LV.renderTeacher = async function(view, role){
+  if(!(await ready())){ view.innerHTML = '<h2>الحصة المباشرة</h2><div class="msg show err">هذه الميزة تتطلب إعداد Firebase والاتصال بالإنترنت.</div>'; return; }
+  bindOffset();
+  const S = { kind:"model", grade:"", term:"", subject:"", contentId:null, aud:"grade", agrade:"", classes:new Set(), students:new Set(), cfilter:"", search:"" };
+  const gradesAllowed = (role==="teacher" && typeof assignedGradesFor==="function") ? assignedGradesFor() : [];
+  const inAllowed = g=>!gradesAllowed.length || gradesAllowed.includes(g);
+  const allContent = ()=>{
+    const base = S.kind==="lesson" ? (DB.banks||[]).filter(m=>m && m.lesson===true) : (DB.models||[]);
+    return base.filter(m=>m && m.data && m.data.length && inAllowed(m.grade));
+  };
+  const studentsAll = ()=>(DB.students||[]).filter(s=>s && s.username && inAllowed(s.grade));
+
+  view.innerHTML = `<h2>الحصة المباشرة التفاعلية</h2>
+    <p class="sub">افتح نموذجًا أو اختبارًا أو شرحًا تفاعليًا مع طلابك لحظيًا أثناء حصتك على Teams أو Zoom؛ يدخل الطلاب المنصة فتظهر لهم دعوة الانضمام، وتتحكم أنت بمن يملك «مؤشر اليد».</p>
+    <div class="lvs-box" id="lvsActive"></div>
+    <div class="lvs-box"><h3>١) اختيار المحتوى</h3>
+      <div class="lvs-row">
+        <div><label>نوع المحتوى</label><select id="lvsKind"><option value="model">نموذج / اختبار</option><option value="lesson">شرح تفاعلي (درس)</option></select></div>
+        <div><label>الصف الدراسي</label><select id="lvsGrade"></select></div>
+        <div><label>الفصل الدراسي</label><select id="lvsTerm"><option value="">الكل</option><option>الفصل الأول</option><option>الفصل الثاني</option><option>الفصل الثالث</option></select></div>
+        <div><label>المادة</label><select id="lvsSubject"></select></div>
+      </div>
+      <div class="lvs-cards" id="lvsCards" style="margin-top:10px;"></div>
+      <div id="lvsPicked" style="margin-top:6px;font-weight:800;color:var(--accent);"></div></div>
+    <div class="lvs-box"><h3>٢) تحديد الجمهور</h3>
+      <div class="lvs-checks" style="margin-bottom:8px;">
+        <label><input type="radio" name="lvsAud" value="grade" checked> صف دراسي بأكمله (جميع فصوله)</label>
+        <label><input type="radio" name="lvsAud" value="class"> فصل / فصول محددة</label>
+        <label><input type="radio" name="lvsAud" value="students"> طلاب محددون</label></div>
+      <div class="lvs-row"><div><label>الصف</label><select id="lvsAGrade"></select></div>
+        <div id="lvsClsFilterWrap" style="display:none;"><label>ترشيح الفصل</label><select id="lvsCF"></select></div>
+        <div id="lvsSearchWrap" style="display:none;"><label>بحث عن طالب</label><input type="search" id="lvsSearch" placeholder="اسم الطالب"></div></div>
+      <div id="lvsClasses" class="lvs-checks" style="margin-top:8px;display:none;"></div>
+      <div id="lvsStudWrap" style="display:none;margin-top:8px;">
+        <div style="margin-bottom:6px;"><button type="button" class="chip-btn" id="lvsAllVis">تحديد كل الظاهرين</button> <button type="button" class="chip-btn" id="lvsNoneVis">إلغاء التحديد</button> <span id="lvsCnt" style="font-weight:800;"></span></div>
+        <div class="lvs-students" id="lvsStuds"></div></div>
+      <div id="lvsAudInfo" style="margin-top:8px;font-weight:800;"></div></div>
+    <button class="primary-btn" id="lvsStart" style="width:auto;padding:13px 34px;">🔴 بدء الحصة المباشرة</button>
+    <div class="msg" id="lvsMsg"></div>`;
+
+  const $ = id=>document.getElementById(id);
+  const uniq = a=>Array.from(new Set(a.filter(x=>x!=null && x!==""))).sort((x,y)=>String(x).localeCompare(String(y),"ar",{numeric:true}));
+
+  function drawFilters(){
+    const all = allContent();
+    const grades = uniq(all.map(m=>m.grade));
+    $("lvsGrade").innerHTML = '<option value="">كل الصفوف</option>' + grades.map(g=>`<option ${g===S.grade?"selected":""}>${esc(g)}</option>`).join("");
+    let l2 = all.filter(m=>!S.grade || m.grade===S.grade);
+    $("lvsSubject").innerHTML = '<option value="">كل المواد</option>' + uniq(l2.map(m=>m.subject)).map(x=>`<option ${x===S.subject?"selected":""}>${esc(x)}</option>`).join("");
+    $("lvsTerm").value = S.term;
+    drawCards();
+  }
+  function filtered(){
+    return allContent().filter(m=>(!S.grade||m.grade===S.grade) && (!S.term||m.term===S.term) && (!S.subject||m.subject===S.subject))
+      .sort((a,b)=>String(a.grade).localeCompare(String(b.grade),"ar")||(a.number||0)-(b.number||0));
+  }
+  function drawCards(){
+    const list = filtered(), box = $("lvsCards");
+    if(!list.length){ box.innerHTML = '<div class="empty-note">لا يوجد محتوى مطابق.</div>'; }
+    else box.innerHTML = list.map(m=>`<div class="student-model-card ${S.kind==="lesson"?"lesson-card":""} ${m.id===S.contentId?"sel":""}" data-id="${esc(m.id)}" title="${esc((m.title||"")+" — "+(m.grade||"")+" — "+(m.subject||""))}">
+      <div class="smc-kind">${S.kind==="lesson"?"درس":"نموذج"}</div><div class="smc-num">${esc(m.number==null?"":m.number)}</div>
+      ${m.customTitle?`<div class="smc-title" style="font-size:12px;font-weight:800;text-align:center;padding:0 4px;word-break:break-word;">${esc(m.title)}</div>`:""}
+      <div class="smc-subject">${esc(m.subject||"—")}</div></div>`).join("");
+    qa(".student-model-card", box).forEach(c=>c.addEventListener("click", ()=>{
+      S.contentId = c.dataset.id;
+      const m = allContent().find(x=>x.id===S.contentId);
+      if(m && !S.agrade) S.agrade = m.grade;
+      drawCards(); drawAud();
+    }));
+    const m = allContent().find(x=>x.id===S.contentId);
+    $("lvsPicked").textContent = m ? ("المحدد: "+(m.title||"")+" — "+(m.grade||"")+" — "+(m.term||"")+(m.subject?" — "+m.subject:"")) : "";
+  }
+  function gradeStudents(){ return studentsAll().filter(s=>String(s.grade)===String(S.agrade)); }
+  function drawAud(){
+    const gs = uniq(studentsAll().map(s=>s.grade));
+    if(S.agrade && !gs.includes(S.agrade)) gs.push(S.agrade);
+    if(!S.agrade && gs.length) S.agrade = gs[0];
+    $("lvsAGrade").innerHTML = gs.map(g=>`<option ${g===S.agrade?"selected":""}>${esc(g)}</option>`).join("");
+    const studs = gradeStudents(), cls = uniq(studs.map(s=>String(s.cls==null?"":s.cls)));
+    $("lvsClasses").style.display = S.aud==="class" ? "" : "none";
+    $("lvsClsFilterWrap").style.display = S.aud==="students" ? "" : "none";
+    $("lvsSearchWrap").style.display = S.aud==="students" ? "" : "none";
+    $("lvsStudWrap").style.display = S.aud==="students" ? "" : "none";
+    $("lvsClasses").innerHTML = cls.map(c=>`<label><input type="checkbox" value="${esc(c)}" ${S.classes.has(c)?"checked":""}> فصل ${esc(c)} <small>(${studs.filter(s=>String(s.cls==null?"":s.cls)===c).length})</small></label>`).join("") || '<span class="empty-note">لا فصول مسجّلة لهذا الصف.</span>';
+    qa("input", $("lvsClasses")).forEach(i=>i.addEventListener("change", ()=>{ i.checked ? S.classes.add(i.value) : S.classes.delete(i.value); drawInfo(); }));
+    $("lvsCF").innerHTML = '<option value="">كل الفصول</option>' + cls.map(c=>`<option ${c===S.cfilter?"selected":""}>${esc(c)}</option>`).join("");
+    drawStuds(); drawInfo();
+  }
+  function visStuds(){
+    return gradeStudents().filter(s=>(!S.cfilter || String(s.cls)===S.cfilter) && (!S.search || String(s.username).includes(S.search)));
+  }
+  function drawStuds(){
+    const vis = visStuds();
+    $("lvsStuds").innerHTML = vis.map(s=>`<label class="lvs-chk" style="display:flex;gap:5px;align-items:center;font-weight:700;"><input type="checkbox" value="${esc(s.username)}" ${S.students.has(s.username)?"checked":""}> ${esc(s.username)} <small style="color:#777;">${esc(s.cls||"")}</small></label>`).join("") || '<span class="empty-note">لا طلاب مطابقون.</span>';
+    qa("input", $("lvsStuds")).forEach(i=>i.addEventListener("change", ()=>{ i.checked ? S.students.add(i.value) : S.students.delete(i.value); drawInfo(); }));
+  }
+  function drawInfo(){
+    const gs = gradeStudents(); let n = 0;
+    if(S.aud==="grade") n = gs.length;
+    else if(S.aud==="class") n = gs.filter(s=>S.classes.has(String(s.cls==null?"":s.cls))).length;
+    else n = gs.filter(s=>S.students.has(s.username)).length;
+    $("lvsAudInfo").textContent = "عدد الطلاب المستهدفين: " + n;
+    $("lvsCnt").textContent = "المحدد: " + S.students.size;
+  }
+  function currentTarget(){
+    if(S.aud==="grade") return { mode:"grade", grade:S.agrade };
+    if(S.aud==="class") return { mode:"class", grade:S.agrade, classes:Array.from(S.classes) };
+    return { mode:"students", grade:S.agrade, students:Array.from(S.students) };
+  }
+
+  $("lvsKind").addEventListener("change", e=>{ S.kind = e.target.value; S.contentId = null; S.grade = S.subject = ""; drawFilters(); });
+  $("lvsGrade").addEventListener("change", e=>{ S.grade = e.target.value; S.subject = ""; drawFilters(); });
+  $("lvsTerm").addEventListener("change", e=>{ S.term = e.target.value; drawCards(); });
+  $("lvsSubject").addEventListener("change", e=>{ S.subject = e.target.value; drawCards(); });
+  qa("input[name=lvsAud]", view).forEach(r=>r.addEventListener("change", ()=>{ S.aud = r.value; drawAud(); }));
+  $("lvsAGrade").addEventListener("change", e=>{ S.agrade = e.target.value; S.classes.clear(); S.students.clear(); S.cfilter = ""; drawAud(); });
+  $("lvsCF").addEventListener("change", e=>{ S.cfilter = e.target.value; drawStuds(); });
+  $("lvsSearch").addEventListener("input", e=>{ S.search = e.target.value.trim(); drawStuds(); });
+  $("lvsAllVis").addEventListener("click", ()=>{ visStuds().forEach(s=>S.students.add(s.username)); drawStuds(); drawInfo(); });
+  $("lvsNoneVis").addEventListener("click", ()=>{ visStuds().forEach(s=>S.students.delete(s.username)); drawStuds(); drawInfo(); });
+
+  $("lvsStart").addEventListener("click", async ()=>{
+    const msg = $("lvsMsg"); msg.className = "msg show err";
+    const m = allContent().find(x=>x.id===S.contentId);
+    if(!m){ msg.textContent = "اختر المحتوى أولًا."; return; }
+    const t = currentTarget();
+    if(!t.grade){ msg.textContent = "حدّد الصف."; return; }
+    if(t.mode==="class" && !t.classes.length){ msg.textContent = "حدّد فصلًا واحدًا على الأقل."; return; }
+    if(t.mode==="students" && !t.students.length){ msg.textContent = "حدّد طالبًا واحدًا على الأقل."; return; }
+    const sid = "L" + Date.now().toString(36);
+    const title = (m.title||"") + " — " + (m.grade||"") + (m.subject?" — "+m.subject:"");
+    const R = root();
+    try{
+      await R.child("s/"+sid).set({ meta:{ kind:S.kind, contentId:m.id, title, grade:m.grade||"", subject:m.subject||"", teacher:me(), tname:me(), target:t, seed:Math.floor(Math.random()*2e9)+1, ts:TS() }, ctl:{ all:false, epoch:0, status:"open" } });
+      await R.child("active/"+sid).set({ title, kind:S.kind, teacher:me(), tname:me(), target:t, ts:TS() });
+    }catch(e){ msg.textContent = "تعذّر بدء الحصة: تحقق من قواعد Firebase للمسار live/"+orgId(); return; }
+    msg.className = "msg"; openStage(sid, true);
+  });
+
+  // الحصص النشطة للمعلم
+  const act = $("lvsActive");
+  const drawActive = (all)=>{
+    if(!view.isConnected) return;
+    const mine = Object.keys(all||{}).map(k=>Object.assign({id:k}, all[k])).filter(s=>s.teacher===me());
+    act.innerHTML = '<h3>حصصي المباشرة الجارية</h3>' + (mine.length ? mine.map(s=>`<div class="lvs-sess"><b>🔴 ${esc(s.title||"")}</b><span>${esc(targetText(s.target))}</span>
+      <button class="primary-btn" style="width:auto;padding:7px 16px;" data-r="${esc(s.id)}">استئناف</button><button class="chip-btn" style="color:#c62828;" data-e="${esc(s.id)}">إنهاء</button></div>`).join("") : '<div class="empty-note">لا توجد حصة جارية.</div>');
+    qa("[data-r]", act).forEach(b=>b.addEventListener("click", ()=>openStage(b.dataset.r, true)));
+    qa("[data-e]", act).forEach(b=>b.addEventListener("click", ()=>{ if(confirm("إنهاء هذه الحصة؟")) endSession(b.dataset.e); }));
+  };
+  const aref = root().child("active");
+  aref.on("value", s=>{ if(!view.isConnected){ aref.off(); return; } drawActive(s.val()); });
+
+  drawFilters(); drawAud();
+};
+})();
 
 </script>
 </body>
