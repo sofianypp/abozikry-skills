@@ -8407,7 +8407,7 @@ function normalizeLink(u){
    المعلم يفعّل الميكروفون لكل سؤال (يتوهّج أزرق)، والطالب لا يستطيع الإجابة قبل أن يقرأ السؤال (والخيارات) بصوته
    قراءة صحيحة بنسبة ≥ 75% (تحقق عبر التعرف على الكلام ar-SA ومحاذاة كلمات القراءة مع النص المطلوب).
    ===================================================================== */
-const MIC_PASS = 0.75;            // الحد الأدنى لصحة القراءة
+const MIC_PASS = 0.70;            // الحد الأدنى لصحة القراءة
 const MIC_PRECISION_MIN = 0.5;    // حدّ أدنى لنسبة الكلام المطابق من كل ما قاله الطالب (يمنع اختراع كلام كثير)
 const MIC_SILENCE_MS = 500;       // بعد قراءة آخر كلمة: نصف ثانية سكوت = إيقاف التسجيل
 const MIC_WAIT_MS = 10000;        // قبل قراءة آخر كلمة: ننتظر 10 ثوانٍ من السكوت
@@ -8443,7 +8443,7 @@ function micSame(a, b){
   return 1 - micLev(a2, b2) / m >= 0.75;
 }
 /* يحاذي كلمات القراءة مع النص المطلوب (أطول تتابع متطابق مع التسامح في الأخطاء الصغيرة)، ويعيد النسبة والكلمات الفائتة */
-function micScore(expectedText, spokenText){
+function micScore(expectedText, spokenText, passOverride){
   const E = micWords(expectedText), R = micWords(spokenText), m = E.length, n = R.length;
   const dp = Array.from({length:m+1}, ()=>new Array(n+1).fill(0));
   for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
@@ -8456,10 +8456,10 @@ function micScore(expectedText, spokenText){
   }
   const matched = hit.filter(Boolean).length;
   const score = m ? matched / m : 1, precision = n ? matched / n : 0;
-  return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= MIC_PASS && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
+  return { score, precision, matched, total: m, spoken: n, ok: m > 0 && score >= (passOverride || MIC_PASS) && precision >= MIC_PRECISION_MIN, missed: E.filter((w,k)=>!hit[k]).map(w=>w.o) };
 }
 let __micActive = null;
-function micRecord(onInterim, isEnd){       // يعيد {promise, stop}
+function micRecord(onInterim, isEnd, cfg){       // يعيد {promise, stop}
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let stopFn = ()=>{};
   const promise = new Promise(resolve=>{
@@ -8478,7 +8478,7 @@ function micRecord(onInterim, isEnd){       // يعيد {promise, stop}
     rec.onend = finish;
     timer = setInterval(()=>{
       const now = Date.now();
-      if(heard && now - last > (isEnd && isEnd(text) ? MIC_SILENCE_MS : MIC_WAIT_MS)) stop();
+      if(heard && now - last > (isEnd && isEnd(text) ? ((cfg && cfg.endMs) || MIC_SILENCE_MS) : ((cfg && cfg.waitMs) || MIC_WAIT_MS))) stop();
       else if(!heard && now - t0 > MIC_START_TIMEOUT_MS) stop();
       else if(now - t0 > MIC_MAX_MS) stop();
     }, 100);
@@ -8504,19 +8504,68 @@ function refreshMic(bulb){
   const on = bulb.dataset.mic === "1"; m.classList.toggle("on", on);
   m.title = on ? "القراءة الإلزامية مفعّلة: لا يجيب الطالب قبل أن يقرأ السؤال بصوته (اضغط للإلغاء)" : "تفعيل القراءة الإلزامية: يقرأ الطالب السؤال بصوته قبل أن يتمكن من الإجابة";
 }
+/* إعدادات القراءة الإلزامية: تُحدَّد من المعلم فقط (زر الفأرة الأيمن على الميكروفون في شاشة بناء النموذج)
+   وتُطبَّق على جميع ميكروفونات النموذج نفسه فقط. الافتراضي: 70% — انتظار 10 ثوانٍ — 0.5 ثانية بعد آخر كلمة. */
+function micCfgOf(q, model){
+  const list = (model && Array.isArray(model.data)) ? model.data : [];
+  const src = list.find(x=>x && x.mic && (x.micPass || x.micWait || x.micEnd)) || (q && (q.micPass || q.micWait || q.micEnd) ? q : null) || {};
+  const pass = Math.min(1, Math.max(0.3, (Number(src.micPass) || 70) / 100));
+  const wait = Math.min(60, Math.max(2, Number(src.micWait) || 10));
+  const end = Math.min(10, Math.max(0.2, Number(src.micEnd) || 0.5));
+  return { pass, waitMs: wait * 1000, endMs: end * 1000 };
+}
+function micBuilderCfg(except){
+  const other = [...document.querySelectorAll(".bulb")].find(b=>b !== except && b._mic && b.dataset.mic === "1" && (b.dataset.micPass || b.dataset.micWait || b.dataset.micEnd));
+  return other ? { pass: other.dataset.micPass || "", wait: other.dataset.micWait || "", end: other.dataset.micEnd || "" } : null;
+}
+function openMicSettings(bulb){
+  const old = document.getElementById("micCfgOverlay"); if(old) old.remove();
+  const cur = (bulb.dataset.micPass || bulb.dataset.micWait || bulb.dataset.micEnd) ? { pass: bulb.dataset.micPass, wait: bulb.dataset.micWait, end: bulb.dataset.micEnd } : (micBuilderCfg(bulb) || {});
+  const ov = document.createElement("div"); ov.id = "micCfgOverlay";
+  ov.style.cssText = "position:fixed;inset:0;z-index:2147483200;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;direction:rtl;";
+  ov.innerHTML = `<div style="background:#fff;border:2px solid #111;border-radius:14px;padding:16px 18px;width:min(420px,92vw);">
+    <h3 style="margin:0 0 6px;">🎤 إعدادات القراءة الإلزامية</h3>
+    <p style="margin:0 0 10px;font-size:12px;color:#555;">تُطبَّق على جميع أسئلة الميكروفون في هذا النموذج فقط، ولا يستطيع الطالب تغييرها.</p>
+    <label>أدنى نسبة لجودة القراءة المطلوبة (%)</label><input type="number" id="mcPass" min="30" max="100" step="5" value="${cur.pass || 70}" style="width:100%;">
+    <label>مهلة الصمت قبل إغلاق الميكروفون (بالثواني)</label><input type="number" id="mcWait" min="2" max="60" step="1" value="${cur.wait || 10}" style="width:100%;">
+    <label>الانتظار بعد قراءة آخر كلمة قبل احتساب الجودة (بالثواني)</label><input type="number" id="mcEnd" min="0.2" max="10" step="0.1" value="${cur.end || 0.5}" style="width:100%;">
+    <div style="display:flex;gap:8px;margin-top:12px;"><button type="button" class="primary-btn" id="mcSave" style="flex:1;">حفظ وتطبيق على النموذج</button><button type="button" class="chip-btn" id="mcCancel">إلغاء</button><button type="button" class="chip-btn" id="mcReset" title="الرجوع للقيم الافتراضية">افتراضي</button></div></div>`;
+  document.body.appendChild(ov);
+  const close = ()=>ov.remove();
+  ov.addEventListener("click", e=>{ if(e.target === ov) close(); });
+  ov.querySelector("#mcCancel").addEventListener("click", close);
+  const apply = (p, w, n)=>{
+    [...document.querySelectorAll(".bulb")].filter(b=>b._mic).forEach(b=>{
+      if(p == null){ delete b.dataset.micPass; delete b.dataset.micWait; delete b.dataset.micEnd; } else { b.dataset.micPass = p; b.dataset.micWait = w; b.dataset.micEnd = n; }
+    });
+    if(bulb._mic) bulb._mic.dispatchEvent(new Event("change", { bubbles:true }));
+    close();
+  };
+  ov.querySelector("#mcReset").addEventListener("click", ()=>apply(null));
+  ov.querySelector("#mcSave").addEventListener("click", ()=>{
+    const p = Math.min(100, Math.max(30, Number(ov.querySelector("#mcPass").value) || 70));
+    const w = Math.min(60, Math.max(2, Number(ov.querySelector("#mcWait").value) || 10));
+    const n = Math.min(10, Math.max(0.2, Number(ov.querySelector("#mcEnd").value) || 0.5));
+    apply(p, w, n);
+  });
+}
 function appendMicToggle(bulb){
   queueMicrotask(()=>{
     if(!bulb || bulb._mic || !bulb.parentNode) return;
     const m = document.createElement("span"); m.className = "micbtn"; m.innerHTML = MIC_SVG;
     const anchor = bulb._clip || bulb._screen || bulb; bulb.parentNode.insertBefore(m, anchor.nextSibling);
     bulb._mic = m;
-    m.addEventListener("click", e=>{ e.stopPropagation(); bulb.dataset.mic = bulb.dataset.mic === "1" ? "" : "1"; refreshMic(bulb); m.dispatchEvent(new Event("change", { bubbles:true })); });
+    m.addEventListener("click", e=>{ e.stopPropagation(); bulb.dataset.mic = bulb.dataset.mic === "1" ? "" : "1";
+      if(bulb.dataset.mic === "1"){ const o = micBuilderCfg(bulb); if(o){ bulb.dataset.micPass = o.pass; bulb.dataset.micWait = o.wait; bulb.dataset.micEnd = o.end; } }   // يرث إعدادات بقية ميكروفونات النموذج
+      refreshMic(bulb); m.dispatchEvent(new Event("change", { bubbles:true })); });
+    m.addEventListener("contextmenu", e=>{ e.preventDefault(); e.stopPropagation(); openMicSettings(bulb); });
     [ "mousedown" ].forEach(t=>m.addEventListener(t, e=>e.stopPropagation()));
     refreshMic(bulb);
   });
 }
 /* ---------- الطالب: بوابة القراءة ---------- */
-function attachMicGate(box, q){
+function attachMicGate(box, q, cfg){
+  cfg = cfg || micCfgOf(q, null);
   const isMcq = q.type === "mcq";
   const target = isMcq ? box.querySelector(".options-grid") : box.querySelector(".tf-choice");
   const host = isMcq ? box.querySelector(".mcq-head") : box.querySelector(".qrow");
@@ -8542,17 +8591,17 @@ function attachMicGate(box, q){
     const exp = expectedText();
     lock(true); btn.classList.remove("done");     // أي محاولة جديدة تُغلق الإجابة حتى تنجح القراءة
     btn.classList.add("rec"); msg("🔴 أستمع إليك… اقرأ الآن، وسأتوقف تلقائيًا عندما تسكت قليلًا.");
-    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); }, t=>micLastRead(exp, t));
+    const ctl = micRecord(t=>{ msg("🔴 أستمع إليك… <span style='font-weight:600;color:#556'>" + regEsc(t.slice(-70)) + "</span>"); }, t=>micLastRead(exp, t), cfg);
     __micActive = { btn, ctl };
     const r = await ctl.promise; __micActive = null; btn.classList.remove("rec");
     if(r.error === "not-allowed" || r.error === "service-not-allowed"){ msg("⚠ لم يُسمح باستخدام الميكروفون. اسمح للمتصفح باستخدامه من شريط العنوان ثم أعد المحاولة.", "err"); return; }
     if(r.error === "network"){ msg("⚠ يحتاج التعرف على الصوت إلى اتصال بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.", "err"); return; }
     if(r.error === "audio-capture"){ msg("⚠ لم يُعثر على ميكروفون يعمل في جهازك.", "err"); return; }
     if(!r.heard){ msg("لم أسمع صوتًا واضحًا. اضغط الميكروفون وأعد القراءة بصوت أعلى.", "err"); return; }
-    const res = micScore(exp, r.text), pct = Math.round(res.score * 100);
+    const res = micScore(exp, r.text, cfg.pass), pct = Math.round(res.score * 100);
     if(res.ok){ unlock(); msg("✔ أحسنت! قراءتك صحيحة (" + pct + "%). يمكنك الآن اختيار الإجابة.", "ok"); return; }
     const shown = res.missed.slice(0, 12);
-    msg("<div>أعد القراءة لأنك أخطأت في بعض الكلمات <span style='font-weight:600'>(صحة القراءة " + pct + "% والمطلوب 75% على الأقل)</span></div>"
+    msg("<div>أعد القراءة لأنك أخطأت في بعض الكلمات <span style='font-weight:600'>(صحة القراءة " + pct + "% والمطلوب " + Math.round(cfg.pass * 100) + "% على الأقل)</span></div>"
       + (shown.length ? "<div style='margin-top:4px'>الكلمات التي أخطأت فيها:</div><div class='mic-words'></div>" : ""), "err");
     const wb = st.querySelector(".mic-words");
     if(wb){
@@ -8568,14 +8617,14 @@ function mediaOf(bulb){
   if(d && d.mediaId){ o.mediaId = d.mediaId; o.mediaType = d.mediaType || "image"; }          // المسار الجديد: مُعرّف فقط
   else if(d && d.media){ o.media = d.media; o.mediaType = d.mediaType || "image"; }          // قديم (غير مرفوع): احتياط
   if(d && d.link){ o.link = d.link; }
-  if(d && d.mic === "1"){ o.mic = true; }
+  if(d && d.mic === "1"){ o.mic = true; if(d.micPass) o.micPass = Number(d.micPass); if(d.micWait) o.micWait = Number(d.micWait); if(d.micEnd) o.micEnd = Number(d.micEnd); }
   return o;
 }
 function restoreMedia(bulb, saved){
   if(bulb && saved && saved.mediaId){ bulb.dataset.mediaId = saved.mediaId; bulb.dataset.mediaType = saved.mediaType || "image"; }
   else if(bulb && saved && saved.media){ bulb.dataset.media = saved.media; bulb.dataset.mediaType = saved.mediaType || "image"; }
   if(bulb && saved && saved.link){ const n = normalizeLink(saved.link); if(n) bulb.dataset.link = n; }
-  if(bulb && saved && saved.mic){ bulb.dataset.mic = "1"; refreshMic(bulb); }
+  if(bulb && saved && saved.mic){ bulb.dataset.mic = "1"; if(saved.micPass) bulb.dataset.micPass = String(saved.micPass); if(saved.micWait) bulb.dataset.micWait = String(saved.micWait); if(saved.micEnd) bulb.dataset.micEnd = String(saved.micEnd); refreshMic(bulb); }
   refreshScreen(bulb);
 }
 function refreshScreen(bulb){
@@ -11253,7 +11302,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     }
     box.dataset.qidx = idx;
     area.appendChild(box);
-    if(q.mic && (q.type==="mcq" || q.type==="tf") && !already) attachMicGate(box, q);
+    if(q.mic && (q.type==="mcq" || q.type==="tf") && !already) attachMicGate(box, q, micCfgOf(q, model));
   });
 
   // بند جديد: تخطيط خيارات السؤال الاختياري — صف أفقي واحد إن اتسعت المساحة لكل
@@ -15651,7 +15700,7 @@ async function openStage(sid, asTeacher){
   ST = {
     sid, ref, meta, model, teacher: !!asTeacher, key: asTeacher ? "T" : fkey(me()), name: asTeacher ? "المعلم" : me(),
     epoch: Number(ctl.epoch)||0, allowAll: !!ctl.all, grants: {}, parts: {}, hands: new Map(), mine: new Set(),
-    handOn: false, offs: [], timers: [], dragSrc: null, lineSrc: null, replaying: false, lastSend: 0, lastCur: null, vTimers: new Map()
+    handOn: false, micMine: new Set(), mos: [], offs: [], timers: [], dragSrc: null, lineSrc: null, replaying: false, lastSend: 0, lastCur: null, vTimers: new Map()
   };
   ST.seed = Number(meta.seed)||1;
   ST.allowed = ST.teacher || ST.allowAll;
@@ -15734,8 +15783,48 @@ function renderContent(){
   catch(e){ console.error(e); view.innerHTML = '<div class="msg show err">تعذّر عرض المحتوى في الحصة المباشرة.</div>'; }
   finally{ Math.random = orig; }
   ST.isHtmlApp = !!view.querySelector(".htmlapp-wrap");
+  watchMics();
   ST.stageEl.scrollTop = 0;
   const submit = view.querySelector("#solveSubmit"); if(submit) submit.style.display = "none";
+}
+
+/* ---------- ميكروفون القراءة: توحيد النتيجة بين الجميع ----------
+   من يضغط الميكروفون (طالبًا كان أو معلمًا) يُسجَّل صوته على جهازه ويُحسب التقييم هناك فقط؛
+   ثم تُنقل حالة السؤال (جارٍ الاستماع / ✔ أحسنت / أعد القراءة + الكلمات الخاطئة / قفل أو فتح الإجابة)
+   إلى جميع المشاركين فتظهر النتيجة نفسها عند الجميع، وتُفتح الإجابة أو تُقفل للجميع معًا. */
+function micSnap(box, st){
+  const btn = box.querySelector(".micbtn.student"), tg = box.querySelector(".options-grid, .tf-choice");
+  return { cls: st.className, html: st.innerHTML, rec: !!(btn && btn.classList.contains("rec")), done: !!(btn && btn.classList.contains("done")), locked: !!(tg && tg.classList.contains("mic-locked")) };
+}
+function watchMics(){
+  (ST.mos||[]).forEach(o=>{ try{ o.disconnect(); }catch(e){} }); ST.mos = []; ST.micMine = new Set();
+  qa(".mic-status", ST.viewEl).forEach(st=>{
+    const box = st.closest(".qitem"); if(!box) return;
+    let last = "";
+    const cb = ()=>{
+      if(!ST || !ST.micMine.has(st)) return;           // نبثّ فقط ما سجّلناه نحن
+      const s = micSnap(box, st), listening = /^🔴/.test(st.textContent.trim());
+      if(listening && /^🔴/.test(last)) return;         // لا نبثّ كل نص مسموع مؤقت، يكفي «جارٍ الاستماع»
+      const key = JSON.stringify(s); if(key === last) return; last = listening ? "🔴" : key;
+      const p = pathOf(st, ST.viewEl); if(p==null) return;
+      if(listening) s.html = '🔴 جارٍ الاستماع إلى القراءة…';
+      emit({ t:"ms", p, cls:s.cls, html:s.html, rec:s.rec, done:s.done, locked:s.locked });
+    };
+    const mo = new MutationObserver(cb);
+    mo.observe(st, { childList:true, subtree:true, attributes:true, characterData:true });
+    const btn = box.querySelector(".micbtn.student"), tg = box.querySelector(".options-grid, .tf-choice");
+    if(btn) mo.observe(btn, { attributes:true, attributeFilter:["class"] });
+    if(tg) mo.observe(tg, { attributes:true, attributeFilter:["class"] });
+    ST.mos.push(mo);
+  });
+}
+function applyMicState(st, a){
+  const box = st.closest(".qitem"); if(!box) return;
+  const btn = box.querySelector(".micbtn.student"), tg = box.querySelector(".options-grid, .tf-choice");
+  st.className = a.cls || "mic-status"; st.innerHTML = a.html || "";
+  qa(".mic-word", st).forEach(c=>{ const w = c.firstChild && c.firstChild.textContent, b = c.querySelector("button"); if(b && w) b.addEventListener("click", ()=>{ try{ micSpeak(w); }catch(e){} }); });
+  if(btn){ btn.classList.toggle("rec", !!a.rec); btn.classList.toggle("done", !!a.done); }
+  if(tg){ tg.classList.toggle("mic-locked", !!a.locked); try{ tg.inert = !!a.locked; }catch(e){} }
 }
 
 /* ---------- حالة السماح ---------- */
@@ -15817,6 +15906,10 @@ function attachInput(){
 
   on(ST.ov, "click", e=>{
     if(!trusted(e) || !ST.allowed || !inView(e.target)) return;
+    // ميكروفون القراءة: التسجيل يجري على جهاز من ضغطه فقط، ونتيجته تُبَث للجميع (انظر watchMics)
+    const mb = e.target.closest && e.target.closest(".micbtn.student");
+    if(mb){ const bx = mb.closest(".qitem"), st = bx && bx.querySelector(".mic-status"); if(st) ST.micMine.add(st); return; }
+    if(e.target.closest && e.target.closest(".mic-status")) return;
     const p = pathOf(e.target, ST.viewEl); if(p!=null) emit({t:"c", p});
   });
   on(ST.ov, "dragstart", e=>{ if(trusted(e) && inView(e.target)) ST.dragSrc = pathOf(e.target, ST.viewEl); });
@@ -15894,7 +15987,9 @@ function applyAction(a){
   ST.replaying = true;
   try{
     const el = resolvePath(a.p, ST.viewEl);
-    if(a.t==="c" && el) el.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true, view:window }));
+    if(a.t==="c" && el && el.closest && el.closest(".micbtn.student, .mic-status")){ /* لا يُعاد تشغيل الميكروفون عند الآخرين */ }
+    else if(a.t==="ms" && el) applyMicState(el, a);
+    else if(a.t==="c" && el) el.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true, view:window }));
     else if(a.t==="v" && el){ el.value = a.v; el.dispatchEvent(new Event("input", { bubbles:true })); el.dispatchEvent(new Event("change", { bubbles:true })); }
     else if(a.t==="d"){ const s = resolvePath(a.s, ST.viewEl); if(s && el) fakeDnD(s, el); }
     else if(a.t==="l"){ const s = resolvePath(a.s, ST.viewEl); if(s && el) fakeLine(s, el); }
@@ -16012,7 +16107,7 @@ LV.onLogout = async function(){
 function closeStage(ended, keepSession){
   if(!ST) return;
   const S = ST; ST = null;
-  try{ S.offs.forEach(f=>{ try{ f(); }catch(e){} }); S.timers.forEach(clearInterval); clearTimeout(S.offTimer); clearTimeout(S.scT); }catch(e){}
+  try{ S.offs.forEach(f=>{ try{ f(); }catch(e){} }); S.timers.forEach(clearInterval); clearTimeout(S.offTimer); clearTimeout(S.scT); (S.mos||[]).forEach(o=>{ try{ o.disconnect(); }catch(e){} }); }catch(e){}
   if(!keepSession){ try{ sessionStorage.removeItem("lv-resume"); }catch(e){} }
   try{
     if(!S.teacher){ S.ref.child("p/"+S.key+"/on").set(false); S.ref.child("c/"+S.key).remove(); }
