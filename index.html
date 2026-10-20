@@ -917,6 +917,27 @@
   .lvm-all{ border-bottom:1.5px solid #ddd; margin-bottom:3px; color:var(--accent,#0f5c53); }
   .lv-ro .lv-stage{ overflow:hidden; }
   #lvView .ha-reload, #lvView .ha-full, #lvView #hlBack{ display:none !important; }
+  .lv-overlay{ height:100vh; height:100dvh; }
+  .lv-badge .lv-short{ display:none; }
+  .lv-side-hidden .lv-side{ display:none; }
+  .lv-fs .lv-bar{ padding:4px 10px; }
+  .lv-focus .lv-bar{ position:fixed; top:6px; left:6px; right:auto; z-index:100001; background:rgba(255,255,255,.92); border:2px solid var(--ink,#111); border-radius:10px; padding:3px 6px; width:auto; }
+  .lv-focus .lv-bar .lv-title, .lv-focus .lv-bar .lv-badge, .lv-focus .lv-bar #lvReset, .lv-focus .lv-bar #lvHandToggle, .lv-focus .lv-bar #lvEnd, .lv-focus .lv-bar #lvHide{ display:none; }
+  #lvView .htmlapp-wrap > div:nth-child(2){ height:calc(100dvh - 150px) !important; min-height:320px !important; }
+  @media (max-width:700px){
+    .lv-bar{ flex-wrap:nowrap; gap:4px; padding:4px 6px; overflow-x:auto; }
+    .lv-bar .lv-title{ flex:1 1 0; font-size:12px; min-width:60px; }
+    .lv-bar .chip-btn{ padding:5px 8px; font-size:12px; white-space:nowrap; flex:none; }
+    .lv-badge{ font-size:11px; padding:2px 7px; white-space:nowrap; flex:none; }
+    .lv-badge .lv-long{ display:none; } .lv-badge .lv-short{ display:inline; }
+    .lv-stage{ padding:8px 8px 46px; }
+    #lvView h2{ font-size:16px; line-height:1.5; margin:4px 0 8px; }
+    .lv-body{ flex-direction:column; }
+    .lv-side{ width:100%; max-width:none; max-height:42vh; border-left:0; border-top:2px solid var(--ink,#111); order:2; }
+    .lv-hand-ico{ font-size:28px; } .lv-hand-name{ font-size:11px; padding:1px 7px; }
+    #lvPill{ max-width:94vw; font-size:13px; padding:7px 12px; }
+    .lv-toast{ max-width:90vw; text-align:center; }
+  }
 
   .brandbar h1.eyebrow{ font-family:'Amiri', serif; font-size:25px; font-weight:700; color:var(--muted); letter-spacing:2px; margin:0; display:block; position:static; }
   .brandbar h1.eyebrow::after{ display:none; }
@@ -15653,8 +15674,8 @@ function orgId(){ return (session && session.orgId) || (typeof SCOPE!=="undefine
 function root(){ const d=db(); return d ? d.ref("live/"+orgId()) : null; }
 function TS(){ return firebase.database.ServerValue.TIMESTAMP; }
 async function ready(){ try{ if(typeof ensureFirebaseAuth==="function") await ensureFirebaseAuth(); }catch(e){} return !!db(); }
-let OFF = 0, offBound = false;
-function bindOffset(){ if(offBound || !db()) return; offBound = true; try{ db().ref(".info/serverTimeOffset").on("value", s=>{ OFF = s.val()||0; }); }catch(e){} }
+let OFF = 0, offBound = false, offLoaded = false;
+function bindOffset(){ if(offBound || !db()) return; offBound = true; try{ db().ref(".info/serverTimeOffset").on("value", s=>{ OFF = s.val()||0; offLoaded = true; renderPill(); }); }catch(e){} }
 function now(){ return Date.now() + OFF; }
 
 function fkey(s){ return "u" + Number(hash53(String(s||""))).toString(36); }
@@ -15688,7 +15709,7 @@ function targetText(t){
 
 function toast(msg, ms){
   const t = document.createElement("div"); t.className = "lv-toast"; t.textContent = msg;
-  document.body.appendChild(t); setTimeout(()=>t.remove(), ms||2800);
+  (ST && ST.ov ? ST.ov : document.body).appendChild(t); setTimeout(()=>t.remove(), ms||2800);
 }
 
 /* =====================================================================
@@ -15719,15 +15740,15 @@ function findContent(meta){
   return list.find(m=>m && m.id===meta.contentId) || null;
 }
 
-async function openStage(sid, asTeacher){
+async function openStage(sid, asTeacher, pre){
   if(ST) return;
   if(!(await ready())){ alert("الحصة المباشرة تتطلب اتصال Firebase."); return; }
   bindOffset();
   const ref = root().child("s/"+sid);
   let meta, ctl;
   try{
-    const [ms, cs] = await Promise.all([ref.child("meta").get(), ref.child("ctl").get()]);
-    meta = ms.val(); ctl = cs.val();
+    if(pre){ meta = pre.meta; ctl = pre.ctl; }
+    else { const [ms, cs] = await Promise.all([ref.child("meta").get(), ref.child("ctl").get()]); meta = ms.val(); ctl = cs.val(); }
   }catch(e){ alert("تعذّر الدخول إلى الحصة المباشرة (تحقق من قواعد Firebase للمسار live)."); return; }
   if(!meta || !ctl || ctl.status==="ended"){ toast("انتهت هذه الحصة المباشرة."); return; }
   const model = findContent(meta);
@@ -15752,7 +15773,9 @@ async function openStage(sid, asTeacher){
       <span class="lv-badge" id="lvLive">● مباشر</span>
       <span class="lv-title">${esc(meta.title||"")}</span>
       <span class="lv-badge ok" id="lvMode"></span>
+      <button class="chip-btn" id="lvFs" title="ملء الشاشة (عندك أنت فقط)">⛶ ملء الشاشة</button>
       ${ST.teacher ? `<span class="lv-badge off" id="lvCount">المتصلون: 0</span>
+        <button class="chip-btn" id="lvSideToggle" title="إظهار/إخفاء قائمة المشاركين">👥 القائمة</button>
         <button class="chip-btn" id="lvHandToggle" title="إظهار/إخفاء مؤشر المعلم للطلاب">🖐 مؤشري: متوقف</button>
         <button class="chip-btn" id="lvReset" title="إعادة المحتوى لحالته الأولى عند الجميع">🔄 إعادة ضبط</button>
         <button class="chip-btn" id="lvEnd" style="color:#c62828;">⏹ إنهاء الحصة</button>
@@ -15778,19 +15801,45 @@ async function openStage(sid, asTeacher){
   renderContent();
   attachInput();
   attachListeners();
-  ST.timers.push(setInterval(placeAll, 400));
+  ST.timers.push(setInterval(()=>{
+    placeAll();
+    // من لا يملك المؤشر: إن انحرف موضع شاشته عن موضع المعلم (مثلًا بتركيز تلقائي على عنصر) نُعيده فورًا
+    if(ST && !ST.allowed && ST.lastSc && ST.stageEl){
+      const el = ST.stageEl, max = el.scrollHeight - el.clientHeight;
+      if(max > 0 && Math.abs(el.scrollTop/max - (Number(ST.lastSc.f)||0)) > 0.02) applyScroll(ST.lastSc);
+    }
+  }, 400));
   if(ST.teacher){
     bindTeacherUi();
     ST.timers.push(setInterval(()=>{ try{ root().child("active/"+sid+"/ts").set(TS()); }catch(e){} }, 30000));
   } else {
-    q("#lvLeave", ov).addEventListener("click", ()=>closeStage());
+    q("#lvLeave", ov).addEventListener("click", ()=>{ LEFT.add(sid); closeStage(); });
   }
   announcePresence();
   refreshMode();
+  bindFullscreen();
+  if(ST.teacher && window.matchMedia && matchMedia("(max-width:700px)").matches) ov.classList.add("lv-side-hidden");
   try{ sessionStorage.setItem("lv-resume", JSON.stringify({ sid, teacher:!!asTeacher, u:me() })); }catch(e){}
   if(ST.teacher) watchTeacherPresence(); else ST.ref.child("c/_sc").get().then(s=>applyScroll(s.val())).catch(()=>{});
 }
 
+/* ملء الشاشة: محلي لكل مشارك فقط (لا يُبَث ولا يظهر أثره عند الآخرين) */
+function fsEl(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function bindFullscreen(){
+  const btn = q("#lvFs", ST.ov), ov = ST.ov;
+  const label = ()=>{ const on = !!fsEl() || ov.classList.contains("lv-focus"); btn.textContent = on ? "✕ خروج من ملء الشاشة" : "⛶ ملء الشاشة"; ov.classList.toggle("lv-fs", on); setTimeout(placeAll, 150); };
+  btn.addEventListener("click", ()=>{
+    if(fsEl()){ (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if(ov.classList.contains("lv-focus")){ ov.classList.remove("lv-focus"); label(); return; }
+    const req = ov.requestFullscreen || ov.webkitRequestFullscreen;
+    if(req){ try{ const r = req.call(ov); if(r && r.catch) r.catch(()=>{ ov.classList.add("lv-focus"); label(); }); }catch(e){ ov.classList.add("lv-focus"); label(); } }
+    else { ov.classList.add("lv-focus"); label(); }      // آيفون/متصفحات بلا ملء شاشة حقيقي: وضع تركيز يخفي الشريط
+  });
+  const onFs = ()=>label();
+  document.addEventListener("fullscreenchange", onFs); document.addEventListener("webkitfullscreenchange", onFs);
+  ST.offs.push(()=>{ document.removeEventListener("fullscreenchange", onFs); document.removeEventListener("webkitfullscreenchange", onFs); try{ if(fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document); }catch(e){} });
+  const st = q("#lvSideToggle", ov); if(st) st.addEventListener("click", ()=>{ ov.classList.toggle("lv-side-hidden"); setTimeout(placeAll, 150); });
+}
 /* المعلم: عند انقطاعه (إغلاق المتصفح/الخروج) تُسجَّل لحظة الغياب في الخادم؛ وإن لم يعد خلال المهلة تنتهي الحصة للجميع.
    المهلة تسمح بتحديث الصفحة (Refresh) دون إنهاء الحصة. */
 const GRACE_MS = 25000;
@@ -15993,9 +16042,10 @@ function refreshMode(){
   ST.ov.classList.toggle("lv-allowed", ST.allowed && (!ST.teacher || ST.handOn));
   const badge = q("#lvMode", ST.ov);
   if(badge){
-    if(ST.teacher){ badge.textContent = "أنت المعلم — تتحكم بالمحتوى"; }
-    else if(ST.allowed){ badge.textContent = "✋ معك مؤشر اليد — تفاعل الآن"; badge.className = "lv-badge ok"; }
-    else { badge.textContent = "👁 وضع المشاهدة — بانتظار منحك المؤشر"; badge.className = "lv-badge off"; }
+    const set = (l, s, cls)=>{ badge.innerHTML = '<span class="lv-long">'+l+'</span><span class="lv-short">'+s+'</span>'; if(cls) badge.className = cls; };
+    if(ST.teacher){ set("أنت المعلم — تتحكم بالمحتوى", "المعلم"); }
+    else if(ST.allowed){ set("✋ معك مؤشر اليد — تفاعل الآن", "✋ معك المؤشر", "lv-badge ok"); }
+    else { set("👁 وضع المشاهدة — بانتظار منحك المؤشر", "👁 مشاهدة", "lv-badge off"); }
   }
   if(!ST.teacher && was !== ST.allowed){
     toast(ST.allowed ? "✋ منحك المعلم مؤشر اليد، يمكنك التفاعل الآن" : "تم سحب مؤشر اليد منك");
@@ -16011,7 +16061,7 @@ function makeHand(key, name){
   const h = document.createElement("div"); h.className = "lv-hand"; h.style.setProperty("--c", colorOf(key));
   h.innerHTML = `<div class="lv-hand-in"><div class="lv-hand-ico">👆</div><div class="lv-hand-name"></div></div>`;
   q(".lv-hand-name", h).textContent = name || "";
-  document.body.appendChild(h); return h;
+  (ST && ST.ov ? ST.ov : document.body).appendChild(h); return h;
 }
 function updateMyHand(){
   const show = ST.allowed && (!ST.teacher || ST.handOn);
@@ -16295,7 +16345,7 @@ function closeStage(ended, keepSession){
 /* =====================================================================
    جانب الطالب: اكتشاف الحصص الموجّهة له
    ===================================================================== */
-let ACTIVE = {};
+let ACTIVE = {}; const LEFT = new Set(); let SEEN = new Set();
 LV.open = openStage;
 LV.open = openStage;
 LV.boot = async function(role){
@@ -16318,9 +16368,15 @@ function myLiveSessions(){
   if(!session || session.role!=="student") return [];
   const u = Object.assign({ username: me() }, session.user || {});
   return Object.keys(ACTIVE).map(k=>Object.assign({ id:k }, ACTIVE[k])).filter(s=>{
-    const fresh = (!s.ts || (now() - s.ts) < 120000) && !(s.off && (now() - s.off) > GRACE_MS);
-    return fresh && targetMatches(s.target, u);
+    // قبل معرفة فرق ساعة الخادم لا نحكم على «القِدم» حتى لا نُخفي حصة حديثة بسبب ساعة الجهاز
+    const fresh = !offLoaded || ((!s.ts || (now() - s.ts) < 120000) && !(s.off && (now() - s.off) > GRACE_MS));
+    return fresh && !LEFT.has(s.id) && targetMatches(s.target, u);
   });
+}
+function notifyNew(){
+  try{ if(navigator.vibrate) navigator.vibrate([200,100,200]); }catch(e){}
+  try{ const C = window.AudioContext || window.webkitAudioContext; if(!C) return; const c = new C(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .08; o.start(); o.stop(c.currentTime + .25); setTimeout(()=>c.close(), 600); }catch(e){}
 }
 function renderPill(){
   let pill = document.getElementById("lvPill");
@@ -16329,6 +16385,7 @@ function renderPill(){
   if(!list.length){ if(pill) pill.style.display = "none"; return; }
   if(!pill){ pill = document.createElement("div"); pill.id = "lvPill"; document.body.appendChild(pill); }
   const s = list[0];
+  list.forEach(x=>{ if(!SEEN.has(x.id)){ SEEN.add(x.id); notifyNew(); } });
   pill.innerHTML = `<span>🔴 حصة مباشرة: ${esc(s.title||"")}</span><button type="button">انضم الآن</button>`;
   q("button", pill).onclick = ()=>openStage(s.id, false);
   pill.style.display = "flex";
@@ -16511,11 +16568,12 @@ LV.renderTeacher = async function(view, role){
     const sid = "L" + Date.now().toString(36);
     const title = (m.title||"") + " — " + (m.grade||"") + (m.subject?" — "+m.subject:"");
     const R = root();
-    try{
-      await R.child("s/"+sid).set({ meta:{ kind:S.kind, contentId:m.id, title, grade:m.grade||"", subject:m.subject||"", teacher:me(), tname:me(), target:t, seed:Math.floor(Math.random()*2e9)+1, ts:TS() }, ctl:{ all:false, epoch:0, status:"open" } });
-      await R.child("active/"+sid).set({ title, kind:S.kind, teacher:me(), tname:me(), target:t, ts:TS() });
-    }catch(e){ msg.textContent = "تعذّر بدء الحصة: تحقق من قواعد Firebase للمسار live/"+orgId(); return; }
-    msg.className = "msg"; openStage(sid, true);
+    const meta = { kind:S.kind, contentId:m.id, title, grade:m.grade||"", subject:m.subject||"", teacher:me(), tname:me(), target:t, seed:Math.floor(Math.random()*2e9)+1, ts:Date.now() };
+    const ctl = { all:false, epoch:0, status:"open" };
+    // كتابة واحدة (إشعار الطلاب أولًا) وفتح الحصة عند المعلم فورًا دون انتظار الخادم
+    const wr = R.update({ ["active/"+sid]: { title, kind:S.kind, teacher:me(), tname:me(), target:t, ts:TS() }, ["s/"+sid]: { meta:Object.assign({}, meta, { ts:TS() }), ctl } });
+    msg.className = "msg"; openStage(sid, true, { meta, ctl });
+    try{ await wr; }catch(e){ if(ST) closeStage(true); msg.className = "msg show err"; msg.textContent = "تعذّر بدء الحصة: تحقق من قواعد Firebase للمسار live/"+orgId(); }
   });
 
   /* ----- الحصص النشطة ----- */
