@@ -2681,6 +2681,24 @@ const SecurityPanel = (function(){
     if(session.role !== "admin") q = q.orderByChild("orgId").equalTo(session.orgId || "");
     const s = await q.get(); return s.exists() ? s.val() : {};
   }
+  const sleepMs = ms=>new Promise(res=>setTimeout(res, ms));
+  async function persistAndVerify(kind, r, orgId){
+    const idle = async()=>{ for(let i=0;i<40 && typeof saveInFlight!=="undefined" && saveInFlight;i++) await sleepMs(250); };
+    await idle(); await flushSaveDBNow(); await idle();
+    if(!firebaseDB) return true;
+    const sameName = x=>x && x.username && Sec.norm(x.username)===Sec.norm(r.username);
+    const toList = v=>Array.isArray(v) ? v : Object.values(v||{});
+    if(USER_SHARD_SET.has(kind) && USPLIT){
+      const uh = await Sec.userHash(r.username);
+      const s = await firebaseDB.ref("userData/"+orgId+"/"+uh+"/"+kind).get();
+      return s.exists() && toList(s.val()).some(sameName);
+    }
+    if(LAYOUT >= 2){
+      const s = await firebaseDB.ref("orgData/"+orgId+"/"+kind).get();
+      return s.exists() && toList(s.val()).some(sameName);
+    }
+    return !(typeof writeBlocked!=="undefined" && writeBlocked);
+  }
   async function approve(uid, reg, auto){
     const role = reg.role, kind = KIND[role], rec = reg.rec;
     if(!kind || !rec || !rec.username) return { skip:"طلب غير صالح" };
@@ -2698,11 +2716,20 @@ const SecurityPanel = (function(){
       if(role==="student") active = autoActivateOn("Students"); else if(role==="teacher") active = autoActivateOn("Teachers");
     }finally{ SCOPE.orgId = prev; }
     if(auto && !active) return { skip:"بانتظار الاعتماد اليدوي" };
-    const r = JSON.parse(JSON.stringify(rec)); r.active = true;
+    const r = JSON.parse(JSON.stringify(rec)); r.active = true; r.orgId = reg.orgId;
     if(!Array.isArray(ROOT[kind])) ROOT[kind] = [];
     ROOT[kind].push(r);
     if(role==="teacher"){ try{ SCOPE.orgId = reg.orgId; linkTeacherRelations(r); }finally{ SCOPE.orgId = prev; } }
-    saveDB(); flushSaveDBNow();
+    saveDB();
+    // إصلاح: كان الطلب (النسخة الوحيدة من اسم المستخدم وكلمة المرور) يُحذف فورًا دون انتظار الحفظ، فإذا تعثّر الحفظ ضاع الطالب نهائيًا
+    let saved = false;
+    try{ saved = await persistAndVerify(kind, r, reg.orgId); }catch(e){ console.error(e); }
+    if(!saved){
+      ROOT[kind] = ROOT[kind].filter(x=>x!==r);
+      try{ if(ROOT.deletedUsers) delete ROOT.deletedUsers[tombKey(kind, userKeyOf(r))]; }catch(e){}
+      try{ snapshotKnownUsers(); }catch(e){}
+      return { skip:"تعذّر حفظ سجل المستخدم في السحابة، فبقي الطلب معلّقًا ولم يُفقد. راجع الشريط الأحمر ثم أعد المحاولة" };
+    }
     await firebaseDB.ref("roles/"+uid).set({ role, orgId:reg.orgId||"", u:reg.u, at:TS() });
     await firebaseDB.ref("registrations/"+uid).remove();
     return { ok:true };
@@ -3201,6 +3228,13 @@ function detectShrinkCounts(now, was){
   const crit = {students:"الطلاب", teachers:"المعلمين", models:"النماذج", results:"النتائج", orgAdmins:"مديري المؤسسات", organizations:"المؤسسات"};
   for(const k of Object.keys(crit)){ if(was[k]>=8 && now[k] < was[k]*0.25) return `عدد ${crit[k]} سينخفض من ${was[k]} إلى ${now[k]}.`; }
   return null;
+}
+function shrinkKeys(now, was){
+  const bad = [];
+  if(!was || was.total < 10) return bad;
+  ["students","teachers","models","results","orgAdmins","organizations"].forEach(k=>{ if(was[k]>=8 && now[k] < was[k]*0.25) bad.push(k); });
+  if(now.total < was.total*0.3){ COUNT_KEYS.forEach(k=>{ if(now[k] < (was[k]||0) && bad.indexOf(k)<0) bad.push(k); }); }
+  return bad;
 }
 /*</PURE-MERGE>*/
 
@@ -3734,7 +3768,11 @@ async function mergeUsersWithCloud(){
 async function persistDBNow(){
   // التنفيذ الفعلي لمزامنة السحابة. النسخة المحلية تُكتب فورًا عبر persistLocalNow() دون انتظار هذه الدالة.
   if(resyncing || schemaLocked) return;
-  if(firebaseDB && !cloudHydrated){ persistLocalNow(); return; }        // قاعدة ذهبية: لا كتابة سحابية قبل قراءة ناجحة
+  if(firebaseDB && !cloudHydrated){
+    persistLocalNow();
+    try{ if(typeof session!=="undefined" && session && isStaffRole(session.role)) safetyBar("noCloudBar","err","⛔ لم تكتمل قراءة السحابة بعد، فلن تُحفظ تعديلاتك (طلاب جدد وغيرهم) في السحابة الآن. أعد تحميل الصفحة أو تأكد من الاتصال قبل المتابعة."); }catch(e){}
+    return;
+  }        // قاعدة ذهبية: لا كتابة سحابية قبل قراءة ناجحة
   // كتابة سابقة لم تُؤكَّد بعد: حدث المستمع الذي يصلنا حينها هو «صدى متفائل» من الـSDK لما كتبناه نحن، وليس حالة الخادم.
   // دمجه واعتباره خط أساس كان يجعل تعديلات فاشلة تبدو «متزامنة» ثم تُمسح عند التحميل التالي. لذلك ننتظر.
   if(saveInFlight){ persistLocalNow(); pendingResave = true; return; }
@@ -3750,8 +3788,17 @@ async function persistDBNow(){
   saveInFlight = true;
   try{
     if(firebaseDB){
-      const why = writeBlocked || detectShrinkCounts(countsOf(ROOT), lastCloudCounts);
-      if(why && !allowShrinkOnce){ writeBlocked = why; showWriteBlocked(why); return; }
+      // إصلاح جذري: الحارس كان «لاصقًا» ويوقف رفع كل شيء (فلا يُحفظ أي طالب جديد) بسبب مفتاح واحد منكمش مثل النتائج.
+      // الآن يُحجب المفتاح المنكمش فقط، ويستمر حفظ بقية التعديلات، وتختفي الرسالة تلقائيًا إذا زال سببها.
+      let heldKeys = []; const prevCounts = lastCloudCounts ? Object.assign({}, lastCloudCounts) : null;
+      const why = detectShrinkCounts(countsOf(ROOT), lastCloudCounts);
+      if(why && !allowShrinkOnce){
+        writeBlocked = why; showWriteBlocked(why);
+        heldKeys = shrinkKeys(countsOf(ROOT), lastCloudCounts).filter(k=>up[k]);
+        if(!heldKeys.length) heldKeys = Object.keys(up).filter(k=>COUNT_KEYS.indexOf(k)>=0 && prevCounts && countsOf(ROOT)[k] < (prevCounts[k]||0));
+        heldKeys.forEach(k=>{ delete up[k]; });
+        if(!Object.keys(up).length){ return; }
+      } else { writeBlocked = null; try{ const bb = document.getElementById("writeBlockBar"); if(bb) bb.remove(); }catch(e){} }
       await ensureFirebaseAuth();
       // قبل أي كتابة تُنقص السجلات بشكل ملحوظ: نسخة احتياطية سحابية لما في السحابة حاليًا
       if(lastCloudRaw && lastCloudCounts && lastCloudCounts.total >= 10 && countsOf(ROOT).total < lastCloudCounts.total*0.8) await Backup.event("pre-shrink", lastCloudRaw);
@@ -3771,6 +3818,7 @@ async function persistDBNow(){
       if(latestCloud && Object.keys(up).some(k=>hashKey(latestCloud[k]) !== up[k].h)) latestCloud = null;
       allowShrinkOnce = false;
       lastCloudCounts = countsOf(ROOT);
+      if(heldKeys.length && prevCounts) heldKeys.forEach(k=>{ lastCloudCounts[k] = prevCounts[k]; });   // المحجوب يبقى مقارَنًا بخط أساسه الأصلي
     } else if(typeof window.storage !== "undefined"){
       await window.storage.set("platform-db", snapshot, true);
     }
@@ -6825,7 +6873,7 @@ function renderFormsWindow(view, role, bankMode){
         </div>`).join("")}
         <p style="font-size:12.5px;opacity:.75;margin-top:8px;">بعد الحذف اضغط «💾 حفظ» في شريط النموذج لتثبيت التعديل.</p></div>`;
       ov.querySelector("#dupClose").onclick = ()=>ov.remove();
-      const done = ()=>{ try{ renumberAllQuestions(); }catch(e){} try{ refreshNumbers(); }catch(e){} draw(); };
+      const done = ()=>{ /* الترقيم يتحدّث تلقائيًا (MutationObserver على نافذة الورشة) */ setTimeout(draw, 60); };
       const all = ov.querySelector("#dupAll");
       if(all) all.onclick = ()=>{ if(!confirm("سيُحذف "+extra+" سؤالًا مكررًا ويُبقى أول سؤال من كل مجموعة. متابعة؟")) return; r.groups.forEach(g=>g.slice(1).forEach(it=>it.row.remove())); done(); };
       ov.querySelectorAll("[data-keep]").forEach(b=>b.onclick = ()=>{ r.groups[+b.dataset.keep].slice(1).forEach(it=>it.row.remove()); done(); });
@@ -11750,7 +11798,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   }
 
   // تعزيز إيجابي («كفو 👍») عند الإجابة الصحيحة، وإظهار تلميح المعلم عند الإجابة الخاطئة — في النماذج التعليمية فقط لا الاختبارات
-  if(!model.testMode && !already && typeof MutationObserver !== "undefined"){
+  if(!model.testMode && typeof MutationObserver !== "undefined"){
     try{
       if(area.__fbObs) area.__fbObs.disconnect();
       const praise = (el)=>{
@@ -14359,7 +14407,14 @@ function genericPrintTable(table){
       table{border-collapse:collapse; width:100%; font-size:13px;}
       th,td{border:1px solid #999; padding:6px 8px; text-align:right;}
       th{background:#f4f6f5;}
-    </style></head><body><table>${html}</table></body></html>`);
+    
+/* إصلاح: أزرار الشاشة 🖥 والإملاء الجماعي واللمبة 💡 كانت تعمل خلف شاشة الحصة المباشرة (طبقتها 100000) لأن طبقات نوافذها أقل منها.
+   الآن كل نافذة تُفتح من داخل المحتوى تعلو الحصة المباشرة: النوافذ أولًا ثم التلميح ثم الرسائل العابرة. */
+.overlay, #studentMediaOverlay, #saBoardOverlay, #lessonViewOverlay,
+.tbl-fs-container.tbl-fs-active, .mm-fs-container.mm-fullscreen{ z-index:100200 !important; }
+#studentHintPopup{ z-index:100300 !important; }
+.tn-toast, .test-toast, .test-timeup-overlay, .gz-float-panel{ z-index:100400 !important; }
+</style></head><body><table>${html}</table></body></html>`);
   w.document.close(); w.focus();
   setTimeout(()=>w.print(), 300);
 }
