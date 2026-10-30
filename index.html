@@ -1630,6 +1630,21 @@ function usernameTakenAnywhere(u, exceptRec){
   if(key===Sec.norm(SUPER_ADMIN.username)) return true;
   return allAccountRecords().some(r=>r && r!==exceptRec && r.username && Sec.norm(r.username)===key);
 }
+/* إصلاح: الأسماء المؤقتة (طالب_جديد٣...) لا يُنشأ لها حساب دخول، وتُولَّد أسماء غير مكررة، وتغيير الاسم يعيد ضبط الدخول */
+const PLACEHOLDER_RE = /^(طالب|معلم|منسق|مشرف)_جديد\d*$/;
+function isPlaceholderName(u){ return PLACEHOLDER_RE.test(String(u||"").trim()); }
+function nextDefaultName(base, list){ let n = ((list||[]).length)+1; while(usernameTakenAnywhere(base+n)) n++; return base+n; }
+function renameCreds(r, oldName, newName){
+  try{
+    if(!r || Sec.norm(oldName)===Sec.norm(newName) || !String(newName||"").trim()) return;
+    if(isPlaceholderName(oldName) && !isPlaceholderName(newName)){
+      delete r.passHash; delete r.passSalt; delete r.passIter; r.password = "1234";
+      tnToast("تم ضبط كلمة المرور المبدئية 1234 للاسم «"+newName+"»؛ غيّرها من خانة كلمة المرور إن شئت.");
+    } else if(r.passHash){
+      tnToast("غيّرتَ اسم مستخدم له حساب سابق؛ أعد كتابة كلمة المرور للاسم الجديد «"+newName+"» ليُنشأ له حساب دخول.", "err");
+    }
+  }catch(e){ console.error(e); }
+}
 function usernameTakenOtherOrg(u, orgId){
   const key = Sec.norm(u);
   if(!key) return false;
@@ -1853,7 +1868,7 @@ async function migrateCredentials(){
         if(r.password===""){ delete r.password; changed = true; continue; }
         const pw = r.password;
         try{                                                 // المرحلة 2: ضبط كلمة مرور ⇒ حساب Firebase جديد + سحب صلاحية الحساب القديم
-          if(typeof session !== "undefined" && session && (session.role==="admin"||session.role==="orgadmin"||session.role==="coordinator") && r.username){
+          if(typeof session !== "undefined" && session && (session.role==="admin"||session.role==="orgadmin"||session.role==="coordinator") && r.username && !isPlaceholderName(r.username)){
             const roleOf = { admins:"admin", orgAdmins:"orgadmin", coordinators:"coordinator", teachers:"teacher", students:"student", parents:"parent" }[k];
             if(roleOf) RealAuth.provisionQueued(r.username, pw, roleOf, r.orgId || "");
           }
@@ -2213,7 +2228,7 @@ function planShardWrites(payload, me){
         const i = c.indexOf("|"), oid = c.slice(0,i), uh = c.slice(i+1);
         if(!isAdm && oid !== me.orgId) return;
         if(!canWriteShard(me,k)){ skipped.push(k); return; }
-        if(!isStaffRole(me.role) && !(uh === me.uh && (k === "results" || (k === "students" && me.role === "student")))) return;   // الطالب لا يكتب إلا نتائجه في عقدته؛ سجله (الصف/التفعيل/الرسوم) وسجل ولي الأمر يديرهما الطاقم فقط، وتُهمَل محاولات غير ذلك بصمت
+        if(!isStaffRole(me.role) && !(uh === me.uh && k === "results")) return;   // الطالب لا يكتب إلا نتائجه في عقدته؛ سجله (الصف/التفعيل/الرسوم) وسجل ولي الأمر يديرهما الطاقم فقط، وتُهمَل محاولات غير ذلك بصمت
         set("userData/"+oid+"/"+uh+"/"+k, oid+"|u|"+uh+"|"+k, (byU[oid] && byU[oid][uh]) || []);
       });
       return;
@@ -3735,6 +3750,10 @@ async function persistDBNow(){
       const payload = {}; Object.keys(up).forEach(k=>{ payload[k] = up[k].v; });
       payload.updatedAt = ROOT.updatedAt || Date.now();
       const denied = await cloudUpdate(payload);
+      if(denied.length && typeof session!=="undefined" && session && isStaffRole(session.role)){
+        try{ safetyBar("deniedBar","err",'⛔ رفضت قواعد الأمان حفظ: '+regEsc(denied.slice(0,4).join("، "))+' — لم تُحفظ هذه التعديلات في السحابة. لا تغلق الصفحة وأرسل لقطة من هذا الشريط للدعم.'); }catch(e){}
+        denied.forEach(k=>{ delete up[k]; });
+      }
       if(denied.length && !window.__deniedNoted){ window.__deniedNoted = true; console.error("رفضت قواعد الأمان حفظ:", denied.join("، "), "— تم تجاهلها كي لا تتكرر المحاولة."); try{ tnToast("لا تملك صلاحية حفظ بعض التعديلات ("+denied.slice(0,3).join("، ")+")", "err"); }catch(e){} }
       Object.keys(up).forEach(k=>{ if(up[k].h) baseHashes[k] = up[k].h; else delete baseHashes[k]; });
       persistBase();
@@ -4067,7 +4086,7 @@ async function doLogin(){
     enterApp(role, rec.builtin ? {username:rec.username, builtin:true} : rec, orgId);
     try{ if(!STRICT) RealAuth.link(username, password, role, orgId); }catch(e){}   // المرحلة 1: ربط/إنشاء حساب Firebase حقيقي بصمت (لا يعطّل الدخول)
     // ترقية تجزئة كلمة المرور القديمة إلى العدد الحالي من الدورات بصمت (لا تؤثر على المستخدم)
-    if(!rec.builtin && rec.passHash && (rec.passIter||0) < Sec.ITER){
+    if(!rec.builtin && rec.passHash && (rec.passIter||0) < Sec.ITER && isStaffRole(role)){
       setTimeout(async ()=>{ try{ Object.assign(rec, await Sec.hashPassword(password)); saveDB(); }catch(e){} }, 1500);
     }
   }catch(e){
@@ -5504,11 +5523,11 @@ function renderAssignmentsWindow(view){
 
   document.getElementById("addRowBtn").addEventListener("click", ()=>{
     if(adminsLocked()){ alert("أدخل كلمة مرور المشرف العام أولًا من الجدول لفتح إمكانية التعديل."); return; }
-    if(activeTab==="admins") DB.admins.push({username:"مشرف_جديد"+(DB.admins.length+1), password:"1234", email:""});
+    if(activeTab==="admins") DB.admins.push({username:nextDefaultName("مشرف_جديد", DB.admins), password:"1234", email:""});
     if(activeTab==="subjects"){ migrateSubjectsIfNeeded(); DB.subjects.rows.push({role:"المعلم", cells:{}}); }
-    if(activeTab==="coords") DB.coordinators.push({username:"منسق_جديد"+(DB.coordinators.length+1), password:"1234", teachers:[], grades:[], classes:[], subjects:[]});
-    if(activeTab==="teachers") DB.teachers.push({username:"معلم_جديد"+(DB.teachers.length+1), password:"1234", grades:[], classes:[], subjects:[]});
-    if(activeTab==="students") DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:"", cls:"", active:false});
+    if(activeTab==="coords") DB.coordinators.push({username:nextDefaultName("منسق_جديد", DB.coordinators), password:"1234", teachers:[], grades:[], classes:[], subjects:[]});
+    if(activeTab==="teachers") DB.teachers.push({username:nextDefaultName("معلم_جديد", DB.teachers), password:"1234", grades:[], classes:[], subjects:[]});
+    if(activeTab==="students") DB.students.push({username:nextDefaultName("طالب_جديد", DB.students), password:"1234", grade:"", cls:"", active:false});
     saveDB();
     drawAssignTable(activeTab);
   });
@@ -5859,7 +5878,7 @@ function drawAssignTable(key){
     DB.admins.forEach((r,i)=>{
       const tr=document.createElement("tr");
       tr.innerHTML=`<td>${i+1}</td><td class="c-user"></td><td class="c-pass"></td><td class="c-email"></td><td><button class="icon-btn danger">🗑</button></td>`;
-      tr.querySelector(".c-user").appendChild(editable(r.username, v=>r.username=v));
+      tr.querySelector(".c-user").appendChild(editable(r.username, v=>{ renameCreds(r, r.username, v); r.username=v; }));
       tr.querySelector(".c-pass").appendChild(passwordField(r.password||"", v=>r.password=v));
       tr.querySelector(".c-email").appendChild(editable(r.email||"", v=>r.email=v));
       tr.querySelector(".icon-btn.danger").addEventListener("click", ()=>{ pushArrayDeleteUndo(DB.admins, i, r, ()=>drawAssignTable("admins")); DB.admins.splice(i,1); saveDB(); drawAssignTable("admins"); });
@@ -6069,7 +6088,7 @@ function drawAssignTable(key){
         <td class="c-pass"></td>
         <td><button class="chip-btn ${r.active?'accent':''}" style="padding:4px 10px;">${r.active?'✅ مفعّل':'⛔ تفعيل'}</button></td>
         <td><button class="icon-btn danger">🗑</button></td>`;
-      tr.querySelector(".c-user").appendChild(editable(r.username, v=>r.username=v));
+      tr.querySelector(".c-user").appendChild(editable(r.username, v=>{ renameCreds(r, r.username, v); r.username=v; }));
       tr.querySelector(".c-pass").appendChild(passwordField(r.password||"", v=>r.password=v));
       tr.querySelector(".cs-grade").addEventListener("change", (e)=>{
         r.grade = e.target.value; saveDB();
@@ -13589,7 +13608,7 @@ function renderMyStudentsWindow(view, role){
         <td class="c-pass"></td>
         <td><button class="chip-btn ${r.active?'accent':''}" style="padding:4px 10px;">${r.active?'✅ مفعّل':'⛔ تفعيل'}</button></td>
         <td><button class="icon-btn danger">🗑</button></td>`;
-      tr.querySelector(".c-user").appendChild(editable(r.username, v=>r.username=v, r.__isNew));
+      tr.querySelector(".c-user").appendChild(editable(r.username, v=>{ renameCreds(r, r.username, v); r.username=v; }, r.__isNew));
       tr.querySelector(".c-pass").appendChild(passwordField(r.password||"", v=>r.password=v));
       tr.querySelector(".cs-grade").addEventListener("change", (e)=>{ r.grade = e.target.value; saveDB(); fillBetweenSame(DB.students, "grade"); draw(); });
       tr.querySelector(".cs-class").addEventListener("change", (e)=>{
@@ -13613,7 +13632,7 @@ function renderMyStudentsWindow(view, role){
   document.getElementById("myStSearch").addEventListener("input", (e)=>{ searchTerm = e.target.value; draw(); });
   window.__refreshMyStudents = draw;
   document.getElementById("myStAddBtn").addEventListener("click", ()=>{
-    DB.students.push({username:"طالب_جديد"+(DB.students.length+1), password:"1234", grade:fGradeV, cls:fClsV, active:false, addedByTeacher:teacherUsername, __isNew:true});
+    DB.students.push({username:nextDefaultName("طالب_جديد", DB.students), password:"1234", grade:fGradeV, cls:fClsV, active:false, addedByTeacher:teacherUsername, __isNew:true});
     saveDB(); draw();
   });
   // بند 12/7: زر "تفعيل الجميع" — يُفعّل دفعة واحدة كل الطلاب الظاهرين حاليًا في الجدول
