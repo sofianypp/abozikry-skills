@@ -143,7 +143,7 @@
   /* بند 8/9/10: تظليل الخلايا القابلة للتحديد أثناء وضع "تحديد الخلايا"، وتمييز الخلايا المحددة فعليًا */
   table.data.cell-select-mode td{ cursor:cell; }
   table.data td.cell-selected{ background:#fde68a !important; outline:2px solid #d97706; outline-offset:-2px; }
-  .table-wrap{ overflow:auto; border:1px solid #d8d8d8; border-radius:8px; max-height:60vh; }
+  .table-wrap{ overflow-x:auto; overflow-y:visible; border:1px solid #d8d8d8; border-radius:8px; max-height:none !important; }
   .tk-cards-wrap{ display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; align-items:start; }
   .tk-vcard{ border:1.5px solid #d8d8d8; border-radius:10px; overflow:hidden; background:#fff; }
   table.tk-vtable{ width:100%; }
@@ -453,6 +453,7 @@
   @media (max-width:560px){ .sa-solve-box{ width:100%; margin:0 0 14px !important; } }
   /* بند 1: تكبير خط إجابة سؤال الإملاء السماعي ليقارب خط زر التشغيل أو أكبر منه قليلًا،
      مع ضبط عائلة الخط لضمان ظهور حرف الهمزة الممدودة "آ" بشكل صحيح (بند 4) */
+  .sa-solve-box .sa-answer.sa-match-bad{ outline:3px solid #dc2626; background:#fee2e2 !important; }
   .sa-solve-box .sa-answer{ font-size:25px !important; font-weight:900 !important; text-align:center !important; line-height:1.5; min-height:64px; padding:12px 10px !important; font-family:'Tajawal','Noto Sans Arabic','Noto Naskh Arabic',Tahoma,Arial,sans-serif; transition:background .35s ease, color .35s ease, border-color .35s ease; }
   .sa-solve-box .sa-answer::placeholder{ font-size:14px; font-weight:500; }
   /* بند 2: تلوين تعبئة مربع إجابة الإملاء السماعي بأخضر خفيف مع تباين واضح عند تطابق الإجابة */
@@ -606,7 +607,7 @@
     }
     .mm-scroll-wrap{
       overflow:auto; -webkit-overflow-scrolling:touch;
-      max-width:100%; max-height:65vh; border:1px dashed #ccc; border-radius:8px;
+      max-width:100%; max-height:none; border:1px dashed #ccc; border-radius:8px;
     }
     .mm-scroll-wrap .mindmap-area{ border:none; border-radius:0; }
 
@@ -2667,7 +2668,7 @@ async function strictRegister(d){
 
 /* ===== لوحة الأمان للمشرفين: اعتماد التسجيلات الجديدة + جاهزية الانتقال + تنظيف الصلاحيات ===== */
 const SecurityPanel = (function(){
-  let btn = null, timer = null, busy = false, pendingCount = 0, pubDone = false;
+  let btn = null, timer = null, busy = false, pendingCount = 0, pubDone = false, regRef = null, regT = null;
   const KIND = { student:"students", teacher:"teachers", parent:"parents" };
   const ROLE_AR = { student:"طالب", teacher:"معلم", parent:"ولي أمر" };
   const esc = s=>String(s==null ? "" : s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -3023,9 +3024,16 @@ const SecurityPanel = (function(){
     }
     paint();
     pubDone = false; setTimeout(processAuto, 4000);
-    clearInterval(timer); timer = setInterval(processAuto, 90000);
+    clearInterval(timer); timer = setInterval(processAuto, 30000);
+    // اعتماد فوري: بمجرد وصول طلب تسجيل جديد تُشغَّل المعالجة مباشرة دون انتظار فتح أي نافذة (يلزم أن يكون المشرف/المدير داخل المنصة)
+    try{
+      if(regRef){ try{ regRef.off("child_added"); }catch(e){} regRef = null; }
+      let q = firebaseDB.ref("registrations");
+      if(session.role !== "admin") q = q.orderByChild("orgId").equalTo(session.orgId || "");
+      regRef = q; q.on("child_added", ()=>{ clearTimeout(regT); regT = setTimeout(processAuto, 1500); }, ()=>{});
+    }catch(e){}
   }
-  function onExit(){ clearInterval(timer); timer = null; if(btn){ btn.remove(); btn = null; } pendingCount = 0; const ov = document.getElementById("secPanelOv"); if(ov) ov.remove(); }
+  function onExit(){ clearInterval(timer); timer = null; try{ if(regRef) regRef.off("child_added"); }catch(e){} regRef = null; if(btn){ btn.remove(); btn = null; } pendingCount = 0; const ov = document.getElementById("secPanelOv"); if(ov) ov.remove(); }
   return { onEnter, onExit, open };
 })();
 
@@ -3204,6 +3212,7 @@ function setBaseFromCloud(cloud){
   baseHashes = {};
   Object.keys(cloud||{}).forEach(k=>{ if(k==="updatedAt") return; const h = hashKey(cloud[k]); if(h) baseHashes[k] = h; });
   lastCloudCounts = countsOf(cloud||{});
+  try{ if(typeof ROOT!=="undefined" && ROOT && ROOT.updatedAt!==undefined){ lastCloudCounts = countsOf(ROOT); /* خط الأساس = ما على الجهاز بعد الدمج وبنفس نطاق المستخدم، فلا يُحسب ما لا يراه (نتائج مدارس/طلاب آخرين) كأنه انخفاض */ } }catch(e){}
   persistBase();
 }
 function cloudDiffersFromBase(cloud){
@@ -5818,7 +5827,13 @@ function drawAssignTable(key){
   function editable(val, onSave){
     const span = document.createElement("span");
     span.textContent = val; span.contentEditable="true"; span.style.outline="none";
-    span.addEventListener("blur", ()=>{ onSave(span.textContent.trim()); saveDB(); });
+    // تفريغ الاسم الافتراضي (طالب_جديد٣ …) بمجرد الضغط/الوقوف على الخلية، فلا حاجة لمسحه يدويًا
+    span.addEventListener("focus", ()=>{ if(isPlaceholderName(span.textContent.trim())) span.textContent = ""; });
+    span.addEventListener("blur", ()=>{
+      const t = span.textContent.trim();
+      if(!t && isPlaceholderName(val)){ span.textContent = val; return; }   // تُرك فارغًا: نُبقي الاسم المؤقت ولا نحفظ اسمًا فارغًا
+      onSave(t); saveDB();
+    });
     return span;
   }
   /* حقل كلمة مرور قابل للتعديل مباشرة من المشرف العام، مع زر لإظهار/إخفاء القيمة */
@@ -6293,6 +6308,7 @@ function renderFormsWindow(view, role, bankMode){
             <button class="small-btn" id="wsBack">◀ السابق</button>
             <button class="small-btn" id="wsTemplate">⬇ القالب</button>
             <button class="small-btn" id="wsImport">📥 استيراد</button>
+            <button class="small-btn" id="wsDup" title="كشف الأسئلة المكررة داخل هذا النموذج دون النظر للخيارات">🔍 المكرر</button>
             ${bankMode ? "" : '<button class="small-btn" id="wsTestMode">إلى اختبار</button>'}
             <button class="small-btn" id="wsSave">💾 حفظ</button>
           </div>
@@ -6774,6 +6790,51 @@ function renderFormsWindow(view, role, bankMode){
     btn.textContent = isTest ? "إلى نموذج" : "إلى اختبار";
     btn.classList.toggle("test-active", isTest);
   }
+
+  /* ---- كشف الأسئلة المكررة داخل النموذج/الاختبار: المقارنة بنص السؤال فقط (بعد توحيد التشكيل والهمزات والمسافات) دون النظر للخيارات ---- */
+  function dupScan(){
+    const items = [];
+    const plain = h=>String(h==null?"":h).replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ");
+    ((activeModel && activeModel.blocks) || []).forEach(b=>{
+      const el = b && b.el; if(!el || !el.querySelectorAll) return;
+      el.querySelectorAll(".mcq-list .qitem").forEach(qi=>{ const inp = qi.querySelector('input[type="text"]'); if(inp && inp.value.trim()) items.push({ row:qi, kind:"اختيار من متعدد", text:inp.value.trim(), opts:[...qi.querySelectorAll(".options-grid label")].length }); });
+      el.querySelectorAll(".tf-list .qitem").forEach(qi=>{ const inp = qi.querySelector('input[type="text"]'); if(inp && inp.value.trim()) items.push({ row:qi, kind:"صح/خطأ", text:inp.value.trim(), opts:0 }); });
+    });
+    items.forEach((it,i)=>{ it.n = i+1; it.key = Sec.norm(plain(it.text)); });
+    const map = new Map();
+    items.forEach(it=>{ if(!it.key) return; if(!map.has(it.key)) map.set(it.key, []); map.get(it.key).push(it); });
+    return { total: items.length, groups: [...map.values()].filter(g=>g.length>1) };
+  }
+  function dupModal(){
+    if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
+    let ov = document.getElementById("dupOv"); if(ov) ov.remove();
+    ov = document.createElement("div"); ov.id = "dupOv";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px;direction:rtl;";
+    document.body.appendChild(ov);
+    const esc2 = t=>String(t==null?"":t).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    const draw = ()=>{
+      const r = dupScan(), extra = r.groups.reduce((a,g)=>a+g.length-1, 0);
+      ov.innerHTML = `<div style="background:var(--paper,#fff);color:var(--ink,#111);width:min(760px,100%);max-height:88vh;overflow:auto;border:2px solid var(--ink,#111);border-radius:14px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;"><h3 style="margin:0">🔍 الأسئلة المكررة</h3><button class="small-btn" id="dupClose">إغلاق ✕</button></div>
+        <p style="margin:4px 0 10px;opacity:.85;font-size:13.5px;">فُحص ${r.total} سؤالًا (اختيار من متعدد وصح/خطأ). المقارنة بنص السؤال فقط دون النظر للخيارات.</p>
+        ${r.groups.length ? `<p style="font-weight:800">وُجد ${extra} سؤالًا مكررًا في ${r.groups.length} مجموعة.</p>
+          <button class="small-btn on" id="dupAll" style="margin-bottom:10px;">🧹 حذف كل المكرر (إبقاء أول نسخة من كل سؤال)</button>` : `<p style="font-weight:800;color:#15803d">✅ لا توجد أسئلة مكررة.</p>`}
+        ${r.groups.map((g,gi)=>`<div style="border:1.5px solid #d8d8d8;border-radius:10px;padding:8px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;"><b>مجموعة ${gi+1} — تكرر ${g.length} مرات</b><button class="small-btn" data-keep="${gi}">إبقاء الأول وحذف الباقي</button></div>
+          ${g.map((it,ii)=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed #ddd;"><span style="flex:0 0 auto;font-weight:800">#${it.n}</span><span style="flex:1;min-width:0;overflow-wrap:anywhere;">${esc2(it.text)} <small style="opacity:.6">(${it.kind}${it.opts?" — "+it.opts+" خيارات":""})</small></span><button class="small-btn" data-go="${gi}:${ii}">📍 اذهب</button><button class="small-btn" data-del="${gi}:${ii}">🗑 احذف</button></div>`).join("")}
+        </div>`).join("")}
+        <p style="font-size:12.5px;opacity:.75;margin-top:8px;">بعد الحذف اضغط «💾 حفظ» في شريط النموذج لتثبيت التعديل.</p></div>`;
+      ov.querySelector("#dupClose").onclick = ()=>ov.remove();
+      const done = ()=>{ try{ renumberAllQuestions(); }catch(e){} try{ refreshNumbers(); }catch(e){} draw(); };
+      const all = ov.querySelector("#dupAll");
+      if(all) all.onclick = ()=>{ if(!confirm("سيُحذف "+extra+" سؤالًا مكررًا ويُبقى أول سؤال من كل مجموعة. متابعة؟")) return; r.groups.forEach(g=>g.slice(1).forEach(it=>it.row.remove())); done(); };
+      ov.querySelectorAll("[data-keep]").forEach(b=>b.onclick = ()=>{ r.groups[+b.dataset.keep].slice(1).forEach(it=>it.row.remove()); done(); });
+      ov.querySelectorAll("[data-del]").forEach(b=>b.onclick = ()=>{ const [gi,ii] = b.dataset.del.split(":").map(Number); r.groups[gi][ii].row.remove(); done(); });
+      ov.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>{ const [gi,ii] = b.dataset.go.split(":").map(Number); const row = r.groups[gi][ii].row; ov.style.display = "none"; row.scrollIntoView({behavior:"smooth",block:"center"}); const old = row.style.outline; row.style.outline = "4px solid #f59e0b"; setTimeout(()=>{ row.style.outline = old; ov.style.display = "flex"; }, 1800); });
+    };
+    draw();
+  }
+  if(document.getElementById("wsDup")) document.getElementById("wsDup").addEventListener("click", dupModal);
 
   if(document.getElementById("wsTestMode")) document.getElementById("wsTestMode").addEventListener("click", ()=>{
     if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
@@ -9283,6 +9344,8 @@ function buildGrammarBlock(savedReqRows){
     <label style="font-weight:700;">القطعة النحوية</label>
     <textarea rows="3" placeholder="الصق أو اكتب النص هنا..." class="grammar-source"></textarea>
     <div class="toolbar" style="margin-top:8px;">
+      <button class="chip-btn accent gz-mkscript" title="اختر المطلوبات والتلميحات لصناعة سكريبت تضعه في الذكاء الاصطناعي ليُنشئ قطعة نحوية مشكولة بالحركات">🧩 صناعة سكريبت</button>
+      <button class="chip-btn gz-importmodel" title="استيراد نموذج نحوي أنشأه الذكاء الاصطناعي بواسطة السكريبت (JSON)">📥 استيراد نموذج نحوي</button>
       <button class="chip-btn accent gz-distribute">توزيع</button>
       <button class="chip-btn gz-addword">إضافة كلمة</button>
       <button class="chip-btn gz-delword" title="احذف الكلمة المحددة من القطعة">🗑 حذف الكلمة المحددة</button>
@@ -9573,6 +9636,7 @@ function buildGrammarBlock(savedReqRows){
   body.querySelector(".gz-clearanswers").addEventListener("click", ()=>{
     reqbody.querySelectorAll(".drop-cell").forEach(td=>td.innerHTML="");
   });
+  const applyRows = (savedReqRows)=>{
   if(savedReqRows && savedReqRows.length){
     const first = savedReqRows[0];
     const tagged = first.passageWordsTagged || (first.passageWords||[]).map(w=>({text:w, tag:false}));
@@ -9618,6 +9682,189 @@ function buildGrammarBlock(savedReqRows){
     // بند 2: لا نُدرج صفًا فارغًا تلقائيًا عند إضافة سؤال نموذج نحوي جديد لا يملك بيانات محفوظة —
     // يبدأ جدول المطلوبات فارغًا تمامًا حتى يضيف المعلم صفوفًا بنفسه أو من بنك المطلوبات.
   }
+  };
+  applyRows(savedReqRows);
+
+  /* ================= صناعة سكريبت الذكاء الاصطناعي + استيراد النموذج النحوي ================= */
+  const GRAMMAR_MODEL_FORMAT = "anta-wa-nahnu/grammar-model";
+  const gzEsc = t=>String(t==null?"":t).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const gzOverlay = (id, html)=>{
+    let ov = document.getElementById(id); if(ov) ov.remove();
+    ov = document.createElement("div"); ov.id = id; ov.className = "overlay show";
+    ov.innerHTML = html; document.body.appendChild(ov);
+    const close = ()=>ov.remove();
+    const x = ov.querySelector(".modal-close"); if(x) x.addEventListener("click", close);
+    ov.addEventListener("click", e=>{ if(e.target===ov) close(); });
+    return ov;
+  };
+  function gzBuildScript(opts, reqs){
+    const L = [];
+    L.push("أنت خبير في اللغة العربية والنحو والإعراب، وتعدّ مواد تعليمية للطلاب.");
+    L.push("");
+    L.push("المهمة: أنشئ «قطعة نحوية» عربية مضبوطة ضبطًا تامًّا بالحركات (الفتحة والضمة والكسرة والسكون والشدّة والتنوين وغيرها) على كل حرف في كل كلمة دون استثناء"
+      + (opts.words ? "، وطولها نحو " + opts.words + " كلمة" : "")
+      + (opts.grade ? "، مناسبة لطلاب " + opts.grade : "")
+      + (opts.topic ? "، وموضوعها: " + opts.topic : "") + ". تكون القطعة سليمة اللغة والمعنى ومتماسكة ومناسبة للطلاب.");
+    L.push("");
+    L.push("شروط القطعة:");
+    L.push("1) يجب أن تتوافر في القطعة إجابة صحيحة واضحة لكل «مطلوب» من المطلوبات الواردة أدناه، بحيث يمكن استخراجها منها (اكتب القطعة بحيث تحوي هذه الإجابات).");
+    L.push("2) تُنقل الإجابات حرفيًّا من القطعة نفسها بالكلمات نفسها وبالضبط نفسه بالحركات، كلمةً أو أكثر.");
+    L.push("3) لكل مطلوب تلميح مختصر يُرشد الطالب إلى الإجابة دون أن يذكرها صراحة. إن ورد للمطلوب «تلميح مقترح» فاستخدمه أو حسّنه، وإن لم يرد فاكتب تلميحًا مناسبًا.");
+    L.push("4) لا تُغيّر نص المطلوب ولا ترتيبه.");
+    L.push("");
+    L.push("المطلوبات (" + reqs.length + "):");
+    reqs.forEach((r,i)=>{ L.push((i+1) + ". " + r.text + (r.hint ? "   — تلميح مقترح: " + r.hint : "   — (اكتب له تلميحًا)")); });
+    L.push("");
+    L.push("شكل المخرجات: أعد كائن JSON واحدًا فقط بالصيغة التالية، دون أي نص قبله أو بعده ودون علامات ``` ودون شرح:");
+    L.push("{");
+    L.push('  "format": "' + GRAMMAR_MODEL_FORMAT + '",');
+    L.push('  "version": 1,');
+    L.push('  "passage": "القطعة النحوية كاملة ومشكولة بالحركات",');
+    L.push('  "requirements": [');
+    L.push('    { "question": "نص المطلوب كما هو", "answers": ["الكلمة كما وردت في القطعة تمامًا"], "hint": "التلميح الذي يظهر خلف زر اللمبة", "strict": false }');
+    L.push("  ]");
+    L.push("}");
+    L.push("");
+    L.push("قواعد الصيغة:");
+    L.push("- عدد عناصر requirements يساوي " + reqs.length + " بالضبط، بالترتيب نفسه.");
+    L.push("- كل كلمة داخل answers موجودة في passage بنصها وضبطها حرفيًّا. إن كانت الإجابة أكثر من كلمة فضع كل كلمة عنصرًا مستقلًّا داخل answers.");
+    L.push("- ضع الإعراب بصيغة سؤال عادي ضمن question إن كان المطلوب إعرابًا، ولا تُضف حقولًا أخرى.");
+    L.push("- اجعل النص صالحًا للتحليل بـ JSON: استخدم علامات اقتباس مزدوجة عادية، ولا تضع فواصل أسطر داخل النصوص.");
+    return L.join("\n");
+  }
+  function openGrammarScriptBuilder(){
+    const bank = (typeof currentTeacherReqBank === "function") ? currentTeacherReqBank() : [];
+    const items = bank.map(b=>({ id:b.id, text:b.text, hint:b.hint||"", on:false, isNew:false }));
+    const ov = gzOverlay("gzScriptOv", `<div class="modal xwide">
+      <button class="modal-close">إغلاق ✕</button>
+      <h2>🧩 صناعة سكريبت النموذج النحوي</h2>
+      <p class="sub">حدّد المطلوبات التي تريدها في القطعة (واضغط 💡 لرؤية تلميح أي مطلوب)، وأضف مطلوبات جديدة إن شئت، ثم أنشئ السكريبت وضعه في الذكاء الاصطناعي. سيُنتج لك ملف JSON تستورده بزر «📥 استيراد نموذج نحوي».</p>
+      <div class="toolbar" style="gap:8px;flex-wrap:wrap;">
+        <input type="text" id="gzsGrade" placeholder="الصف/المستوى (اختياري)" style="width:200px;">
+        <input type="text" id="gzsTopic" placeholder="موضوع القطعة (اختياري)" style="width:220px;">
+        <label style="display:flex;align-items:center;gap:6px;">عدد الكلمات تقريبًا <input type="number" id="gzsWords" value="60" min="20" max="400" style="width:80px;"></label>
+      </div>
+      <div id="gzsList" style="margin-top:10px;"></div>
+      <div style="border:1.5px dashed #bbb;border-radius:10px;padding:8px;margin-top:10px;">
+        <b>➕ مطلوب جديد</b>
+        <div class="toolbar" style="gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <input type="text" id="gzsNewText" placeholder="نص المطلوب (مثال: استخرج فاعلًا مرفوعًا)" style="flex:1;min-width:220px;">
+          <input type="text" id="gzsNewHint" placeholder="التلميح (اختياري)" style="flex:1;min-width:200px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="gzsNewSave" checked> حفظه في بنك مطلوباتي</label>
+          <button class="chip-btn accent" id="gzsAdd">إضافة</button>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:12px;"><button class="primary-btn" id="gzsMake" style="flex:1;">⚙️ إنشاء السكريبت</button></div>
+      <div id="gzsOut" style="display:none;margin-top:10px;">
+        <textarea id="gzsText" rows="14" readonly style="width:100%;direction:rtl;"></textarea>
+        <div class="toolbar" style="gap:8px;margin-top:6px;"><button class="chip-btn accent" id="gzsCopy">📋 نسخ السكريبت</button><button class="chip-btn" id="gzsDl">⬇ تحميل السكريبت (.txt)</button></div>
+        <p class="sub">الصق السكريبت في الذكاء الاصطناعي، ثم احفظ ردّه بصيغة JSON (أو انسخه) واستورده بزر «📥 استيراد نموذج نحوي».</p>
+      </div></div>`);
+    const list = ov.querySelector("#gzsList");
+    function draw(){
+      if(!items.length){ list.innerHTML = '<div class="empty-note">لا توجد مطلوبات في بنكك بعد — أضف مطلوبًا جديدًا من الأسفل.</div>'; return; }
+      let h = '<div class="table-wrap"><table class="data reqbank-select-table"><thead><tr><th>المطلوب</th><th>💡</th><th>المطلوب</th><th>💡</th><th>المطلوب</th><th>💡</th></tr></thead><tbody>';
+      for(let i=0;i<items.length;i+=3){
+        h += "<tr>";
+        for(let j=i;j<i+3;j++){
+          const it = items[j];
+          h += it ? `<td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" data-i="${j}" ${it.on?"checked":""}><span>${gzEsc(it.text)}${it.isNew?' <small style="color:var(--accent)">(جديد)</small>':""}</span></label></td><td><span class="bulb" data-b="${j}" style="cursor:pointer;${it.hint?"":"filter:grayscale(1) opacity(.4);"}">💡</span><div class="sub gzs-hint" data-h="${j}" style="display:none;color:var(--accent);margin-top:4px;"></div></td>` : "<td></td><td></td>";
+        }
+        h += "</tr>";
+      }
+      list.innerHTML = h + "</tbody></table></div>";
+      list.querySelectorAll("input[type=checkbox]").forEach(c=>c.addEventListener("change", ()=>{ items[+c.dataset.i].on = c.checked; }));
+      list.querySelectorAll(".bulb").forEach(b=>b.addEventListener("click", ()=>{ const j = +b.dataset.b, box = list.querySelector('[data-h="'+j+'"]'); box.textContent = items[j].hint || "لا يوجد تلميح لهذا المطلوب."; box.style.display = box.style.display==="none" ? "block" : "none"; }));
+    }
+    draw();
+    ov.querySelector("#gzsAdd").addEventListener("click", ()=>{
+      const t = ov.querySelector("#gzsNewText").value.trim(), h = ov.querySelector("#gzsNewHint").value.trim();
+      if(!t){ alert("اكتب نص المطلوب أولًا."); return; }
+      const rec = { id:"rq"+Date.now()+Math.random().toString(36).slice(2,6), text:t, hint:h, on:true, isNew:true };
+      items.push(rec);
+      if(ov.querySelector("#gzsNewSave").checked){ try{ currentTeacherReqBank().push({ id:rec.id, text:t, hint:h }); saveDB(); }catch(e){ console.error(e); } }
+      ov.querySelector("#gzsNewText").value = ""; ov.querySelector("#gzsNewHint").value = ""; draw();
+    });
+    ov.querySelector("#gzsMake").addEventListener("click", ()=>{
+      const chosen = items.filter(i=>i.on);
+      if(!chosen.length){ alert("حدّد مطلوبًا واحدًا على الأقل."); return; }
+      const txt = gzBuildScript({ grade:ov.querySelector("#gzsGrade").value.trim(), topic:ov.querySelector("#gzsTopic").value.trim(), words:ov.querySelector("#gzsWords").value }, chosen);
+      ov.querySelector("#gzsText").value = txt; ov.querySelector("#gzsOut").style.display = "block";
+      ov.querySelector("#gzsText").scrollIntoView({behavior:"smooth", block:"center"});
+    });
+    ov.querySelector("#gzsCopy").addEventListener("click", async ()=>{
+      const ta = ov.querySelector("#gzsText");
+      try{ await navigator.clipboard.writeText(ta.value); }catch(e){ ta.select(); document.execCommand("copy"); }
+      alert("تم نسخ السكريبت. ضعه الآن في الذكاء الاصطناعي.");
+    });
+    ov.querySelector("#gzsDl").addEventListener("click", ()=>{
+      const blob = new Blob([ov.querySelector("#gzsText").value], {type:"text/plain;charset=utf-8"});
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "سكريبت-نموذج-نحوي.txt"; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
+  }
+  function gzParseModel(text){
+    let t = String(text||"").trim();
+    t = t.replace(/^```[a-zA-Z]*\s*/,"").replace(/```\s*$/,"").trim();
+    const a = t.indexOf("{"), b = t.lastIndexOf("}");
+    if(a<0 || b<=a) throw new Error("لم أجد JSON صالحًا في النص.");
+    return JSON.parse(t.slice(a, b+1));
+  }
+  function importGrammarModel(text){
+    const m = gzParseModel(text);
+    const passageText = String(m.passage || m.text || "").trim();
+    const reqs = Array.isArray(m.requirements) ? m.requirements : (Array.isArray(m.items) ? m.items : []);
+    if(!passageText) throw new Error("حقل passage (القطعة) مفقود.");
+    if(!reqs.length) throw new Error("لا توجد مطلوبات (requirements) في الملف.");
+    const words = passageText.split(/\s+/).filter(Boolean);
+    const byNorm = new Map(); words.forEach(w=>{ const k = Sec.norm(w); if(k && !byNorm.has(k)) byNorm.set(k, w); });
+    const warnings = [];
+    const rows = [], mk = (r,slot,rowId,eir)=>({ passageWords:words, passageWordsTagged:words.map(w=>({text:w, tag:false})), question:r.q, correctWords:r.ans, strict:r.strict, hint:r.hint, rowId, isEirab:eir, rowSlot:slot });
+    const norm = reqs.map((r,i)=>{
+      const q = String(r.question || r.req || r.text || "").trim();
+      const raw = [].concat(r.answers || r.answer || r.correct || []).map(x=>String(x||"").trim()).filter(Boolean);
+      const ans = [];
+      raw.forEach(a=>a.split(/\s+/).filter(Boolean).forEach(w=>{
+        if(words.indexOf(w)>=0) ans.push(w);
+        else if(byNorm.has(Sec.norm(w))) ans.push(byNorm.get(Sec.norm(w)));
+        else { ans.push(w); warnings.push("المطلوب "+(i+1)+": الكلمة «"+w+"» غير موجودة في القطعة"); }
+      }));
+      if(!q){ warnings.push("المطلوب "+(i+1)+" بلا نص — تم تجاهله"); return null; }
+      if(!ans.length) warnings.push("المطلوب "+(i+1)+" («"+q+"») بلا إجابة");
+      return { q, ans, hint:String(r.hint||"").trim(), strict:!!r.strict, eirab:!!(r.eirab || r.isEirab) };
+    }).filter(Boolean);
+    let rowNo = 0, slot = 0, cur = null;
+    norm.forEach(r=>{
+      if(r.eirab){ rowNo++; rows.push(mk(r,0,"imp"+rowNo,true)); cur = null; slot = 0; return; }
+      if(cur===null || slot>=3){ rowNo++; cur = "imp"+rowNo; slot = 0; }
+      rows.push(mk(r,slot,cur,false)); slot++;
+    });
+    if(!rows.length) throw new Error("لا توجد مطلوبات صالحة في الملف.");
+    const hasContent = passage.children.length || reqbody.children.length;
+    if(hasContent && !confirm("سيُستبدل محتوى هذا النموذج النحوي (القطعة والمطلوبات) بالمستورد. متابعة؟")) return false;
+    passage.innerHTML = ""; reqbody.innerHTML = ""; selectedAnchor = null;
+    body.querySelector(".grammar-source").value = passageText;
+    applyRows(rows);
+    if(warnings.length) alert("تم الاستيراد، مع ملاحظات تستحق المراجعة:\n\n• " + warnings.slice(0,12).join("\n• ") + (warnings.length>12 ? "\n…" : ""));
+    return true;
+  }
+  function openGrammarImportModal(){
+    const ov = gzOverlay("gzImportOv", `<div class="modal wide">
+      <button class="modal-close">إغلاق ✕</button>
+      <h2>📥 استيراد نموذج نحوي</h2>
+      <p class="sub">الصق ردّ الذكاء الاصطناعي (JSON) هنا أو اختر الملف المحفوظ. ستظهر القطعة موزَّعة في خلاياها، والمطلوبات في أماكنها، وتلميح كل مطلوب خلف زر اللمبة.</p>
+      <textarea id="gzImpText" rows="10" placeholder="الصق JSON هنا…" style="width:100%;direction:ltr;"></textarea>
+      <div class="toolbar" style="gap:8px;margin-top:8px;"><button class="chip-btn" id="gzImpFileBtn">📂 اختيار ملف</button><input type="file" id="gzImpFile" accept="application/json,.json,.txt" style="display:none;"></div>
+      <div class="modal-actions"><button class="primary-btn" id="gzImpGo" style="flex:1;">استيراد</button></div></div>`);
+    ov.querySelector("#gzImpFileBtn").addEventListener("click", ()=>ov.querySelector("#gzImpFile").click());
+    ov.querySelector("#gzImpFile").addEventListener("change", async e=>{ const f = e.target.files[0]; if(f) ov.querySelector("#gzImpText").value = await f.text(); });
+    ov.querySelector("#gzImpGo").addEventListener("click", ()=>{
+      try{ const r = importGrammarModel(ov.querySelector("#gzImpText").value); if(r!==false) ov.remove(); }
+      catch(e){ alert("تعذّر الاستيراد: " + (e.message||e)); }
+    });
+  }
+  body.querySelector(".gz-mkscript").addEventListener("click", openGrammarScriptBuilder);
+  body.querySelector(".gz-importmodel").addEventListener("click", openGrammarImportModal);
   return el;
 }
 
@@ -11338,7 +11585,8 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         ${q.audioUrl?`<div class="qrow" style="justify-content:center; gap:6px; margin-bottom:8px;">
             <button type="button" class="chip-btn sa-solve-playpause">▶ تشغيل</button>
             <button type="button" class="chip-btn sa-solve-restart">⟲ إعادة</button>
-          </div>`:'<div style="font-size:12px;color:#999; margin-bottom:8px; text-align:center;">لا يوجد تسجيل صوتي مرفق لهذا السؤال</div>'}
+            ${!model.testMode?'<button type="button" class="chip-btn sa-check-btn" title="تحقق من صحة ما كتبت">✔ تحقق</button>':''}
+          </div>`:'<div style="font-size:12px;color:#999; margin-bottom:8px; text-align:center;">لا يوجد تسجيل صوتي مرفق لهذا السؤال</div>'+(!model.testMode?'<div class="qrow" style="justify-content:center; margin-bottom:8px;"><button type="button" class="chip-btn sa-check-btn" title="تحقق من صحة ما كتبت">✔ تحقق</button></div>':'')}
         <input type="text" class="sa-answer" style="width:100%;" placeholder="اكتب ما تسمعه هنا...">`;
     } else if(q.type==="mindmap"){
       const xs = q.items.map(it=>it.x||0), ys = q.items.map(it=>it.y||0);
@@ -11501,6 +11749,36 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     testTimerInterval = setInterval(tick, 1000);
   }
 
+  // تعزيز إيجابي («كفو 👍») عند الإجابة الصحيحة، وإظهار تلميح المعلم عند الإجابة الخاطئة — في النماذج التعليمية فقط لا الاختبارات
+  if(!model.testMode && !already && typeof MutationObserver !== "undefined"){
+    try{
+      if(area.__fbObs) area.__fbObs.disconnect();
+      const praise = (el)=>{
+        const r = el.getBoundingClientRect(); const t = document.createElement("div");
+        t.textContent = "كفو 👍";
+        t.style.cssText = "position:fixed;z-index:2147483000;pointer-events:none;font-weight:900;font-size:18px;color:#15803d;background:#fff;border:2px solid #15803d;border-radius:999px;padding:2px 12px;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:opacity .5s, transform .5s;left:"+Math.max(6, r.left + r.width/2 - 40)+"px;top:"+Math.max(6, r.top - 34)+"px;";
+        document.body.appendChild(t);
+        setTimeout(()=>{ t.style.opacity = "0"; t.style.transform = "translateY(-8px)"; }, 1000);
+        setTimeout(()=>{ try{ t.remove(); }catch(e){} }, 1600);
+      };
+      const obs = new MutationObserver((muts)=>{
+        muts.forEach(m=>{
+          const el = m.target; if(!el || !el.classList) return;
+          const was = (m.oldValue||"");
+          const now = el.className||"";
+          const gained = (c)=> now.indexOf(c)>=0 && was.indexOf(c)<0;
+          if(gained("opt-correct-fill") || gained("tf-correct-fill")) praise(el);
+          else if(gained("opt-wrong-fill") || gained("tf-wrong-fill")){
+            const qb = el.closest(".qitem"); if(!qb) return;
+            const qq = model.data[Number(qb.dataset.qidx)];
+            if(qq && qq.hint){ const anchor = qb.querySelector(".hint-bulb") || el; showStudentHint(qq.hint, anchor); }
+          }
+        });
+      });
+      obs.observe(area, { subtree:true, attributes:true, attributeFilter:["class"], attributeOldValue:true });
+      area.__fbObs = obs;
+    }catch(e){ console.error(e); }
+  }
   area.querySelectorAll(".qitem").forEach((box)=>{
     const idx = Number(box.dataset.qidx);
     const q = model.data[idx];
@@ -11522,7 +11800,11 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
         const labels = [...box.querySelectorAll(".options-grid label")].filter(l=>l.style.display!=="none");
         const wrong = labels.filter(l=>Number(l.querySelector("input").dataset.oi)!==q.correct);
         if(labels.length<=2 || wrong.length<2 || !(q.correct>=0)){ fiftyBtn.disabled = true; return; }
-        wrong.sort(()=>Math.random()-0.5).slice(0, Math.min(2, wrong.length-1)).forEach(l=>{
+        // إصلاح: الإجابات الخاطئة التي اختارها الطالب قبل الضغط تُحذف أولًا، فلا تبقى بين الخيارين المتبقيين
+        const seen = box.__wrongSeen || [];
+        const picked = wrong.filter(l=>seen.indexOf(Number(l.querySelector("input").dataset.oi))>=0).sort(()=>Math.random()-0.5);
+        const others = wrong.filter(l=>picked.indexOf(l)<0).sort(()=>Math.random()-0.5);
+        picked.concat(others).slice(0, Math.min(2, wrong.length-1)).forEach(l=>{
           const inp = l.querySelector("input");
           if(inp.checked){ inp.checked = false; answers[idx] = null; checkAllAnswered(); }
           l.classList.remove("opt-correct-fill","opt-wrong-fill");
@@ -11534,6 +11816,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       box.querySelectorAll('input[type="radio"]').forEach(r=>{
         r.addEventListener("change", ()=>{
           answers[idx] = Number(r.dataset.oi); checkAllAnswered();
+          if(!model.testMode && q.correct>=0 && answers[idx]!==q.correct){ (box.__wrongSeen = box.__wrongSeen || []).push(answers[idx]); }
           // بند 5: تلوين الخيار المختار باللون الأخضر إن كان صحيحًا، في النماذج فقط
           box.querySelectorAll(".options-grid label").forEach(l=>l.classList.remove("opt-correct-fill","opt-wrong-fill"));
           if(!model.testMode && q.correct>=0){
@@ -11788,18 +12071,16 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       const inp = box.querySelector(".sa-answer");
       const saBoardBtn = box.querySelector(".sa-board-btn");
       if(saBoardBtn) saBoardBtn.addEventListener("click", ()=>openSpellBoard(q, model.testMode, model.data.filter(x=>x && x.type==="spellaudio")));
-      let saMatchTimer = null;
+      // تعديل: أُلغي التحقق التلقائي أثناء الكتابة (طلبًا واحدًا لكل حرف)؛ التحقق الآن بزر «تحقق» مرة واحدة بعد انتهاء الكتابة
       inp.addEventListener("input", ()=>{
         answers[idx] = inp.value; checkAllAnswered();
-        // بند 2: إزالة التلوين الأخضر فور تغيير الكتابة، ثم إعادة فحص التطابق بعد ثانية من
-        // التوقف عن الكتابة، وذلك في النماذج فقط (يتوقف تلقائيًا عند تحويل النموذج إلى اختبار)
-        inp.classList.remove("sa-match-ok");
-        if(saMatchTimer){ clearTimeout(saMatchTimer); saMatchTimer=null; }
-        if(!model.testMode){
-          saMatchTimer = setTimeout(()=>{
-            if(inp.value.trim() && normalizeSpellAnswer(inp.value)===normalizeSpellAnswer(q.answer)) inp.classList.add("sa-match-ok");
-          }, 1000);
-        }
+        inp.classList.remove("sa-match-ok","sa-match-bad");
+      });
+      const saCheckBtn = box.querySelector(".sa-check-btn");
+      if(saCheckBtn) saCheckBtn.addEventListener("click", ()=>{
+        inp.classList.remove("sa-match-ok","sa-match-bad");
+        if(!inp.value.trim()) return;
+        inp.classList.add(normalizeSpellAnswer(inp.value)===normalizeSpellAnswer(q.answer) ? "sa-match-ok" : "sa-match-bad");
       });
       const playBtn = box.querySelector(".sa-solve-playpause");
       const restartBtn = box.querySelector(".sa-solve-restart");
@@ -14825,6 +15106,156 @@ async function applyUsersImport(plan){
   return report;
 }
 
+/* ===================== نقل المستخدمين بين المؤسسات (صيغة محمولة) =====================
+   لا يحوي الملف اسم المؤسسة ولا معرّفها ولا رمزها: مستخدمون مصنَّفون (مديرو مؤسسات/منسقون/معلمون/طلاب/أولياء أمور) بمساراتهم
+   (الصف/الفصل/المواد/التكليفات) وكلمات مرورهم المشفّرة (تجزئة، لا نص صريح)، مع الهيكل الإداري (جدول المواد والأدوار).
+   يمكن استيراده في أي مؤسسة أخرى أو الاحتفاظ به كنسخة احتياطية JSON. */
+const PORTABLE_FORMAT = "anta-wa-nahnu/users-portable";
+function buildPortableUsers(orgId){
+  const users = {}, counts = {};
+  BACKUP_KINDS.forEach(k=>{
+    users[k] = (ROOT[k]||[]).filter(u=>u && u.orgId===orgId).map(u=>{ const c = JSON.parse(JSON.stringify(u)); delete c.orgId; return c; });
+    counts[k] = users[k].length;
+  });
+  const meta = ROOT.orgMeta && ROOT.orgMeta[orgId];
+  return {
+    format: PORTABLE_FORMAT, version: 2, exportedAt: new Date().toISOString(),
+    note: "نسخة محمولة غير مرتبطة باسم أو معرّف أي مؤسسة؛ يمكن استيرادها في أي مؤسسة. كلمات المرور مشفّرة (تجزئة) ولا يمكن عرضها كنص صريح.",
+    counts, users,
+    structure: (meta && meta.subjects) ? JSON.parse(JSON.stringify(meta.subjects)) : null
+  };
+}
+function exportPortableUsers(orgId){
+  const data = buildPortableUsers(orgId);
+  let total = 0; BACKUP_KINDS.forEach(k=>total += data.users[k].length);
+  const d = new Date(), stamp = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+"_"+pad2(d.getHours())+pad2(d.getMinutes());
+  downloadJSONFile("مستخدمون-محمول_"+stamp+".json", data);
+  tnToast("تم تصدير "+total+" مستخدمًا (صيغة محمولة بلا اسم مؤسسة).");
+}
+function mergeStructureInto(meta, src){
+  if(!src || typeof src!=="object") return;
+  const t = (meta.subjects && typeof meta.subjects==="object") ? meta.subjects : (meta.subjects = { columns:[], rows:[] });
+  if(!Array.isArray(t.columns)) t.columns = []; if(!Array.isArray(t.rows)) t.rows = [];
+  (src.columns||[]).forEach(c=>{ if(c && t.columns.indexOf(c)<0) t.columns.push(c); });
+  (src.rows||[]).forEach(sr=>{
+    if(!sr) return;
+    let tr = t.rows.find(r=>r && r.role===sr.role); if(!tr){ tr = { role:sr.role }; t.rows.push(tr); }
+    if(sr.cells && typeof sr.cells==="object"){
+      tr.cells = tr.cells || {};
+      Object.keys(sr.cells).forEach(col=>{
+        const a = String(tr.cells[col]||"").split("\n").filter(Boolean);
+        String(sr.cells[col]||"").split("\n").filter(Boolean).forEach(u=>{ if(a.indexOf(u)<0) a.push(u); });
+        tr.cells[col] = a.join("\n");
+      });
+    }
+  });
+}
+function planPortableImport(data, targetOrgId){
+  const target = orgById(targetOrgId);
+  const plan = { target, add:{}, counts:{}, skipped:[], structure:null, error:"" };
+  if(!target){ plan.error = "المؤسسة الهدف غير موجودة."; return plan; }
+  const users = {}; BACKUP_KINDS.forEach(k=>users[k] = []);
+  if(data && data.format===PORTABLE_FORMAT){ BACKUP_KINDS.forEach(k=>{ if(data.users && Array.isArray(data.users[k])) users[k] = data.users[k]; }); plan.structure = data.structure || null; }
+  else if(data && data.format===BACKUP_FORMAT && Array.isArray(data.organizations)){
+    data.organizations.forEach(b=>{ BACKUP_KINDS.forEach(k=>{ if(b && b.users && Array.isArray(b.users[k])) users[k] = users[k].concat(b.users[k]); }); if(b && b.subjects && !plan.structure) plan.structure = b.subjects; });
+  } else { plan.error = "هذا الملف ليس نسخة مستخدمين صادرة من هذه المنصة."; return plan; }
+  const seen = new Set();
+  BACKUP_KINDS.forEach(k=>{
+    plan.add[k] = []; plan.counts[k] = 0;
+    users[k].forEach(u=>{
+      if(!u || typeof u!=="object" || !u.username){ plan.skipped.push({name:"(بلا اسم)", why:"سجل غير صالح"}); return; }
+      const key = Sec.norm(u.username);
+      if(seen.has(key)){ plan.skipped.push({name:u.username, why:"مكرر داخل الملف"}); return; }
+      if(usernameTakenAnywhere(u.username)){
+        const ex = allAccountRecords().find(r=>r && r.username && Sec.norm(r.username)===key);
+        plan.skipped.push({name:u.username, why:(ex && ex.orgId===target.id) ? "موجود مسبقًا في هذه المؤسسة" : "الاسم مستخدم في مؤسسة أخرى"}); return;
+      }
+      if(!u.passHash && typeof u.password!=="string"){ plan.skipped.push({name:u.username, why:"بلا كلمة مرور"}); return; }
+      seen.add(key); plan.add[k].push(u); plan.counts[k]++;
+    });
+  });
+  return plan;
+}
+async function applyPortableImport(plan){
+  const org = plan.target; ROOT.deletedUsers = ROOT.deletedUsers || {}; const added = {};
+  for(const k of BACKUP_KINDS){
+    added[k] = 0; if(!Array.isArray(ROOT[k])) ROOT[k] = [];
+    for(const u of plan.add[k]){
+      const rec = JSON.parse(JSON.stringify(u)); rec.orgId = org.id; ROOT[k].push(rec); added[k]++;
+      if(USER_KINDS.includes(k)) delete ROOT.deletedUsers[tombKey(k, userKeyOf(rec))];
+      if(k==="teachers"){ try{ withScope(org.id, ()=>linkTeacherRelations(rec)); }catch(e){ console.error(e); } }
+    }
+  }
+  try{ if(plan.structure) mergeStructureInto(orgMetaFor(org.id), plan.structure); }catch(e){ console.error(e); }
+  try{ snapshotKnownUsers(); }catch(e){}
+  saveDB(); flushSaveDBNow();
+  return { org, added, skipped:plan.skipped };
+}
+async function runPortableImport(file, targetOrgId, onDone){
+  let data; try{ data = JSON.parse(await file.text()); }catch(e){ tnToast("الملف ليس JSON صالحًا.", "err"); return; }
+  if(firebaseDB){ try{ await ensureFirebaseAuth(); await mergeUsersWithCloud(); }catch(e){} }
+  const plan = planPortableImport(data, targetOrgId);
+  if(plan.error){ tnToast(plan.error, "err"); return; }
+  let add = 0; BACKUP_KINDS.forEach(k=>add += plan.counts[k]);
+  if(!add){ tnToast("لا يوجد مستخدمون صالحون للاستيراد (تخطّي "+plan.skipped.length+").", "err"); return; }
+  const lines = BACKUP_KINDS.map(k=>"• "+plan.counts[k]+" "+BACKUP_KIND_LABEL[k]).join("\n");
+  if(!confirm("سيُستورد "+add+" مستخدمًا إلى «"+plan.target.name+"» (تخطّي "+plan.skipped.length+").\nيُوضعون في هذه المؤسسة كما هم بمساراتهم وكلمات مرورهم المشفّرة، ولا يُستبدل أي حساب موجود.\n\n"+lines)) return;
+  const report = await applyPortableImport(plan); onDone && onDone(report);
+}
+/* تحديث صلاحيات الدخول (roles/ver في السحابة) للمستخدمين المنقولين إلى مؤسسة أخرى — للمشرف العام فقط */
+async function retargetCloudRoles(users, dstId){
+  if(!firebaseDB || !(typeof session!=="undefined" && session && session.role==="admin")) return { n:0, skipped:true };
+  let n = 0;
+  for(const u of users){
+    try{
+      const uh = await Sec.userHash(u.username);
+      const rs = await firebaseDB.ref("roles").orderByChild("u").equalTo(uh).get();
+      if(rs.exists()){ for(const uid of Object.keys(rs.val())){ await firebaseDB.ref("roles/"+uid+"/orgId").set(dstId); n++; } }
+      const vs = await firebaseDB.ref("ver/"+uh).get(); if(vs.exists()) await firebaseDB.ref("ver/"+uh+"/orgId").set(dstId);
+    }catch(e){ console.error(e); }
+  }
+  return { n };
+}
+function openMoveUsersModal(srcOrg, onDone){
+  let ov = document.getElementById("orgMoveOverlay"); if(ov) ov.remove();
+  const others = (ROOT.organizations||[]).filter(o=>o && o.id!==srcOrg.id);
+  ov = document.createElement("div"); ov.className = "overlay"; ov.id = "orgMoveOverlay";
+  const cnt = k=>(ROOT[k]||[]).filter(u=>u && u.orgId===srcOrg.id).length;
+  ov.innerHTML = `<div class="modal wide" role="dialog" aria-modal="true">
+    <button type="button" class="modal-close" id="mvClose">إغلاق ✕</button>
+    <h2>تصدير مستخدمين إلى مؤسسة</h2>
+    <p class="tn-note">ينتقل المستخدمون المحدَّدون من «${regEsc(srcOrg.name)}» إلى المؤسسة التي تختارها كما هم (أسماؤهم وكلمات مرورهم ومساراتهم وهيكلهم)، ويُحدَّث انتماؤهم في السحابة. اسم المستخدم فريد على مستوى المنصة، لذا يكون الإجراء نقلًا لا نسخًا.</p>
+    <label for="mvTarget">المؤسسة الهدف</label>
+    <select id="mvTarget">${others.map(o=>`<option value="${regEsc(o.id)}">${regEsc(o.name)}</option>`).join("")}</select>
+    <div class="tn-section-title">من تريد نقله؟</div>
+    ${BACKUP_KINDS.map(k=>`<label style="display:flex;gap:8px;align-items:center;margin:4px 0;"><input type="checkbox" class="mvKind" value="${k}" ${k==="orgAdmins"?"":"checked"} ${cnt(k)?"":"disabled"}> ${BACKUP_KIND_LABEL[k]} (${cnt(k)})</label>`).join("")}
+    <label style="display:flex;gap:8px;align-items:center;margin-top:8px;"><input type="checkbox" id="mvStruct" checked> نقل الهيكل الإداري (جدول المواد والأدوار) ودمجه مع هيكل المؤسسة الهدف</label>
+    <div style="margin-top:12px;display:flex;gap:8px;"><button type="button" class="primary-btn" id="mvGo" style="width:auto;padding:8px 18px;" ${others.length?"":"disabled"}>نقل الآن</button><span id="mvMsg" class="tn-note"></span></div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector("#mvClose").onclick = ()=>ov.remove();
+  ov.querySelector("#mvGo").onclick = async ()=>{
+    const dst = orgById(ov.querySelector("#mvTarget").value); if(!dst) return;
+    const kinds = [...ov.querySelectorAll(".mvKind:checked")].map(x=>x.value);
+    if(!kinds.length){ tnToast("حدّد نوعًا واحدًا على الأقل.", "err"); return; }
+    const moving = []; kinds.forEach(k=>(ROOT[k]||[]).forEach(u=>{ if(u && u.orgId===srcOrg.id) moving.push({k,u}); }));
+    if(!confirm("سيُنقل "+moving.length+" مستخدمًا من «"+srcOrg.name+"» إلى «"+dst.name+"». متابعة؟")) return;
+    ov.querySelector("#mvMsg").textContent = "جارٍ النقل…";
+    try{
+      if(firebaseDB){ try{ await ensureFirebaseAuth(); await mergeUsersWithCloud(); }catch(e){} }
+      const names = new Set(); const students = new Set();
+      moving.forEach(m=>{ m.u.orgId = dst.id; names.add(Sec.norm(m.u.username)); if(m.k==="students") students.add(Sec.norm(m.u.username)); });
+      (ROOT.results||[]).forEach(r=>{ if(r && r.orgId===srcOrg.id && students.has(Sec.norm(r.studentUsername))) r.orgId = dst.id; });
+      if(ov.querySelector("#mvStruct").checked){ try{ const sm = ROOT.orgMeta && ROOT.orgMeta[srcOrg.id]; if(sm && sm.subjects) mergeStructureInto(orgMetaFor(dst.id), JSON.parse(JSON.stringify(sm.subjects))); }catch(e){ console.error(e); } }
+      try{ snapshotKnownUsers(); }catch(e){}
+      saveDB(); flushSaveDBNow();
+      const rr = await retargetCloudRoles(moving.map(m=>m.u), dst.id);
+      tnToast("تم نقل "+moving.length+" مستخدمًا إلى «"+dst.name+"»"+(rr.skipped?" (تحديث صلاحيات الدخول في السحابة يلزمه المشرف العام)":"")+".");
+      ov.remove(); onDone && onDone();
+    }catch(e){ console.error(e); ov.querySelector("#mvMsg").textContent = "تعذّر النقل: "+(e.message||e); }
+  };
+}
+
 async function runUsersImport(file, onDone){
   let data;
   try{ data = JSON.parse(await file.text()); }catch(e){ tnToast("الملف ليس JSON صالحًا.", "err"); return; }
@@ -14856,6 +15287,7 @@ function renderOrgsWindow(view){
       <button class="chip-btn" id="orgBackupExportBtn" title="يصدّر حسابات كل المستخدمين في كل المؤسسات (بكلمات مرورهم المشفّرة) كنسخة احتياطية JSON">📤 تصدير بيانات المؤسسات</button>
       <button class="chip-btn" id="orgBackupImportBtn" title="يستعيد المستخدمين من نسخة JSON، كلٌّ في مؤسسته فقط">📥 استيراد بيانات المؤسسات</button>
       <input type="file" id="orgBackupFile" accept="application/json,.json" style="display:none;">
+      <input type="file" id="orgPortableFile" accept="application/json,.json" style="display:none;">
     </div>
     <div id="orgTableWrap"></div>`;
   const wrap = document.getElementById("orgTableWrap");
@@ -14929,7 +15361,7 @@ function renderOrgsWindow(view){
         </td>
         <td><ul class="tn-list"><li><span>طلاب:</span> ${c.students}${c.unpaid?` <span>(غير مسدد ${c.unpaid})</span>`:""}</li><li><span>معلمون:</span> ${c.teachers}</li><li><span>منسقون:</span> ${c.coordinators}</li><li><span>أولياء أمور:</span> ${c.parents}</li></ul></td>
         <td>${admins.length ? `<ul class="tn-list">${admins.map(a=>`<li>${regEsc(a.username)}${a.active===false?" <span>(موقوف)</span>":""}</li>`).join("")}</ul>` : `<span class="tn-note">لا يوجد مدير</span>`}</td>
-        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn tn-mini c-edit">✏️ تعديل البيانات</button><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="chip-btn tn-mini c-backup" title="تصدير مستخدمي هذه المؤسسة فقط (JSON)">📤 تصدير بيانات المؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
+        <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="chip-btn tn-mini c-edit">✏️ تعديل البيانات</button><button type="button" class="chip-btn accent tn-mini c-open">فتح لوحة المؤسسة</button><button type="button" class="chip-btn tn-mini c-backup" title="تصدير مستخدمي هذه المؤسسة (أسماء وكلمات مرور مشفّرة وتصنيف ومسارات وهيكل إداري) بصيغة JSON غير مرتبطة باسم المؤسسة">📤 تصدير بيانات المؤسسة</button><button type="button" class="chip-btn tn-mini c-pimport" title="استيراد مستخدمين من ملف JSON إلى هذه المؤسسة">📥 استيراد بيانات مستخدمين</button><button type="button" class="chip-btn tn-mini c-pmove" title="نقل مستخدمي هذه المؤسسة إلى مؤسسة أخرى كما هم">📤 تصدير مستخدمين إلى مؤسسة</button><button type="button" class="icon-btn danger c-del" title="حذف المؤسسة">🗑</button></div></td>`;
 
       tr.querySelector(".c-name").addEventListener("blur", (e)=>{
         const nv = e.target.textContent.trim().replace(/\s+/g," ");
@@ -14956,7 +15388,9 @@ function renderOrgsWindow(view){
       });
       tr.querySelectorAll(".tn-renew button").forEach(b=>b.addEventListener("click", ()=>{ renewOrg(o, +b.dataset.m); drawTable(); tnToast("تم تجديد الاشتراك حتى "+o.subscriptionExpiry); }));
       tr.querySelector(".c-open").addEventListener("click", ()=>enterOrgView(o.id));
-      tr.querySelector(".c-backup").addEventListener("click", ()=>exportUsersBackup([o.id]));
+      tr.querySelector(".c-backup").addEventListener("click", ()=>exportPortableUsers(o.id));
+      tr.querySelector(".c-pimport").addEventListener("click", ()=>{ const fi = document.getElementById("orgPortableFile"); fi.dataset.org = o.id; fi.click(); });
+      tr.querySelector(".c-pmove").addEventListener("click", ()=>openMoveUsersModal(o, ()=>drawTable()));
       tr.querySelector(".c-edit").addEventListener("click", ()=>openEditOrgModal(o, info=>{
         drawTable();
         const pw = info.resets.map(r=>`<li>${regEsc(r.user)} — كلمة المرور: <span class="tn-code">${regEsc(r.pass)}</span></li>`).join("");
@@ -14983,6 +15417,17 @@ function renderOrgsWindow(view){
     drawTable();
   }));
   document.getElementById("orgBackupExportBtn").addEventListener("click", ()=>exportUsersBackup(null));
+  document.getElementById("orgPortableFile").addEventListener("change", async (e)=>{
+    const f = e.target.files[0], oid = e.target.dataset.org; e.target.value = "";
+    if(!f || !oid) return;
+    await runPortableImport(f, oid, (r)=>{
+      drawTable();
+      const n = BACKUP_KINDS.map(k=>r.added[k]+" "+BACKUP_KIND_LABEL[k]).join("، ");
+      const sk = r.skipped.length ? `<div class="tn-note">تم تخطّي ${r.skipped.length}: ${r.skipped.slice(0,8).map(x=>regEsc(x.name)+" ("+regEsc(x.why)+")").join("، ")}${r.skipped.length>8?" …":""}</div>` : "";
+      document.getElementById("orgFlash").innerHTML = `<div class="tn-flash" role="status"><b>«${regEsc(r.org.name)}»:</b> اكتمل استيراد المستخدمين — ${n}${sk}<div style="margin-top:8px;"><button type="button" class="chip-btn tn-mini" id="orgFlashClose4">إخفاء</button></div></div>`;
+      document.getElementById("orgFlashClose4").addEventListener("click", ()=>{ document.getElementById("orgFlash").innerHTML = ""; });
+    });
+  });
   document.getElementById("orgBackupImportBtn").addEventListener("click", ()=>document.getElementById("orgBackupFile").click());
   document.getElementById("orgBackupFile").addEventListener("change", async (e)=>{
     const f = e.target.files[0]; e.target.value = "";
