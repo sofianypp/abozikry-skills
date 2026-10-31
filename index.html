@@ -2020,7 +2020,7 @@ function applyCloudSnapshot(saved){
   const localLists = { models:ROOT.models, banks:ROOT.banks, students:ROOT.students, teachers:ROOT.teachers, parents:ROOT.parents };
   const localDelModels = Object.assign({}, ROOT.deletedModelIds||{});
   const localTombs = Object.assign({}, ROOT.deletedUsers||{});
-  Object.keys(saved).forEach(k=>{ ROOT[k]=saved[k]; });
+  Object.keys(saved).forEach(k=>{ ROOT[k]=deepCopyJSON(saved[k]); });
   ROOT.deletedModelIds = Object.assign({}, localDelModels, ROOT.deletedModelIds||{});
   const tombs = Object.assign({}, localTombs);
   Object.keys(ROOT.deletedUsers||{}).forEach(t=>{ tombs[t] = Math.max(tombs[t]||0, ROOT.deletedUsers[t]||0); });
@@ -3256,9 +3256,13 @@ function cloudDiffersFromBase(cloud){
   for(const k of Object.keys(baseHashes)){ if(!seen.has(k) && baseHashes[k]) return true; }
   return false;
 }
+/* إصلاح جذري لفقدان بيانات المستخدمين: كانت سجلات السحابة تُتبنّى في ROOT «بنفس الكائنات» المحفوظة في latestCloud.
+   فإذا عدّل المشرف اسم الطالب أو كلمة مروره بعد ذلك تغيّر الكائن في النسختين معًا، فيُحسب التعديل «متزامنًا» ولا يُكتب في السحابة أبدًا
+   (يظهر في الجهاز ثم يختفي بعد التحديث، ولا يستطيع الطالب الدخول). الآن يدخل ROOT نسخة مستقلة دائمًا. */
+function deepCopyJSON(v){ return (v===undefined || v===null || typeof v!=="object") ? v : JSON.parse(JSON.stringify(v)); }
 function replaceRoot(obj){
   Object.keys(ROOT).forEach(k=>{ if(!(k in obj)) delete ROOT[k]; });
-  Object.keys(obj).forEach(k=>{ ROOT[k] = obj[k]; });
+  Object.keys(obj).forEach(k=>{ ROOT[k] = deepCopyJSON(obj[k]); });
 }
 function absorbCloud(cloud){
   const merged = mergeWithCloud(ROOT, cloud, baseHashes);
@@ -4685,6 +4689,7 @@ const NAV = {
     ["forms","النماذج التعليمية"],
     ["mindbank","بنك الخرائط الذهنية"],
     ["live","الحصة المباشرة"],
+    ["groupresults","نتائج المجموعات"],
   ],
   coordinator: [
     ["analysis","تحليل النتائج"],
@@ -4699,11 +4704,13 @@ const NAV = {
     ["mystudents","بيانات الطلاب"],
     ["parentsLink","ربط أولياء الأمور بالطلاب"],
     ["live","الحصة المباشرة"],
+    ["groupresults","نتائج المجموعات"],
   ],
   teacher: [
     ["forms","النماذج التعليمية"],
     ["lessons","الشروح التفاعلية"],
     ["live","الحصة المباشرة"],
+    ["groupresults","نتائج المجموعات"],
     ["timetable","جدول الحصص والتواصل"],
     ["plans","توزيعة المنهج والخطة الأسبوعية"],
     ["essaygrading","تصحيح المقالي"],
@@ -4784,6 +4791,7 @@ function renderView(role,key){
   if(key==="mindbank"){ renderMindBankWindow(view); return; }
   if(key==="lessons"){ if(role==="student") renderStudentLessonsList(view); else renderFormsWindow(view, role, "lesson"); return; }
   if(key==="live"){ if(role==="student") LIVE.renderStudent(view); else LIVE.renderTeacher(view, role); return; }
+  if(key==="groupresults"){ LIVE.renderGroupResults(view, role); return; }
   if(key==="timetable"){ renderCommTable(view, role); return; }
   if(key==="plans"){ renderPlansWindow(view, role); return; }
   if(key==="classtt"){ renderClassTTWindow(view, role); return; }
@@ -11273,6 +11281,8 @@ const SAB_MARKS = [
   { ch:"\u0651", cls:"shad", t:"شدّة" }, { ch:"\u0652", cls:"sukn", t:"سكون" }
 ];
 function openSpellBoard(q, noCheck, list, startIdx){
+  if(window.LIVE && LIVE.inTeacherStage && LIVE.inTeacherStage()){ return LIVE.dictTeacher(q, noCheck, list, startIdx); }   // الحصة المباشرة: كل طالب في نافذته
+  if(window.LIVE && LIVE.inStudentStage && LIVE.inStudentStage()){ return; }                                                      // الطالب تفتح له نافذته من المعلم
   const old = document.getElementById("saBoardOverlay"); if(old){ if(old.__sabClose) old.__sabClose(); else old.remove(); }
   const ov = document.createElement("div"); ov.id = "saBoardOverlay";
   const words = (Array.isArray(list) && list.length) ? list : [q];
@@ -12304,6 +12314,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   }
 
   document.getElementById("solveSubmit").addEventListener("click", ()=>doSubmit(false));
+  view.__lvSubmit = ()=>doSubmit(true);        // تُستدعى من الحصة المباشرة عند إنهاء الاختبار الجماعي
 
   // بند: عند المراجعة أو إعادة فتح نموذج سبق حلّه، نعيد وضع كل كلمة كان الطالب قد أفلتها
   // فعليًا في مكانها بالضبط (بدل ترك الخانات فارغة رغم امتلاء بنك الكلمات فوقها).
@@ -12466,6 +12477,17 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     // حل (forceRetry) — وتُرصد وتُحلَّل نتائجها وتحدياتها، بينما تُستبدل (لا تُضاف) على سجل
     // النتيجة نفسه أدناه (existing ? Object.assign : push)، فتُحذف تلقائيًا كل بيانات الرصد
     // والتحليل والتحديات الخاصة بالمحاولة السابقة لنفس الطالب على نفس النموذج.
+    if(window.__lvGroupScore && view.closest && view.closest("#lvOverlay")){
+      const gTotal = model.data.filter(q=>q.type!=="reading").reduce((s,q)=>{
+        if(q.type==="match") return s + (q.pairs?q.pairs.length:0);
+        if(q.type==="classify") return s + (q.items?q.items.length:0);
+        if(q.type==="mindmap") return s + (q.items?q.items.filter(it=>!it.isLabel).length:0);
+        if(q.type==="spellchoice") return s + (q.correct?(q.correct.size!==undefined?q.correct.size:q.correct.length):0);
+        return s + 1;
+      }, 0);
+      try{ window.__lvGroupScore({ score, total:gTotal }); }catch(e){ console.error(e); }
+      return;                                    // نتيجة المجموعة تُسجَّل باسم المجموعة لا باسم طالب
+    }
     const studentRow = DB.students.find(s=>s.username===session.user.username);
     const existing = DB.results.find(r=>r.studentUsername===session.user.username && r.modelId===model.id);
     // بند: نحفظ الإجابات الفعلية (الكلمات التي أفلتها الطالب) لأسئلة النموذج النحوي والخريطة
@@ -14414,6 +14436,36 @@ function genericPrintTable(table){
 .tbl-fs-container.tbl-fs-active, .mm-fs-container.mm-fullscreen{ z-index:100200 !important; }
 #studentHintPopup{ z-index:100300 !important; }
 .tn-toast, .test-toast, .test-timeup-overlay, .gz-float-panel{ z-index:100400 !important; }
+
+/* ===== الغرف في الحصة المباشرة ===== */
+.lvr-panel{ position:absolute; inset:56px 0 0 0; z-index:100100; background:#eef2f1; display:flex; flex-direction:column; direction:rtl; overflow:auto; padding:10px; gap:10px; }
+.lvr-toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#fff; border:2px solid var(--ink,#111); border-radius:12px; padding:8px 10px; }
+.lvr-toolbar label{ display:flex; gap:6px; align-items:center; margin:0; }
+.lvr-grid{ display:grid; gap:10px; flex:1 1 auto; min-height:0; }
+.lvr-grid.g1,.lvr-grid.one{ grid-template-columns:1fr; } .lvr-grid.g2{ grid-template-columns:repeat(2,1fr); } .lvr-grid.g3{ grid-template-columns:repeat(3,1fr); } .lvr-grid.g4{ grid-template-columns:repeat(2,1fr); }
+@media (min-width:1100px){ .lvr-grid.g4{ grid-template-columns:repeat(4,1fr); } }
+@media (max-width:700px){ .lvr-grid.g2,.lvr-grid.g3,.lvr-grid.g4{ grid-template-columns:1fr; } }
+.lvr-card{ background:#fff; border:2.5px solid var(--ink,#111); border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; min-height:260px; }
+.lvr-card.full{ min-height:calc(100vh - 190px); }
+.lvr-card-head{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.lvr-name{ flex:1 1 120px; font-weight:900; border:none; border-bottom:2px dashed #bbb; background:transparent; min-width:90px; }
+.lvr-count{ font-size:12px; opacity:.75; }
+.lvr-members{ display:flex; gap:5px; flex-wrap:wrap; }
+.lvr-mem{ display:inline-flex; gap:4px; align-items:center; background:#e8f1ff; border-radius:999px; padding:2px 8px; font-size:12.5px; font-weight:700; }
+.lvr-mem.off{ opacity:.5; } .lvr-mem select{ width:auto; max-width:110px; padding:0 2px; font-size:11px; border-width:1px; }
+.lvr-chat{ flex:1 1 auto; min-height:90px; max-height:100%; overflow:auto; background:#f7f7f7; border:1.5px solid #ddd; border-radius:8px; padding:6px; font-size:13.5px; }
+.lvr-msg{ margin-bottom:4px; } .lvr-msg.tr{ color:#1e6fff; } .lvr-empty{ opacity:.6; font-size:13px; }
+.lvr-ch-row{ display:flex; gap:6px; } .lvr-ch-row input{ flex:1; }
+.lvr-res{ font-weight:800; color:#15803d; }
+.lvr-chatbtn{ position:fixed; left:14px; bottom:14px; z-index:100150; background:var(--accent,#1e6fff); color:#fff; border:2px solid var(--ink,#111); border-radius:999px; padding:10px 16px; font-weight:900; cursor:pointer; }
+.lvr-chatpanel{ position:fixed; left:14px; bottom:64px; width:min(340px,92vw); max-height:70vh; z-index:100150; background:#fff; border:2.5px solid var(--ink,#111); border-radius:12px; padding:8px; flex-direction:column; gap:6px; direction:rtl; }
+.lvr-ch-head{ display:flex; justify-content:space-between; align-items:center; } .lvr-note{ font-size:11.5px; opacity:.7; }
+.lvr-sidebtns{ display:flex; flex-direction:column; gap:5px; margin-bottom:8px; } .lvr-sidehead{ font-weight:900; } .lvr-side{ text-align:right; }
+.lvr-chartov{ position:fixed; inset:0; z-index:100500; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:12px; }
+.lvr-chartbox{ background:#fff; border-radius:14px; padding:12px; max-width:min(820px,96vw); max-height:92vh; overflow:auto; }
+.lvr-dictlist{ flex:0 0 auto; background:#fff; border:2px solid var(--ink,#111); border-radius:10px; padding:8px; max-height:30vh; overflow:auto; }
+.lvr-dl-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+#saBoardOverlay .sab-name[readonly]{ pointer-events:none; }
 </style></head><body><table>${html}</table></body></html>`);
   w.document.close(); w.focus();
   setTimeout(()=>w.print(), 300);
@@ -16335,6 +16387,7 @@ async function openStage(sid, asTeacher, pre){
     q("#lvLeave", ov).addEventListener("click", ()=>{ LEFT.add(sid); closeStage(); });
   }
   announcePresence();
+  roomsInit();
   refreshMode();
   bindFullscreen();
   if(ST.teacher && window.matchMedia && matchMedia("(max-width:700px)").matches) ov.classList.add("lv-side-hidden");
@@ -16552,7 +16605,7 @@ LV.bridgeScript = function(){
 };
 
 /* ---------- حالة السماح ---------- */
-function computeAllowed(){ return ST.teacher || ST.allowAll || !!ST.grants[ST.key]; }
+function computeAllowed(){ if(ST.teacher) return true; if(ST.rmOn && ST.quizEnded) return false; return !!(ST.allowAll || ST.grants[ST.key] || (ST.rmOn && ST.myRoom)); }
 function refreshMode(){
   if(!ST) return;
   const was = ST.allowed;
@@ -16628,7 +16681,7 @@ function emit(a){
   try{
     const r = ST.ref.child("ev/"+ST.epoch).push();
     ST.mine.add(r.key);
-    r.set({ k:ST.key, n:ST.name, a, ts:TS() });
+    r.set({ k:ST.key, n:ST.name, a, ts:TS(), rm: ST.teacher ? "*" : (ST.myRoom || "*") });
   }catch(e){ console.warn("live emit", e); }
 }
 function attachInput(){
@@ -16743,7 +16796,9 @@ function listenEvents(){
   ST.evRef = ST.ref.child("ev/"+ST.epoch);
   ST.evRef.on("child_added", snap=>{
     if(!ST || ST.mine.has(snap.key)) return;
-    const v = snap.val(); if(v && v.a) applyAction(v.a);
+    const v = snap.val(); if(!v || !v.a) return;
+    if(ST.rmOn && v.rm && v.rm !== "*" && v.rm !== ST.myRoom) return;      // أحداث غرفة أخرى لا تظهر هنا
+    applyAction(v.a);
   });
 }
 function attachListeners(){
@@ -16765,8 +16820,8 @@ function attachListeners(){
     refreshMode();
   });
   R.child("g").on("value", s=>{ if(!ST) return; ST.grants = s.val() || {}; refreshMode(); });
-  R.child("p").on("value", s=>{ if(!ST) return; ST.parts = s.val() || {}; if(ST.teacher){ drawSide(); updateCount(); } });
-  R.child("c").on("value", s=>{ if(!ST) return; syncHands(s.val()); });
+  R.child("p").on("value", s=>{ if(!ST) return; ST.parts = s.val() || {}; if(ST.teacher){ drawSide(); updateCount(); try{ teacherRoomsRedraw(true); }catch(e){} } });
+  R.child("c").on("value", s=>{ if(!ST) return; syncHands(roomsFilterHands(s.val())); });
   ST.offs.push(()=>{ try{ R.child("ctl").off(); R.child("g").off(); R.child("p").off(); R.child("c").off(); if(ST.evRef) ST.evRef.off(); }catch(e){} });
 }
 function announcePresence(){
@@ -16832,6 +16887,565 @@ async function endSession(sid, wait){
   if(wait){ await new Promise(r=>setTimeout(r, 1200)); await rm(); } else setTimeout(rm, 2500);
 }
 /* عند تسجيل الخروج: المعلم تنتهي جميع حصصه المباشرة، والطالب يغادر الحصة فقط */
+/* =====================================================================================================
+   الغرف الجماعية في الحصة المباشرة + الإملاء الجماعي المباشر + نتائج المجموعات
+   - البيانات: live/<org>/s/<sid>/{rm,ra,dc}  (يكتبها المعلم)  ·  liveRooms/<org>/<sid>/<room>/{ch,pr,sig,res}  (معزولة بالقواعد)
+   - الصوت: WebRTC بين طلاب الغرفة الواحدة (تشبيك كامل)، والتأشير عبر Firebase. المعلم يفتح السماعة على غرفة أو أكثر.
+   ===================================================================================================== */
+const ROOM_N_DEFAULT = 4;
+const RMS = { chat:{}, chatRefs:{}, res:{}, resRefs:{}, draft:{}, view:"grid", open:false, listen:new Set(), lastBoard:null, lastQuiz:0, dictSeen:0, panel:null, stuPanel:null };
+const AU = { peers:new Map(), rooms:new Map(), stream:null, track:null, mic:false, box:null };
+const rmBase = ()=>db().ref("liveRooms/"+orgId()+"/"+ST.sid);
+function roomList(){ const n = Math.max(1, Math.min(30, Number(ST.rm && ST.rm.n) || ROOM_N_DEFAULT)); const a = []; for(let i=1;i<=n;i++) a.push("r"+i); return a; }
+function roomName(rid){ return (ST.rm && ST.rm.names && ST.rm.names[rid]) || ("المجموعة "+String(rid).slice(1)); }
+function partList(){ return Object.keys(ST.parts||{}).map(k=>Object.assign({ k }, ST.parts[k])).filter(p=>p && p.n); }
+function membersOf(rid){ return partList().filter(p=>p.uh && ST.ra && ST.ra[p.uh]===rid); }
+function onlineCount(){ return partList().filter(p=>p.on).length; }
+
+function roomsInit(){
+  ST.rm = null; ST.ra = {}; ST.myRoom = null; ST.uh = null; ST.rmOn = false; ST.quizEnded = false;
+  const R = ST.ref;
+  Sec.userHash(me()).then(uh=>{
+    if(!ST) return; ST.uh = uh;
+    if(!ST.teacher){ try{ R.child("p/"+ST.key).update({ uh }); }catch(e){} }
+    onRoomsChanged();
+  }).catch(()=>{});
+  R.child("rm").on("value", s=>{ if(!ST) return; ST.rm = s.val(); onRoomsChanged(); });
+  R.child("ra").on("value", s=>{ if(!ST) return; ST.ra = s.val() || {}; onRoomsChanged(); });
+  R.child("dc").on("value", s=>{ if(!ST) return; onDictCtl(s.val()); });
+  ST.offs.push(()=>{ try{ R.child("rm").off(); R.child("ra").off(); R.child("dc").off(); }catch(e){} roomsClose(); });
+  window.__lvGroupScore = null;
+  if(ST.teacher) roomsTeacherInit(); else roomsStudentInit();
+}
+function roomsClose(){
+  try{ auCloseAll(); }catch(e){}
+  Object.keys(RMS.chatRefs).forEach(r=>{ try{ RMS.chatRefs[r].off(); }catch(e){} }); RMS.chatRefs = {}; RMS.chat = {};
+  Object.keys(RMS.resRefs).forEach(r=>{ try{ RMS.resRefs[r].off(); }catch(e){} }); RMS.resRefs = {}; RMS.res = {};
+  ["lvRoomsPanel","lvChatPanel","lvChatBtn","lvChartOv","lvDictStu","lvRoomBtns"].forEach(id=>{ const el = document.getElementById(id); if(el) el.remove(); });
+  const sab = document.getElementById("saBoardOverlay"); if(sab && sab.__lvDict){ try{ sab.__sabClose ? sab.__sabClose() : sab.remove(); }catch(e){} }
+  window.__lvGroupScore = null; RMS.open = false; RMS.stuPanel = null; RMS.panel = null;
+}
+function onRoomsChanged(){
+  if(!ST) return;
+  const on = !!(ST.rm && ST.rm.on), prevOn = ST.rmOn, prevRoom = ST.myRoom;
+  ST.rmOn = on;
+  ST.myRoom = (on && ST.uh && ST.ra && ST.ra[ST.uh]) ? ST.ra[ST.uh] : null;
+  ST.quizEnded = !!(on && ST.rm && ST.rm.quiz && ST.rm.quiz.end);
+  if(ST.teacher){ if(on) autoAssignNew(); teacherRoomsRedraw(); }
+  else {
+    if(prevOn !== on || prevRoom !== ST.myRoom) studentRoomUi();
+    refreshMode();
+  }
+  quizWatch();
+}
+
+/* ---------- توزيع الطلاب (المعلم) ---------- */
+function autoAssignNew(){
+  if(!ST.teacher || !ST.rmOn) return;
+  const rl = roomList(), cnt = {}; rl.forEach(r=>cnt[r] = 0);
+  Object.keys(ST.ra||{}).forEach(uh=>{ const r = ST.ra[uh]; if(cnt[r]!=null) cnt[r]++; });
+  const add = {};
+  partList().forEach(p=>{
+    if(!p.uh || !p.on) return;
+    const cur = ST.ra[p.uh]; if(cur && cnt[cur]!=null) return;
+    let best = rl[0]; rl.forEach(r=>{ if(cnt[r] < cnt[best]) best = r; });
+    cnt[best]++; add[p.uh] = best;
+  });
+  if(Object.keys(add).length){ try{ ST.ref.child("ra").update(add); }catch(e){} }
+}
+function splitRandom(n){
+  n = Math.max(1, Math.min(30, Math.round(Number(n)) || ROOM_N_DEFAULT));
+  const st = partList().filter(p=>p.uh && p.on);
+  for(let i=st.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); const t = st[i]; st[i] = st[j]; st[j] = t; }   // عشوائي مختلف في كل مرة
+  const ra = {}; st.forEach((p,i)=>{ ra[p.uh] = "r"+((i % n)+1); });                                                      // أعداد متساوية ما أمكن
+  const names = (ST.rm && ST.rm.names) || {};
+  try{ rmBase().remove(); }catch(e){}
+  ST.ref.update({ rm:{ on:true, n, names, seq:((ST.rm && ST.rm.seq) || 0)+1 }, ra });
+  Object.keys(RMS.chat).forEach(k=>RMS.chat[k] = []); RMS.res = {}; RMS.lastBoard = null;
+}
+function regroupAll(){
+  if(!confirm("إعادة جميع الطلاب إلى غرفة واحدة؟ ستُنهى الغرف الحالية ومحادثاتها.")) return;
+  ST.ref.child("rm/on").set(false); ST.ref.child("ra").remove(); try{ rmBase().remove(); }catch(e){}
+  Object.keys(RMS.chat).forEach(k=>RMS.chat[k] = []); RMS.res = {};
+}
+function moveStudent(uh, rid){ if(uh && rid) ST.ref.child("ra/"+uh).set(rid); }
+function renameRoom(rid, name){ name = String(name||"").trim().slice(0,40); ST.ref.child("rm/names/"+rid).set(name || null); }
+
+/* ---------- الصوت المباشر (WebRTC) ---------- */
+function auBox(){ if(!AU.box){ AU.box = document.createElement("div"); AU.box.id = "lvAudioBox"; AU.box.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;"; document.body.appendChild(AU.box); } return AU.box; }
+function auResume(){ AU.peers.forEach(P=>{ if(P.el){ try{ P.el.play().catch(()=>{}); }catch(e){} } }); }
+function auOpen(room, label){
+  if(!window.RTCPeerConnection){ toast("المتصفح لا يدعم الصوت المباشر"); return; }
+  if(!ST.uh || AU.rooms.has(room)) return;
+  const me0 = ST.uh, pr = rmBase().child(room+"/pr");
+  pr.child(me0).set({ n:label || ST.name, t:TS() }).catch(()=>toast("تعذّر الانضمام للصوت: حدّث قواعد Firebase (liveRooms)"));
+  try{ pr.child(me0).onDisconnect().remove(); }catch(e){}
+  const cb = pr.on("value", s=>{
+    const v = s.val() || {};
+    Object.keys(v).forEach(uh=>{ if(uh !== me0 && !AU.peers.has(room+"|"+uh)) auPeer(room, uh); });
+    Array.from(AU.peers.keys()).forEach(k=>{ const P = AU.peers.get(k); if(P.room === room && !v[P.other]) auDrop(k); });
+  }, ()=>{});
+  AU.rooms.set(room, { pr, cb, me0 });
+}
+function auClose(room){
+  const r = AU.rooms.get(room); if(!r) return;
+  try{ r.pr.off("value", r.cb); r.pr.child(r.me0).remove(); }catch(e){}
+  AU.rooms.delete(room);
+  Array.from(AU.peers.keys()).forEach(k=>{ if(AU.peers.get(k).room === room) auDrop(k); });
+}
+function auCloseAll(){
+  Array.from(AU.rooms.keys()).forEach(auClose);
+  if(AU.stream){ try{ AU.stream.getTracks().forEach(t=>t.stop()); }catch(e){} }
+  AU.stream = null; AU.track = null; AU.mic = false;
+  if(AU.box){ AU.box.remove(); AU.box = null; }
+}
+function auDrop(key){
+  const P = AU.peers.get(key); if(!P) return;
+  P.offs.forEach(f=>{ try{ f(); }catch(e){} });
+  try{ P.pc.close(); }catch(e){}
+  if(P.el){ try{ P.el.remove(); }catch(e){} }
+  if(P.init){ try{ P.sig.remove(); }catch(e){} }
+  AU.peers.delete(key);
+}
+function auPeer(room, other){
+  const me0 = ST.uh, init = me0 < other, pair = init ? me0+"_"+other : other+"_"+me0, key = room+"|"+other;
+  const sig = rmBase().child(room+"/sig/"+pair);
+  const pc = new RTCPeerConnection({ iceServers:[{ urls:"stun:stun.l.google.com:19302" }, { urls:"stun:stun1.l.google.com:19302" }] });
+  const P = { pc, sig, offs:[], other, room, init, el:null, tr:null };
+  AU.peers.set(key, P);
+  P.tr = pc.addTransceiver("audio", { direction:"sendrecv" });
+  if(AU.track){ try{ P.tr.sender.replaceTrack(AU.track); }catch(e){} }
+  pc.ontrack = e=>{
+    const el = document.createElement("audio"); el.autoplay = true; el.playsInline = true;
+    el.srcObject = (e.streams && e.streams[0]) || new MediaStream([e.track]);
+    auBox().appendChild(el); P.el = el; el.play().catch(()=>{});
+  };
+  const mine = sig.child("c_"+(init?"i":"r")), theirs = sig.child("c_"+(init?"r":"i"));
+  pc.onicecandidate = e=>{ if(e.candidate){ try{ mine.push(JSON.stringify(e.candidate)); }catch(_){} } };
+  const ccb = theirs.on("child_added", s=>{ try{ pc.addIceCandidate(JSON.parse(s.val())).catch(()=>{}); }catch(_){} });
+  P.offs.push(()=>theirs.off("child_added", ccb));
+  if(init){
+    sig.remove().catch(()=>{}).then(()=>pc.createOffer()).then(o=>pc.setLocalDescription(o))
+      .then(()=>sig.child("offer").set(JSON.stringify(pc.localDescription))).catch(e=>console.warn("rtc offer", e));
+    const acb = sig.child("answer").on("value", s=>{ const v = s.val(); if(v && !P.gotAnswer){ P.gotAnswer = true; try{ pc.setRemoteDescription(JSON.parse(v)).catch(()=>{}); }catch(_){} } });
+    P.offs.push(()=>sig.child("answer").off("value", acb));
+  } else {
+    const ocb = sig.child("offer").on("value", async s=>{
+      const v = s.val(); if(!v || P.gotOffer === v) return;
+      if(P.gotOffer){ auDrop(key); setTimeout(()=>{ if(ST && AU.rooms.has(room)) auPeer(room, other); }, 300); return; }   // عرض جديد: نبني اتصالًا جديدًا
+      P.gotOffer = v;
+      try{ await pc.setRemoteDescription(JSON.parse(v)); const a = await pc.createAnswer(); await pc.setLocalDescription(a); await sig.child("answer").set(JSON.stringify(pc.localDescription)); }
+      catch(e){ console.warn("rtc answer", e); }
+    });
+    P.offs.push(()=>sig.child("offer").off("value", ocb));
+  }
+}
+async function auMicToggle(){
+  if(AU.mic){
+    AU.mic = false; try{ AU.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    AU.stream = null; AU.track = null; AU.peers.forEach(P=>{ try{ P.tr.sender.replaceTrack(null); }catch(e){} });
+  } else {
+    try{
+      AU.stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true } });
+      AU.track = AU.stream.getAudioTracks()[0]; AU.mic = true;
+      AU.peers.forEach(P=>{ try{ P.tr.sender.replaceTrack(AU.track); }catch(e){} });
+    }catch(e){ toast("تعذّر تشغيل الميكروفون: اسمح للمتصفح بالوصول إليه"); }
+  }
+  auResume(); paintMicBtn();
+}
+function paintMicBtn(){ const b = document.getElementById("lvMicBtn"); if(!b) return; b.textContent = AU.mic ? "🎤 الميكروفون يعمل — اضغط للإيقاف" : "🎤 تشغيل الميكروفون"; b.classList.toggle("on", AU.mic); }
+
+/* ---------- المحادثة النصية داخل الغرفة ---------- */
+function chatAttach(rid){
+  if(RMS.chatRefs[rid]) return;
+  RMS.chat[rid] = RMS.chat[rid] || [];
+  const ref = rmBase().child(rid+"/ch").limitToLast(120);
+  RMS.chatRefs[rid] = ref;
+  ref.on("child_added", s=>{ const v = s.val(); if(!v) return; RMS.chat[rid].push(Object.assign({ id:s.key }, v)); chatPaint(rid); }, ()=>{ if(!RMS.errToast){ RMS.errToast = true; toast("تعذّرت قراءة محادثة الغرفة: انشر قواعد Firebase المحدّثة (liveRooms)"); } });
+}
+function chatDetach(rid){ if(RMS.chatRefs[rid]){ try{ RMS.chatRefs[rid].off(); }catch(e){} delete RMS.chatRefs[rid]; } RMS.chat[rid] = []; }
+function chatSend(rid, text, asTeacher){
+  text = String(text||"").trim().slice(0,400); if(!text) return;
+  rmBase().child(rid+"/ch").push({ n: asTeacher ? "المعلم" : ST.name, u: ST.key, t: text, at: TS(), tr: asTeacher ? 1 : 0 }).catch(()=>toast("تعذّر إرسال الرسالة: حدّث قواعد Firebase (liveRooms)"));
+}
+function chatHTML(rid){
+  const a = RMS.chat[rid] || [];
+  if(!a.length) return '<div class="lvr-empty">لا رسائل بعد.</div>';
+  return a.map(m=>`<div class="lvr-msg ${m.tr?"tr":""}"><b>${esc(m.n||"")}:</b> ${esc(m.t||"")}</div>`).join("");
+}
+function chatPaint(rid){
+  qa('[data-chat="'+rid+'"]').forEach(box=>{ const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 30; box.innerHTML = chatHTML(rid); if(atEnd || box.dataset.stick!=="0") box.scrollTop = box.scrollHeight; });
+}
+
+/* ---------- واجهة الطالب ---------- */
+function roomsStudentInit(){
+  const bar = q(".lv-bar", ST.ov);
+  if(bar && !q("#lvRoomBadge", ST.ov)){ const b = document.createElement("span"); b.className = "lv-badge ok"; b.id = "lvRoomBadge"; b.style.display = "none"; bar.insertBefore(b, q("#lvLeave", ST.ov)); }
+  window.__lvGroupScore = function(res){ if(ST && ST.myRoom){ rmBase().child(ST.myRoom+"/res").set({ s:res.score, t:res.total, by:ST.name, at:TS() }).catch(()=>{}); } };
+}
+function studentRoomUi(){
+  const badge = q("#lvRoomBadge", ST.ov), rid = ST.myRoom;
+  Object.keys(RMS.chatRefs).forEach(r=>{ if(r !== rid) chatDetach(r); });
+  Array.from(AU.rooms.keys()).forEach(r=>{ if(r !== rid) auClose(r); });
+  ["lvChatPanel","lvChatBtn"].forEach(id=>{ const el = document.getElementById(id); if(el) el.remove(); });
+  if(!ST.rmOn || !rid){ if(badge) badge.style.display = "none"; return; }
+  if(badge){ badge.style.display = ""; badge.textContent = "🏠 غرفتك: " + roomName(rid); }
+  chatAttach(rid); auOpen(rid, ST.name);
+  const btn = document.createElement("button"); btn.id = "lvChatBtn"; btn.className = "lvr-chatbtn"; btn.textContent = "💬 غرفتي"; ST.ov.appendChild(btn);
+  const pan = document.createElement("div"); pan.id = "lvChatPanel"; pan.className = "lvr-chatpanel"; pan.style.display = "none";
+  pan.innerHTML = `<div class="lvr-ch-head"><b id="lvChName"></b><button class="chip-btn" id="lvChClose">✕</button></div>
+    <div class="lvr-chat" data-chat="${esc(rid)}"></div>
+    <div class="lvr-ch-row"><input type="text" id="lvChIn" placeholder="اكتب لمجموعتك فقط…" maxlength="400"><button class="chip-btn accent" id="lvChSend">إرسال</button></div>
+    <button class="chip-btn" id="lvMicBtn" style="width:100%;margin-top:6px;">🎤 تشغيل الميكروفون</button>
+    <div class="lvr-note">المحادثة الكتابية والصوتية مع مجموعتك ومعلمك فقط، ولا محادثات فردية.</div>`;
+  ST.ov.appendChild(pan);
+  q("#lvChName", pan).textContent = "🏠 " + roomName(rid);
+  const go = ()=>{ chatSend(rid, q("#lvChIn", pan).value, false); q("#lvChIn", pan).value = ""; };
+  q("#lvChSend", pan).addEventListener("click", go);
+  q("#lvChIn", pan).addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); go(); } e.stopPropagation(); });
+  q("#lvMicBtn", pan).addEventListener("click", auMicToggle);
+  btn.addEventListener("click", ()=>{ pan.style.display = pan.style.display==="none" ? "flex" : "none"; auResume(); chatPaint(rid); });
+  q("#lvChClose", pan).addEventListener("click", ()=>{ pan.style.display = "none"; });
+  chatPaint(rid); paintMicBtn();
+}
+
+/* ---------- نتيجة المجموعات: الاختبار الجماعي ---------- */
+function quizWatch(){
+  if(!ST || !ST.rmOn || !ST.rm) return;
+  const quiz = ST.rm.quiz, seq = quiz && quiz.seq || 0;
+  if(ST.teacher){
+    if(ST.rm.board && JSON.stringify(ST.rm.board) !== JSON.stringify(RMS.lastBoard)){ RMS.lastBoard = ST.rm.board; showChart(ST.rm.board); }
+    return;
+  }
+  if(quiz && quiz.end && seq && seq !== RMS.lastQuiz){
+    RMS.lastQuiz = seq;
+    // قائد الغرفة (أول عضو بحسب البصمة) يحسب درجة المجموعة من حلّها المشترك ويرفعها
+    const rid = ST.myRoom; if(!rid) return;
+    const online = membersOf(rid).filter(p=>p.on).map(p=>p.uh).sort();
+    if(online[0] === ST.uh){ try{ if(ST.viewEl && ST.viewEl.__lvSubmit) ST.viewEl.__lvSubmit(); }catch(e){ console.error(e); } }
+  }
+  if(ST.rm.board && JSON.stringify(ST.rm.board) !== JSON.stringify(RMS.lastBoard)){ RMS.lastBoard = ST.rm.board; showChart(ST.rm.board); }
+}
+function endGroupQuiz(){
+  if(!ST.rmOn){ toast("فعّل الغرف أولًا."); return; }
+  if(!confirm("إنهاء الاختبار الآن وإظهار نتائج المجموعات؟")) return;
+  const seq = ((ST.rm.quiz && ST.rm.quiz.seq) || 0) + 1;
+  ST.ref.child("rm/board").remove();
+  ST.ref.child("rm/quiz").set({ end:TS(), seq });
+  const rl = roomList();
+  toast("جارٍ جمع نتائج المجموعات…");
+  setTimeout(async ()=>{
+    const board = [];
+    for(const rid of rl){
+      let v = null; try{ v = (await rmBase().child(rid+"/res").get()).val(); }catch(e){}
+      const mem = membersOf(rid);
+      board.push({ id:rid, n:roomName(rid), s: v ? Number(v.s)||0 : 0, t: v ? Number(v.t)||0 : 0, ok: !!v, m: mem.map(p=>p.n), cls: dominant(mem.map(p=>p.cls)) });
+    }
+    board.sort((a,b)=>(b.s-a.s) || String(a.n).localeCompare(String(b.n),"ar"));
+    await ST.ref.child("rm/board").set(board);
+    saveGroupResults(board);
+  }, 5000);
+}
+function dominant(a){ const c = {}; a.filter(Boolean).forEach(x=>c[x] = (c[x]||0)+1); let b = "", n = 0; Object.keys(c).forEach(k=>{ if(c[k] > n){ n = c[k]; b = k; } }); return b; }
+function saveGroupResults(board){
+  try{
+    const m = ST.model || {}, meta = orgMetaFor(orgId());
+    meta.groupResults = Array.isArray(meta.groupResults) ? meta.groupResults : [];
+    board.forEach((b,i)=>{ if(!b.ok) return;
+      meta.groupResults.push({ id:"g"+Date.now().toString(36)+i, sid:ST.sid, modelId:m.id||"", title:(ST.meta && ST.meta.title) || m.title || "", modelNumber:m.number==null?"":m.number,
+        term:m.term||"", grade:m.grade||"", subject:m.subject||"", cls:b.cls||"", group:b.n, members:b.m||[], score:b.s, total:b.t, rank:i+1, date:new Date().toLocaleDateString("ar-EG"), at:Date.now(), teacher:me() });
+    });
+    saveDB(); flushSaveDBNow();
+    toast("حُفظت نتائج المجموعات في «نتائج المجموعات».");
+  }catch(e){ console.error(e); }
+}
+function showChart(board){
+  try{
+    const W = 760, rowH = 54, H = 90 + board.length*rowH, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0,0,W,H);
+    g.fillStyle = "#111"; g.font = "bold 26px Tahoma,Arial"; g.textAlign = "center"; g.fillText("نتائج المجموعات", W/2, 40);
+    const mx = Math.max(1, ...board.map(b=>b.t||b.s||1)), left = 170, right = W-30, cols = ["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2","#db2777","#4d7c0f"];
+    board.forEach((b,i)=>{
+      const y = 70 + i*rowH, w = Math.max(4, (right-left) * (b.s/mx));
+      g.fillStyle = cols[i%cols.length]; g.fillRect(left, y, w, rowH-18);
+      g.fillStyle = "#111"; g.font = "bold 18px Tahoma,Arial"; g.textAlign = "right"; g.fillText((i+1)+". "+b.n, left-10, y+(rowH-18)/2+6);
+      g.textAlign = "left"; g.fillText(b.s+(b.t?" / "+b.t:""), left+w+8, y+(rowH-18)/2+6);
+    });
+    const url = cv.toDataURL("image/png");
+    let ov = document.getElementById("lvChartOv"); if(ov) ov.remove();
+    ov = document.createElement("div"); ov.id = "lvChartOv"; ov.className = "lvr-chartov";
+    ov.innerHTML = `<div class="lvr-chartbox"><button class="chip-btn danger" id="lvChartX">✕ إغلاق</button><img alt="نتائج المجموعات" src="${url}" style="max-width:100%;height:auto;display:block;margin:10px auto;"></div>`;
+    ST.ov.appendChild(ov); q("#lvChartX", ov).addEventListener("click", ()=>ov.remove());
+  }catch(e){ console.error(e); }
+}
+
+/* ---------- واجهة المعلم: لوحة الغرف ---------- */
+function roomsTeacherInit(){
+  const bar = q(".lv-bar", ST.ov);
+  if(bar && !q("#lvRooms", ST.ov)){
+    const b = document.createElement("button"); b.className = "chip-btn"; b.id = "lvRooms"; b.textContent = "🏠 الغرف";
+    b.title = "تقسيم الطلاب على غرف ومراقبتها"; const anchor = q("#lvSideToggle", ST.ov); anchor ? anchor.after(b) : bar.appendChild(b);
+    b.addEventListener("click", ()=>{ RMS.open = !RMS.open; teacherRoomsRedraw(); });
+  }
+  const side = q(".lv-side", ST.ov);
+  if(side && !q("#lvRoomBtns", ST.ov)){ const d = document.createElement("div"); d.id = "lvRoomBtns"; d.className = "lvr-sidebtns"; side.insertBefore(d, q(".lv-tools", side)); }
+  const mr = ST.meta && ST.meta.rooms ? Number(ST.meta.rooms) : 0;
+  if(mr > 0){ setTimeout(()=>{ if(ST && ST.teacher && !(ST.rm && ST.rm.on)){ ST.ref.update({ rm:{ on:true, n:mr, names:{}, seq:1 } }); } }, 1200); }
+  ST.timers.push(setInterval(()=>{ if(ST && ST.rmOn) autoAssignNew(); }, 4000));
+}
+function attachRoomListeners(){
+  roomList().forEach(rid=>{
+    chatAttach(rid);
+    if(!RMS.resRefs[rid]){ const r = rmBase().child(rid+"/res"); RMS.resRefs[rid] = r; r.on("value", s=>{ RMS.res[rid] = s.val(); teacherRoomsRedraw(true); }, ()=>{}); }
+  });
+}
+function teacherRoomsRedraw(soft){
+  if(!ST || !ST.teacher) return;
+  // أزرار الغرف في القائمة الجانبية
+  const sb = q("#lvRoomBtns", ST.ov);
+  if(sb){
+    if(!ST.rmOn){ sb.innerHTML = ""; }
+    else sb.innerHTML = '<div class="lvr-sidehead">🏠 الغرف</div>' + ['grid'].concat(roomList()).map(r=>`<button class="chip-btn lvr-side" data-v="${esc(r)}">${r==="grid"?"▦ كل الغرف":esc(roomName(r))+" ("+membersOf(r).length+")"}</button>`).join("");
+    qa("[data-v]", sb).forEach(b=>b.addEventListener("click", ()=>{ RMS.view = b.dataset.v; RMS.open = true; teacherRoomsRedraw(); }));
+  }
+  if(ST.rmOn) attachRoomListeners();
+  let pan = document.getElementById("lvRoomsPanel");
+  if(!RMS.open){ if(pan) pan.remove(); return; }
+  const keep = {}; if(pan){ qa("[data-chat]", pan).forEach(c=>{ keep[c.dataset.chat] = c.scrollTop; }); qa("input[data-draft]", pan).forEach(i=>{ RMS.draft[i.dataset.draft] = i.value; }); }
+  if(soft && pan && pan.contains(document.activeElement) && document.activeElement.tagName === "INPUT") { qa("[data-chat]", pan).forEach(c=>chatPaint(c.dataset.chat)); return; }
+  if(!pan){ pan = document.createElement("div"); pan.id = "lvRoomsPanel"; pan.className = "lvr-panel"; ST.ov.appendChild(pan); }
+  const rl = roomList(), n = (ST.rm && ST.rm.n) || ROOM_N_DEFAULT, show = RMS.view==="grid" ? rl : [RMS.view];
+  const card = rid=>{
+    const mem = membersOf(rid), res = RMS.res[rid], listening = RMS.listen.has(rid), full = RMS.view !== "grid";
+    return `<div class="lvr-card ${full?"full":""}">
+      <div class="lvr-card-head"><input type="text" class="lvr-name" data-rn="${esc(rid)}" value="${esc(roomName(rid))}" title="اضغط لتغيير اسم المجموعة"><span class="lvr-count">${mem.length} طالب</span>
+        <button class="chip-btn ${listening?"on":""}" data-listen="${esc(rid)}" title="فتح السماعة على هذه الغرفة">${listening?"🔊 مفتوحة":"🔈 السماعة"}</button>
+        <button class="chip-btn" data-full="${esc(rid)}">${full?"▦ الكل":"⛶ نافذة كاملة"}</button></div>
+      <div class="lvr-members">${mem.length ? mem.map(p=>`<span class="lvr-mem ${p.on?"":"off"}">${esc(p.n)}<select data-mv="${esc(p.uh)}" title="نقل إلى غرفة أخرى">${rl.map(r=>`<option value="${esc(r)}" ${r===rid?"selected":""}>${esc(roomName(r))}</option>`).join("")}</select></span>`).join("") : '<span class="lvr-empty">لا طلاب</span>'}</div>
+      <div class="lvr-chat" data-chat="${esc(rid)}" data-stick="1"></div>
+      <div class="lvr-ch-row"><input type="text" data-draft="${esc(rid)}" placeholder="اكتب لهذه الغرفة (كمعلم)…" maxlength="400" value="${esc(RMS.draft[rid]||"")}"><button class="chip-btn accent" data-send="${esc(rid)}">إرسال</button></div>
+      ${res ? `<div class="lvr-res">✔ درجة المجموعة: <b>${esc(res.s)}</b> / ${esc(res.t)}</div>` : ""}
+    </div>`;
+  };
+  pan.innerHTML = `<div class="lvr-toolbar">
+      <b>🏠 الغرف</b>
+      <label>عدد الغرف <input type="number" id="lvrN" min="1" max="30" value="${n}" style="width:70px;"></label>
+      <button class="chip-btn accent" id="lvrSplit">${ST.rmOn?"🔀 تقسيم عشوائي جديد":"🏠 تفعيل الغرف (تقسيم عشوائي)"}</button>
+      <button class="chip-btn" id="lvrRegroup" ${ST.rmOn?"":"disabled"}>⤺ إعادة التجميع في غرفة واحدة</button>
+      <button class="chip-btn" id="lvrEnd" ${ST.rmOn?"":"disabled"}>🏁 إنهاء الاختبار وعرض النتائج</button>
+      <button class="chip-btn" id="lvrAllListen" ${ST.rmOn?"":"disabled"}>🔊 السماعة على الكل</button>
+      <button class="chip-btn danger" id="lvrClose">✕ إغلاق</button>
+    </div>
+    ${ST.rmOn ? `<div class="lvr-grid ${RMS.view==="grid"?"g"+Math.min(rl.length,4):"one"}">${show.map(card).join("")}</div>` : '<div class="lvr-empty" style="padding:24px;text-align:center;">الغرف غير مفعّلة. اختر عدد الغرف ثم «تفعيل الغرف». الوضع الافتراضي 4 غرف، ويُوزَّع الطلاب عشوائيًا بأعداد متساوية ما أمكن.</div>'}`;
+  const $ = id=>q("#"+id, pan);
+  $("lvrSplit").addEventListener("click", ()=>{ splitRandom($("lvrN").value); RMS.open = true; });
+  $("lvrRegroup").addEventListener("click", regroupAll);
+  $("lvrEnd").addEventListener("click", endGroupQuiz);
+  $("lvrAllListen").addEventListener("click", ()=>{ const all = roomList().every(r=>RMS.listen.has(r)); roomList().forEach(r=>toggleListen(r, !all)); teacherRoomsRedraw(); });
+  $("lvrClose").addEventListener("click", ()=>{ RMS.open = false; pan.remove(); });
+  qa("[data-rn]", pan).forEach(i=>i.addEventListener("change", ()=>renameRoom(i.dataset.rn, i.value)));
+  qa("[data-listen]", pan).forEach(b=>b.addEventListener("click", ()=>{ toggleListen(b.dataset.listen, !RMS.listen.has(b.dataset.listen)); teacherRoomsRedraw(); }));
+  qa("[data-full]", pan).forEach(b=>b.addEventListener("click", ()=>{ RMS.view = RMS.view==="grid" ? b.dataset.full : "grid"; teacherRoomsRedraw(); }));
+  qa("[data-mv]", pan).forEach(s=>s.addEventListener("change", ()=>moveStudent(s.dataset.mv, s.value)));
+  qa("[data-send]", pan).forEach(b=>b.addEventListener("click", ()=>{ const i = q('input[data-draft="'+b.dataset.send+'"]', pan); chatSend(b.dataset.send, i.value, true); i.value = ""; RMS.draft[b.dataset.send] = ""; }));
+  qa("input[data-draft]", pan).forEach(i=>{ i.addEventListener("keydown", e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); chatSend(i.dataset.draft, i.value, true); i.value = ""; RMS.draft[i.dataset.draft] = ""; } }); i.addEventListener("input", ()=>{ RMS.draft[i.dataset.draft] = i.value; }); });
+  qa("[data-chat]", pan).forEach(c=>{ chatPaint(c.dataset.chat); if(keep[c.dataset.chat]!=null && c.scrollTop+c.clientHeight < c.scrollHeight-30) c.scrollTop = keep[c.dataset.chat]; });
+}
+function toggleListen(rid, on){
+  if(on){ RMS.listen.add(rid); auOpen(rid, "المعلم"); auResume(); } else { RMS.listen.delete(rid); auClose(rid); }
+}
+
+/* ---------- الإملاء الجماعي المباشر ---------- */
+function isTeacherStage(){ return !!(ST && ST.teacher); }
+function isStudentStage(){ return !!(ST && !ST.teacher); }
+function dictWords(q0, list, startIdx){
+  const words = (Array.isArray(list) && list.length) ? list : [q0];
+  let wi = words.indexOf(q0); if(wi < 0) wi = 0; if(startIdx!=null && startIdx>=0 && startIdx<words.length) wi = startIdx;
+  return { words, wi };
+}
+function dictIdxOf(w){ const d = (ST.model && ST.model.data) || []; return d.indexOf(w) >= 0 ? d.indexOf(w) : d.findIndex(x=>x && x.type==="spellaudio" && x.answer===w.answer); }
+function dictTeacher(q0, noCheck, list, startIdx){
+  const old = document.getElementById("saBoardOverlay"); if(old){ if(old.__sabClose) old.__sabClose(); else old.remove(); }
+  const D = dictWords(q0, list, startIdx); let { words, wi } = D;
+  let cur = words[wi], manual = null, audio = null, tTimer = null, locked = false, checked = false, seq = (ST.dseq = (ST.dseq||0)+1), results = {};
+  const ov = document.createElement("div"); ov.id = "saBoardOverlay"; ov.__lvDict = true;
+  ov.innerHTML = `<div class="sab-top">
+      <button type="button" class="chip-btn" id="ldPrev">◀ السابق</button><h3>الإملاء الجماعي — يكتب كل طالب في نافذته</h3><span class="sab-badge" id="ldNo"></span>
+      <span id="ldAudio" style="display:inline-flex;gap:6px;"></span>
+      <button type="button" class="chip-btn accent" id="ldNext">⏭ الكلمة التالية</button>
+      <span class="sab-timer">⏱ <input type="number" id="ldSec" min="5" max="3600" step="5" value="60"><span style="font-size:12px;">ث</span><span class="tl" id="ldLeft">01:00</span>
+        <button type="button" class="chip-btn" id="ldStart">▶ ابدأ</button><button type="button" class="chip-btn" id="ldReset">↺</button></span>
+      <label style="margin:0;display:flex;align-items:center;gap:6px;">عدد الطلاب <input type="number" id="ldCount" min="1" max="80" style="width:70px;"><button type="button" class="chip-btn" id="ldAll">الجميع</button></label>
+      <button type="button" class="chip-btn accent" id="ldCheck">✔ تحقق للجميع</button>
+      <button type="button" class="chip-btn" id="ldOk">✅ المشاركات الصحيحة</button>
+      <button type="button" class="chip-btn" id="ldBad">❌ المشاركات الخاطئة</button>
+      <button type="button" class="chip-btn danger" id="ldClose">✕ إغلاق</button></div>
+    <div class="sab-grid" id="ldGrid" style="overflow:auto;"></div><div id="ldList" class="lvr-dictlist" style="display:none;"></div>`;
+  document.body.appendChild(ov);
+  const $ = id=>q("#"+id, ov);
+  const fmt = n=>String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
+  const students = ()=>partList().filter(p=>p.on).sort((a,b)=>String(a.n).localeCompare(String(b.n),"ar"));
+  const countVal = ()=>{ const n = manual==null ? students().length : manual; return Math.max(1, Math.min(80, n)); };
+  function publish(extra){
+    ST.ref.child("dc").set(Object.assign({ on:true, seq, idx:dictIdxOf(cur), wi, n:words.length, endsAt:0, locked, checked, ts:TS() }, extra||{}));
+  }
+  function mount(){
+    cur = words[wi]; locked = false; checked = false; results = {}; seq = (ST.dseq = (ST.dseq||0)+1);
+    if(audio){ try{ audio.pause(); }catch(e){} audio = null; }
+    $("ldNo").textContent = words.length>1 ? ("الكلمة "+(wi+1)+" من "+words.length) : "كلمة واحدة";
+    $("ldPrev").style.display = $("ldNext").style.display = words.length>1 ? "" : "none"; $("ldPrev").disabled = wi<=0; $("ldNext").disabled = wi>=words.length-1;
+    const ab = $("ldAudio"); ab.innerHTML = "";
+    if(cur.audioUrl){ audio = new Audio(cur.audioUrl); ab.innerHTML = '<button type="button" class="chip-btn accent" id="ldPlay">▶ تشغيل</button>'; $("ldPlay").addEventListener("click", ()=>{ if(audio.paused) audio.play(); else audio.pause(); }); }
+    clearInterval(tTimer); tTimer = null; $("ldStart").textContent = "▶ ابدأ"; $("ldLeft").textContent = fmt(Math.round(Number($("ldSec").value)||60));
+    ov.classList.remove("sab-timeup"); publish(); draw();
+  }
+  function ok(p){ return normalizeSpellAnswer(p.dt||"") === normalizeSpellAnswer(cur.answer||""); }
+  function draw(){
+    const st = students(), n = countVal(), box = $("ldGrid");
+    $("ldCount").value = n;
+    const cols = n<=2 ? n : (n<=4 ? 2 : (n<=9 ? 3 : (n<=16 ? 4 : 5)));
+    box.style.gridTemplateColumns = "repeat("+cols+",1fr)"; box.style.gridAutoRows = "minmax(120px,1fr)";
+    box.innerHTML = "";
+    for(let i=0;i<n;i++){
+      const p = st[i], valid = p && p.ds === seq, txt = valid ? (p.dt||"") : "";
+      const res = results[p && p.k];
+      const d = document.createElement("div"); d.className = "sab-panel";
+      d.innerHTML = `<div class="sab-text ${res==="ok"?"ok":(res==="bad"?"bad":"")}" dir="rtl" style="flex:1 1 auto;"></div><input type="text" class="sab-name" readonly value="${esc(p?p.n:"— بلا طالب —")}">`;
+      d.querySelector(".sab-text").textContent = txt; box.appendChild(d);
+    }
+  }
+  function doCheck(){
+    locked = true; checked = true; clearInterval(tTimer); tTimer = null; ov.classList.add("sab-timeup");
+    const st = students(); results = {};
+    st.forEach(p=>{ results[p.k] = (p.ds === seq && (p.dt||"").trim()) ? (ok(p) ? "ok" : "bad") : "bad"; });
+    publish({ locked:true, checked:true, endsAt:0 }); draw();
+  }
+  function listNames(kind){
+    const st = students().filter(p=>results[p.k]===kind), el = $("ldList");
+    el.style.display = ""; el.innerHTML = `<div class="lvr-dl-head"><b>${kind==="ok"?"✅ المشاركات الصحيحة":"❌ المشاركات الخاطئة"} (${st.length})</b><button class="chip-btn" id="ldListX">إخفاء</button></div>` + (st.length ? st.map(p=>`<span class="lvr-mem">${esc(p.n)}${kind==="bad"&&p.dt?" — "+esc(p.dt):""}</span>`).join("") : '<span class="lvr-empty">لا أحد.</span>');
+    q("#ldListX", el).addEventListener("click", ()=>{ el.style.display = "none"; });
+  }
+  function startTimer(){
+    if(tTimer){ clearInterval(tTimer); tTimer = null; $("ldStart").textContent = "▶ متابعة"; publish({ endsAt:0 }); return; }
+    const sec = Math.max(5, Math.min(3600, Math.round(Number($("ldSec").value)||60))), end = now() + sec*1000;
+    locked = false; checked = false; ov.classList.remove("sab-timeup"); results = {}; publish({ endsAt:end, locked:false, checked:false }); $("ldStart").textContent = "⏸ إيقاف مؤقت";
+    tTimer = setInterval(()=>{ const left = Math.ceil((end - now())/1000); $("ldLeft").textContent = fmt(Math.max(0,left)); $("ldLeft").classList.toggle("low", left<=10); if(left<=0){ clearInterval(tTimer); tTimer = null; $("ldStart").textContent = "▶ ابدأ"; doCheck(); } }, 250);
+  }
+  const unsub = ()=>{ try{ ST.ref.child("p").off("value", pcb); }catch(e){} };
+  const pcb = ST.ref.child("p").on("value", ()=>{ if(!locked || !checked) draw(); else draw(); });
+  function close(){ clearInterval(tTimer); if(audio){ try{ audio.pause(); }catch(e){} } unsub(); try{ ST.ref.child("dc").set({ on:false, seq, ts:TS() }); }catch(e){} ov.remove(); }
+  ov.__sabClose = close;
+  $("ldStart").addEventListener("click", startTimer);
+  $("ldReset").addEventListener("click", ()=>{ clearInterval(tTimer); tTimer = null; $("ldStart").textContent = "▶ ابدأ"; $("ldLeft").textContent = fmt(Math.round(Number($("ldSec").value)||60)); ov.classList.remove("sab-timeup"); locked = false; checked = false; results = {}; publish({ endsAt:0 }); draw(); });
+  $("ldCheck").addEventListener("click", doCheck);
+  $("ldOk").addEventListener("click", ()=>{ if(!checked) doCheck(); listNames("ok"); });
+  $("ldBad").addEventListener("click", ()=>{ if(!checked) doCheck(); listNames("bad"); });
+  $("ldCount").addEventListener("change", ()=>{ manual = Math.max(1, Math.min(80, Math.round(Number($("ldCount").value)||1))); draw(); });
+  $("ldAll").addEventListener("click", ()=>{ manual = null; draw(); });
+  $("ldNext").addEventListener("click", ()=>{ if(wi<words.length-1){ wi++; mount(); } });
+  $("ldPrev").addEventListener("click", ()=>{ if(wi>0){ wi--; mount(); } });
+  $("ldClose").addEventListener("click", close);
+  mount();
+}
+/* نافذة الإملاء عند الطالب: مربع نص واحد + لوحة مفاتيح مناسبة + تشغيل/تحقق/مسح + عدّاد */
+function onDictCtl(dc){
+  if(!ST || ST.teacher) return;
+  const ov0 = document.getElementById("saBoardOverlay");
+  if(!dc || !dc.on){ if(ov0 && ov0.__lvDictStu){ try{ ov0.__sabClose(); }catch(e){ ov0.remove(); } } return; }
+  if(ov0 && ov0.__lvDictStu && ov0.__seq === dc.seq){ ov0.__update(dc); return; }
+  if(ov0){ if(ov0.__lvDictStu){ try{ ov0.__sabClose(); }catch(e){ ov0.remove(); } } else return; }
+  dictStudent(dc);
+}
+function dictStudent(dc){
+  const ov = document.createElement("div"); ov.id = "saBoardOverlay"; ov.__lvDictStu = true; ov.__seq = dc.seq;
+  const w = (ST.model && ST.model.data && ST.model.data[dc.idx]) || null;
+  let text = "", locked = false, audio = null, tick = null, sendT = null;
+  ov.innerHTML = `<div class="sab-top"><h3>اكتب ما يُملى عليك</h3><span class="sab-badge" id="lsNo"></span><span id="lsAudio" style="display:inline-flex;gap:6px;"></span>
+      <span class="sab-timer">⏱ <span class="tl" id="lsLeft">--:--</span></span></div>
+    <div class="sab-grid" style="grid-template-columns:1fr;grid-template-rows:1fr;"><div class="sab-panel" id="lsPanel" tabindex="0"><div class="sab-text" id="lsText" dir="rtl"></div><div class="sab-status" id="lsStatus"></div><div class="sab-kb" id="lsKb"></div></div></div>`;
+  document.body.appendChild(ov);
+  const $ = id=>q("#"+id, ov), panel = $("lsPanel");
+  const fmt = n=>String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
+  $("lsNo").textContent = dc.n>1 ? ("الكلمة "+((dc.wi||0)+1)+" من "+dc.n) : "";
+  if(w && w.audioUrl){ audio = new Audio(w.audioUrl); $("lsAudio").innerHTML = '<button type="button" class="chip-btn accent" id="lsPlay">▶ تشغيل</button>'; $("lsPlay").addEventListener("click", ()=>{ if(audio.paused) audio.play(); else audio.pause(); }); }
+  function paint(){ const t = $("lsText"); t.textContent = text; }
+  function push(){ clearTimeout(sendT); sendT = setTimeout(()=>{ try{ ST.ref.child("p/"+ST.key).update({ dt:text, ds:dc.seq }); }catch(e){} }, 200); }
+  function add(ch){ if(locked) return; text += ch; paint(); push(); }
+  function back(){ if(locked) return; text = Array.from(text).slice(0,-1).join(""); paint(); push(); }
+  function check(){
+    if(locked && !ov.__checked) return;
+    const okk = !!(w && text.trim() && normalizeSpellAnswer(text) === normalizeSpellAnswer(w.answer||""));
+    const t = $("lsText"); t.classList.toggle("ok", okk); t.classList.toggle("bad", !okk);
+    $("lsStatus").textContent = !text.trim() ? "لم تكتب شيئًا" : (okk ? "✔ إجابة صحيحة" : "✘ إجابة غير صحيحة"); $("lsStatus").style.color = okk ? "#1e8e4e" : "var(--danger)";
+    if(!ov.__checked){ locked = true; try{ ST.ref.child("p/"+ST.key).update({ dt:text, ds:dc.seq, dok:okk }); }catch(e){} }
+  }
+  const mk = (label, cls, fn, html, title)=>{ const b = document.createElement("button"); b.type = "button"; b.className = "sab-key "+(cls||""); if(html) b.innerHTML = html; else b.textContent = label; if(title) b.title = title; b.addEventListener("pointerdown", e=>{ e.preventDefault(); e.stopPropagation(); fn(); }); b.addEventListener("click", e=>e.preventDefault()); return b; };
+  const kb = $("lsKb");
+  SAB_ROWS.forEach(r=>{ const row = document.createElement("div"); row.className = "sab-row"; r.forEach(ch=>row.appendChild(mk(ch,"",()=>add(ch)))); kb.appendChild(row); });
+  const mrow = document.createElement("div"); mrow.className = "sab-row";
+  SAB_MARKS.forEach(m=>mrow.appendChild(mk("","mark "+m.cls,()=>add(m.ch),'<span class="mk">\u0640'+m.ch+'</span>',m.t)));
+  mrow.appendChild(mk("⌫","del",back,null,"حذف حرف")); kb.appendChild(mrow);
+  const last = document.createElement("div"); last.className = "sab-row";
+  last.appendChild(mk("لا","",()=>add("لا"))); last.appendChild(mk("،","",()=>add("،"))); last.appendChild(mk("مسافة","rect space",()=>add(" ")));
+  last.appendChild(mk("✔ تحقق","rect act",check)); last.appendChild(mk("مسح","rect del",()=>{ if(locked) return; text = ""; paint(); push(); }));
+  kb.appendChild(last);
+  function fit(){ const wd = panel.clientWidth - 18, h = panel.clientHeight, fixedH = $("lsStatus").offsetHeight + 28; const kW = (wd - 11*3)/12.1, kH = (((h - fixedH - 90)*0.74) - 4*3)/5; const k = Math.max(26, Math.min(96, Math.floor(Math.min(kW, kH)))); panel.style.setProperty("--k", k+"px"); panel.style.setProperty("--kv", Math.floor(k*1.3)+"px"); }
+  try{ new ResizeObserver(fit).observe(panel); }catch(e){ window.addEventListener("resize", fit); } requestAnimationFrame(fit);
+  ov.__update = function(d){
+    dc = d; ov.__seq = d.seq;
+    if(d.endsAt && !tick){ tick = setInterval(()=>{ const left = Math.ceil((dc.endsAt - now())/1000); $("lsLeft").textContent = fmt(Math.max(0,left)); $("lsLeft").classList.toggle("low", left<=10); if(left<=0 && !locked){ locked = true; try{ ST.ref.child("p/"+ST.key).update({ dt:text, ds:dc.seq }); }catch(e){} } }, 250); }
+    if(!d.endsAt && tick){ clearInterval(tick); tick = null; }
+    if(d.locked){ locked = true; ov.classList.add("sab-timeup"); }
+    if(d.checked && !ov.__checked){ ov.__checked = true; check(); }
+  };
+  ov.__sabClose = ()=>{ clearInterval(tick); clearTimeout(sendT); if(audio){ try{ audio.pause(); }catch(e){} } ov.remove(); };
+  panel.addEventListener("keydown", e=>{ if(e.key==="Backspace"){ e.preventDefault(); back(); } else if(e.key==="Enter"){ e.preventDefault(); check(); } else if(e.key.length===1 && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); add(e.key); } });
+  paint(); ov.__update(dc); panel.focus();
+}
+LV.dictTeacher = dictTeacher; LV.inTeacherStage = isTeacherStage; LV.inStudentStage = isStudentStage;
+
+/* ---------- نافذة «نتائج المجموعات» ---------- */
+LV.renderGroupResults = function(view, role){
+  const meta = (typeof orgMetaFor==="function") ? orgMetaFor(orgId()) : {};
+  const all = (Array.isArray(meta.groupResults) ? meta.groupResults : []).filter(r=>r && (role!=="teacher" || r.teacher===me()));
+  const gradeOpts = (role==="admin"||role==="orgadmin") ? ((typeof ALL_GRADES!=="undefined") ? ALL_GRADES : []) : (typeof assignedGradesFor==="function" ? assignedGradesFor() : []);
+  const classOpts = (role==="admin"||role==="orgadmin") ? (typeof allClassesInUse==="function" ? allClassesInUse() : []) : (typeof assignedClassesFor==="function" ? assignedClassesFor() : []);
+  view.innerHTML = `<h2>نتائج المجموعات</h2><p class="sub">درجات المجموعات في الاختبارات الجماعية التي أُجريت داخل الغرف في الحصة المباشرة، مرتّبة داخل كل اختبار.</p>
+    <div class="toolbar" style="background:var(--soft);padding:10px;border-radius:8px;align-items:center;">
+      <select id="gfTerm" style="width:auto;flex:1 1 160px;min-width:120px;"><option value="">كل الفصول الدراسية</option><option>الفصل الأول</option><option>الفصل الثاني</option><option>الفصل الثالث</option></select>
+      <select id="gfGrade" style="width:auto;flex:1 1 160px;min-width:120px;"><option value="">كل الصفوف</option>${gradeOpts.map(g=>`<option>${esc(g)}</option>`).join("")}</select>
+      <select id="gfCls" style="width:auto;flex:1 1 160px;min-width:120px;"><option value="">كل الفصول</option>${classOpts.map(c=>`<option>${esc(c)}</option>`).join("")}</select>
+      <button class="chip-btn" id="gfReset">إعادة ضبط الترشيح</button><button class="chip-btn" onclick="window.print()">طباعة</button></div>
+    <div id="gfBody"></div>`;
+  const $ = id=>view.querySelector("#"+id);
+  function draw(){
+    const t = $("gfTerm").value, g = $("gfGrade").value, c = $("gfCls").value;
+    const rows = all.filter(r=>(!t||r.term===t) && (!g||String(r.grade)===g) && (!c||String(r.cls)===c));
+    if(!rows.length){ $("gfBody").innerHTML = '<div class="empty-note">لا توجد نتائج مجموعات مطابقة.</div>'; return; }
+    const byTest = {}; rows.forEach(r=>{ const k = r.sid+"|"+r.modelId; (byTest[k] = byTest[k] || []).push(r); });
+    $("gfBody").innerHTML = Object.keys(byTest).sort((a,b)=>(byTest[b][0].at||0)-(byTest[a][0].at||0)).map(k=>{
+      const a = byTest[k].slice().sort((x,y)=>(y.score-x.score)||String(x.group).localeCompare(String(y.group),"ar")), h = a[0];
+      return `<h3 style="margin-top:18px;">${esc(h.title||"اختبار")} — ${esc(h.grade||"")} — ${esc(h.term||"")} <small style="opacity:.7">(${esc(h.date||"")})</small></h3>` +
+        tableHTML(["الترتيب","المجموعة","الفصل","الأعضاء","الدرجة","من","النسبة"], a.map((r,i)=>[i+1, esc(r.group), esc(r.cls||"—"), esc((r.members||[]).join("، ")), r.score, r.total, r.total?Math.round(r.score/r.total*100)+"%":"—"]));
+    }).join("");
+  }
+  ["gfTerm","gfGrade","gfCls"].forEach(id=>$(id).addEventListener("change", draw));
+  $("gfReset").addEventListener("click", ()=>{ ["gfTerm","gfGrade","gfCls"].forEach(id=>$(id).value = ""); draw(); });
+  draw();
+};
+
+function roomsFilterHands(cur){
+  if(!ST || !ST.rmOn || !cur) return cur;
+  const out = {};
+  Object.keys(cur).forEach(k=>{
+    if(k.charAt(0)==="_" || k===ST.key){ out[k] = cur[k]; return; }
+    const p = ST.parts && ST.parts[k], room = p && p.uh ? (ST.ra||{})[p.uh] : null;
+    if(!ST.teacher && room && room === ST.myRoom) out[k] = cur[k];
+    else if(ST.teacher && k==="T") out[k] = cur[k];
+  });
+  return out;
+}
+
 LV.onLogout = async function(){
   try{
     try{ sessionStorage.removeItem("lv-resume"); }catch(e){}
@@ -16978,7 +17592,7 @@ LV.renderTeacher = async function(view, role){
     const r = meRec();
     return all.filter(s=>{ try{ return studentBelongsToTeacher(s, r); }catch(e){ return false; } });
   };
-  const S = { kind:"model", term:"", grade:"", cls:"", subject:"", contentId:null,
+  const S = { kind:"model", term:"", grade:"", cls:"", subject:"", contentId:null, rooms:0,
               gSel:new Set(), cSel:new Set(), sSel:new Set() };
   const uniq = a=>Array.from(new Set(a.filter(x=>x!=null && x!==""))).sort((x,y)=>String(x).localeCompare(String(y),"ar",{numeric:true}));
   const cl = s=>String(s.cls==null?"":s.cls);
@@ -17010,7 +17624,8 @@ LV.renderTeacher = async function(view, role){
         <div><label>الفصل (واحد أو أكثر)</label><div id="lvmC"></div></div>
         <div><label>الطالب (واحد أو أكثر)</label><div id="lvmS"></div></div>
       </div>
-      <div id="lvsAudInfo" style="margin-top:10px;font-weight:800;"></div></div>
+      <div id="lvsAudInfo" style="margin-top:10px;font-weight:800;"></div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button type="button" class="chip-btn" id="lvsRooms" title="تقسيم الطلاب عشوائيًا على غرف بأعداد متساوية ما أمكن">🏠 تفعيل الغرف</button><span id="lvsRoomsInfo" style="font-weight:800;color:var(--accent);"></span></div></div>
     <button class="primary-btn" id="lvsStart" style="width:auto;padding:13px 34px;">🔴 بدء الحصة المباشرة</button>
     <div class="msg" id="lvsMsg"></div>`;
   // ترقيم العناوين بعد التحقق من الترتيب
@@ -17070,6 +17685,18 @@ LV.renderTeacher = async function(view, role){
   info();
 
   /* ----- أحداث ----- */
+  $("lvsRooms").addEventListener("click", ()=>{
+    let ov = document.getElementById("lvsRoomsOv"); if(ov) ov.remove();
+    ov = document.createElement("div"); ov.id = "lvsRoomsOv"; ov.className = "overlay show";
+    ov.innerHTML = `<div class="modal"><button class="modal-close">إغلاق ✕</button><h2>🏠 تفعيل الغرف</h2>
+      <p class="sub">اختر عدد الغرف؛ يُقسَّم الطلاب عشوائيًا بأعداد متساوية ما أمكن (الافتراضي 4 غرف)، ويمكنك تغيير العدد وإعادة التقسيم لاحقًا من داخل الحصة.</p>
+      <label>عدد الغرف</label><select id="lvsRoomsSel">${[2,3,4,5,6,7,8,9,10,12].map(n=>`<option value="${n}" ${n===(S.rooms||4)?"selected":""}>${n}</option>`).join("")}</select>
+      <div class="modal-actions"><button class="primary-btn" id="lvsRoomsOk" style="flex:1;">تفعيل</button><button class="chip-btn" id="lvsRoomsOff">إلغاء الغرف</button></div></div>`;
+    document.body.appendChild(ov);
+    const close = ()=>ov.remove(); ov.querySelector(".modal-close").addEventListener("click", close); ov.addEventListener("click", e=>{ if(e.target===ov) close(); });
+    ov.querySelector("#lvsRoomsOk").addEventListener("click", ()=>{ S.rooms = +ov.querySelector("#lvsRoomsSel").value; $("lvsRoomsInfo").textContent = "✔ الغرف مفعّلة: "+S.rooms+" غرف"; close(); });
+    ov.querySelector("#lvsRoomsOff").addEventListener("click", ()=>{ S.rooms = 0; $("lvsRoomsInfo").textContent = ""; close(); });
+  });
   $("lvsTerm").addEventListener("change", e=>{ S.term = e.target.value; drawCards(); });
   $("lvsGrade").addEventListener("change", e=>{ S.grade = e.target.value; S.cls = ""; drawFilters(); });
   $("lvsCls").addEventListener("change", e=>{ S.cls = e.target.value; // الفصل هنا يختصر تحديد الجمهور: يحدّد هذا الفصل فقط في قائمة الجمهور
@@ -17087,7 +17714,7 @@ LV.renderTeacher = async function(view, role){
     const sid = "L" + Date.now().toString(36);
     const title = (m.title||"") + " — " + (m.grade||"") + (m.subject?" — "+m.subject:"");
     const R = root();
-    const meta = { kind:S.kind, contentId:m.id, title, grade:m.grade||"", subject:m.subject||"", teacher:me(), tname:me(), target:t, seed:Math.floor(Math.random()*2e9)+1, ts:Date.now() };
+    const meta = { kind:S.kind, contentId:m.id, title, grade:m.grade||"", subject:m.subject||"", teacher:me(), tname:me(), target:t, seed:Math.floor(Math.random()*2e9)+1, rooms:S.rooms||0, ts:Date.now() };
     const ctl = { all:false, epoch:0, status:"open" };
     // كتابة واحدة (إشعار الطلاب أولًا) وفتح الحصة عند المعلم فورًا دون انتظار الخادم
     const wr = R.update({ ["active/"+sid]: { title, kind:S.kind, teacher:me(), tname:me(), target:t, ts:TS() }, ["s/"+sid]: { meta:Object.assign({}, meta, { ts:TS() }), ctl } });
