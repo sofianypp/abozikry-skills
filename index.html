@@ -1828,9 +1828,16 @@ function userKeyOf(r){ return Sec.norm(r && r.username); }
 function tombKey(kind, key){ return kind+"::"+hash53(key); }
 // ملاحظة: تتبّع الحذف يشمل مستخدمي كل المؤسسات معًا (المفاتيح فريدة على مستوى المنصة)،
 // لذا يعمل على ROOT مباشرة وليس عبر DB المعزولة بمؤسسة واحدة.
+/* حماية من «الحذف الجماعي الاستنتاجي»: كان أي غياب مؤقت للمستخدمين من الذاكرة (قراءة ناقصة/نطاق/أخطاء) يُسجَّل «حذفًا» ويُحوَّل إلى شواهد حذف
+   تُنشر على كل الأجهزة، ثم تُمسح عقد المستخدمين من السحابة. الآن: (1) لا يُحذف من السحابة إلا مستخدم حُذف صراحةً في هذه الجلسة،
+   (2) الاختفاء المفاجئ لنصف المستخدمين أو أكثر (٥ فأكثر) لا يُعدّ حذفًا ويظهر تنبيه أحمر. */
+const explicitShardDeletes = new Set();
+function shrinkAllowedNow(){ try{ return !!allowShrinkOnce; }catch(e){ return false; } }
+let knownUserMeta = {};
+function noteUserMeta(k, list){ const m = (knownUserMeta[k] = knownUserMeta[k] || {}); list.forEach(r=>{ if(r && r.username) m[userKeyOf(r)] = { n:r.username, o:r.orgId }; }); }
 function snapshotKnownUsers(){
-  knownUserKeys = {};
-  USER_KINDS.forEach(k=>{ knownUserKeys[k] = new Set((ROOT[k]||[]).filter(Boolean).map(userKeyOf)); });
+  knownUserKeys = {}; knownUserMeta = {};
+  USER_KINDS.forEach(k=>{ const l = (ROOT[k]||[]).filter(Boolean); knownUserKeys[k] = new Set(l.map(userKeyOf)); noteUserMeta(k, l); });
 }
 function trackUserDeletions(){
   if(!knownUserKeys) snapshotKnownUsers();
@@ -1839,12 +1846,30 @@ function trackUserDeletions(){
   USER_KINDS.forEach(k=>{
     const list = (ROOT[k]||[]).filter(Boolean);
     const cur = new Set(list.map(userKeyOf));
-    knownUserKeys[k].forEach(key=>{ if(!cur.has(key)) ROOT.deletedUsers[tombKey(k,key)] = now; });
+    const gone = []; knownUserKeys[k].forEach(key=>{ if(!cur.has(key)) gone.push(key); });
+    const mass = !shrinkAllowedNow() && gone.length >= 5 && gone.length > knownUserKeys[k].size*0.5;
+    if(mass){
+      console.warn("اختفاء جماعي مشتبه لـ", gone.length, "من", k, "— لم يُسجَّل كحذف");
+      try{ safetyBar("massDelBar","err","⚠ اختفى فجأة "+gone.length+" مستخدمًا من هذا الجهاز (قد تكون قراءة ناقصة للسحابة). لم يُسجَّل حذفهم ولن يُمسحوا من السحابة. أعد تحميل الصفحة؛ وإن كنتَ حذفتهم عمدًا فأعد المحاولة من زر الحذف."); }catch(e){}
+      list.forEach(r=>{ const key = userKeyOf(r); if(!knownUserKeys[k].has(key)){ if(!r.createdAt) r.createdAt = now; delete ROOT.deletedUsers[tombKey(k,key)]; knownUserKeys[k].add(key); } });
+      noteUserMeta(k, list);
+      return;
+    }
+    gone.forEach(key=>{
+      ROOT.deletedUsers[tombKey(k,key)] = now;
+      const m = (knownUserMeta[k]||{})[key];
+      if(m && (k==="students" || k==="parents")){
+        const o = (typeof orgOfItem==="function") ? orgOfItem({ orgId:m.o }) : (m.o || "_none");
+        const uh = Sec.userHashSync(m.n);
+        if(uh) explicitShardDeletes.add(o+"|"+uh);
+        else Sec.userHash(m.n).then(h=>{ explicitShardDeletes.add(o+"|"+h); try{ saveDB(); }catch(e){} });
+      }
+    });
     list.forEach(r=>{
       const key = userKeyOf(r);
       if(!knownUserKeys[k].has(key)){ if(!r.createdAt) r.createdAt = now; delete ROOT.deletedUsers[tombKey(k,key)]; }
     });
-    knownUserKeys[k] = cur;
+    knownUserKeys[k] = cur; noteUserMeta(k, list);
   });
   // تنظيف الشواهد الأقدم من 60 يومًا
   Object.keys(ROOT.deletedUsers).forEach(t=>{ if(now - ROOT.deletedUsers[t] > 60*86400000) delete ROOT.deletedUsers[t]; });
@@ -2229,7 +2254,9 @@ function planShardWrites(payload, me){
         const i = c.indexOf("|"), oid = c.slice(0,i), uh = c.slice(i+1);
         if(!isAdm && oid !== me.orgId) return;
         if(!canWriteShard(me,k)){ skipped.push(k); return; }
-        if(!isStaffRole(me.role) && !(uh === me.uh && k === "results")) return;   // الطالب لا يكتب إلا نتائجه في عقدته؛ سجله (الصف/التفعيل/الرسوم) وسجل ولي الأمر يديرهما الطاقم فقط، وتُهمَل محاولات غير ذلك بصمت
+        if(!isStaffRole(me.role) && !(uh === me.uh && k === "results")) return;
+        // لا نمسح عقدة طالب/ولي أمر من السحابة لمجرد غيابه من ذاكرة هذا الجهاز؛ فقط إن حُذف صراحةً (أو نُقل/أُعيدت تسميته)
+        if((k==="students" || k==="parents") && !(byU[oid] && byU[oid][uh]) && !shrinkAllowedNow() && !explicitShardDeletes.has(c)) return;   // الطالب لا يكتب إلا نتائجه في عقدته؛ سجله (الصف/التفعيل/الرسوم) وسجل ولي الأمر يديرهما الطاقم فقط، وتُهمَل محاولات غير ذلك بصمت
         set("userData/"+oid+"/"+uh+"/"+k, oid+"|u|"+uh+"|"+k, (byU[oid] && byU[oid][uh]) || []);
       });
       return;
@@ -15351,6 +15378,7 @@ function openMoveUsersModal(srcOrg, onDone){
     try{
       if(firebaseDB){ try{ await ensureFirebaseAuth(); await mergeUsersWithCloud(); }catch(e){} }
       const names = new Set(); const students = new Set();
+      for(const m of moving){ if(m.k==="students" || m.k==="parents"){ try{ explicitShardDeletes.add(srcOrg.id+"|"+await Sec.userHash(m.u.username)); }catch(e){} } }
       moving.forEach(m=>{ m.u.orgId = dst.id; names.add(Sec.norm(m.u.username)); if(m.k==="students") students.add(Sec.norm(m.u.username)); });
       (ROOT.results||[]).forEach(r=>{ if(r && r.orgId===srcOrg.id && students.has(Sec.norm(r.studentUsername))) r.orgId = dst.id; });
       if(ov.querySelector("#mvStruct").checked){ try{ const sm = ROOT.orgMeta && ROOT.orgMeta[srcOrg.id]; if(sm && sm.subjects) mergeStructureInto(orgMetaFor(dst.id), JSON.parse(JSON.stringify(sm.subjects))); }catch(e){ console.error(e); } }
