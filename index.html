@@ -2614,7 +2614,8 @@ const RealAuth = (function(){
       } else { await signOut(); return { ok:false, code:(e && e.code) || "error" }; }
     }
     try{
-      await firebaseDB.ref("registrations/"+user.uid).set({ u:uh, role, orgId:orgId||"", rec:JSON.parse(JSON.stringify(rec)), at:TS() });
+      try{ if(user.updateProfile) await user.updateProfile({ displayName:(orgId||"")+"|"+role }); }catch(e){}
+    await firebaseDB.ref("registrations/"+user.uid).set({ u:uh, role, orgId:orgId||"", rec:JSON.parse(JSON.stringify(rec)), at:TS() });
     }catch(e){ await signOut(); return { ok:false, code:(e && e.code) || "write-failed" }; }
     await signOut();
     return { ok:true, uid:user.uid };
@@ -2638,6 +2639,18 @@ const RealAuth = (function(){
 })();
 
 /* ===== الدخول في الوضع الصارم: Firebase أولًا، والدور يُؤخذ من roles/<uid> لا من الجهاز ===== */
+async function requestRelink(username, password, user){
+  const uh = await Sec.userHash(username);
+  let orgId = "";
+  try{ const m = String(user.displayName||"").split("|"); if(m[0]) orgId = m[0]; }catch(e){}
+  if(!orgId){ try{ const vs = await firebaseDB.ref("ver/"+uh).get(); if(vs.exists()) orgId = (vs.val()||{}).orgId || ""; }catch(e){} }
+  if(!orgId){ try{ const po = await firebaseDB.ref("publicOrgs").get(); if(po.exists()){ const ids = Object.values(po.val()||{}).map(x=>x && x.id).filter(Boolean); if(ids.length===1) orgId = ids[0]; } }catch(e){} }
+  if(!orgId) return false;
+  const cred = await Sec.hashPassword(password);
+  const rec = Object.assign({ username, orgId, createdAt:Date.now(), selfRegistered:true, relink:true }, cred);
+  await firebaseDB.ref("registrations/"+user.uid).set({ u:uh, role:"student", orgId, rec, at:firebase.database.ServerValue.TIMESTAMP });
+  return true;
+}
 async function strictAuthenticate(username, password){
   const T = { t0: performance.now() }, lap = k=>{ T[k] = Math.round(performance.now() - T.t0); };
   let user = null;
@@ -2654,7 +2667,16 @@ async function strictAuthenticate(username, password){
   let R = null;
   try{ const s = await firebaseDB.ref("roles/"+user.uid).get(); R = s.exists() ? s.val() : null; }catch(e){ R = null; }
   lap("roles");
-  if(!R){ await RealAuth.signOut(); return { special:true, msg:"حسابك مسجَّل لكنه بانتظار اعتماد المشرف. حاول لاحقًا أو راجع إدارة مؤسستك." }; }
+  if(!R){
+    // الحساب الحقيقي صحيح لكن لا صلاحية له (طلب التسجيل الأصلي اختفى أو لم يُعتمد). نُرسل طلب ربط جديدًا ليعتمده المشرف بنقرة،
+    // بدل أن يبقى الطالب عالقًا بلا أي طلب ظاهر عند المشرف.
+    let sent = false;
+    try{ sent = await requestRelink(username, password, user); }catch(e){ console.warn("relink", e); }
+    await RealAuth.signOut();
+    return { special:true, msg: sent
+      ? "حسابك مسجَّل، وقد أُرسل الآن طلب اعتماد إلى مشرفك. حاول الدخول بعد قليل (يُعتمد الطلب فور دخول المشرف أو المدير إلى المنصة)."
+      : "حسابك مسجَّل لكنه بانتظار اعتماد المشرف. حاول لاحقًا أو راجع إدارة مؤسستك." };
+  }
   const uh = await Sec.userHash(username);
   if(R.u !== uh){ await RealAuth.signOut(); return null; }
   const superHash = await Sec.userHash(SUPER_ADMIN.username), key = Sec.norm(username);
@@ -2732,7 +2754,19 @@ const SecurityPanel = (function(){
     const org = orgById(reg.orgId);
     if(!org) return { skip:"المؤسسة المسجَّل بها هذا الطلب غير موجودة (حُذفت أو لم تُحفظ). ارفض الطلب" };
     if(!orgStateOf(org).ok) return { skip:"اشتراك المؤسسة «"+(org.name||"")+"» "+(orgStateOf(org).code==="expired" ? "منتهٍ" : "موقوف")+" — فعّله من «المؤسسات والاشتراكات» أولًا" };
-    if(usernameConflict(rec.username)) return { skip:"اسم المستخدم مكرر" };
+    if(usernameConflict(rec.username)){
+      const KINDS3 = [["students","student"],["teachers","teacher"],["parents","parent"]];
+      let ex = null; KINDS3.forEach(([k,ro])=>{ (ROOT[k]||[]).forEach(r0=>{ if(!ex && r0 && r0.orgId===reg.orgId && r0.username && Sec.norm(r0.username)===Sec.norm(rec.username)) ex = { kind:k, role:ro, r:r0 }; }); });
+      if(!(ex && rec.relink)) return { skip:"اسم المستخدم مكرر" };
+      if(auto) return { skip:"طلب ربط لحساب موجود: يلزمه اعتماد يدوي للتأكد من هوية صاحبه" };
+      if(reg.u !== await Sec.userHash(ex.r.username)) return { skip:"بصمة الطلب لا تطابق السجل الموجود" };
+      ex.r.active = true; saveDB();
+      let saved0 = false; try{ saved0 = await persistAndVerify(ex.kind, ex.r, reg.orgId); }catch(e){ console.error(e); }
+      if(!saved0) return { skip:"سجل هذا المستخدم غير محفوظ في السحابة بعد؛ انتظر لحظات وأعد الاعتماد" };
+      await firebaseDB.ref("roles/"+uid).set({ role:ex.role, orgId:reg.orgId||"", u:reg.u, at:TS() });
+      await firebaseDB.ref("registrations/"+uid).remove();
+      return { ok:true };
+    }
     if(role==="parent" && rec.childUsername){
       const ch = (ROOT.students||[]).find(s=>s && Sec.norm(s.username)===Sec.norm(rec.childUsername));
       if(!ch) return { skip:"لا يوجد طالب بهذا الاسم" };
@@ -2815,7 +2849,7 @@ const SecurityPanel = (function(){
     ids.forEach(uid=>{
       const r = pend[uid], rec = r.rec || {}, o = orgById(r.orgId);
       html += `<div class="sp-row" data-uid="${esc(uid)}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid #8884;border-radius:8px;padding:8px;margin:6px 0">
-        <span style="flex:1;min-width:200px">${esc(rec.username)} — ${esc(ROLE_AR[r.role]||r.role)} — ${esc(o ? o.name : r.orgId)}</span>
+        <span style="flex:1;min-width:200px">${esc(rec.username)} — ${esc(rec.relink ? "🔗 ربط حساب موجود (تأكد أنه صاحب الاسم)" : (ROLE_AR[r.role]||r.role))} — ${esc(o ? o.name : r.orgId)}</span>
         <button data-act="ok" style="cursor:pointer;padding:5px 12px">اعتماد</button><button data-act="no" style="cursor:pointer;padding:5px 12px">رفض</button><span class="sp-st"></span></div>`;
     });
     html += `<hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">🧭 جاهزية القواعد الصارمة</h4>
@@ -2849,6 +2883,7 @@ const SecurityPanel = (function(){
     }));
     const out = body.querySelector("#spOut");
     const canDel = session.role==="admin" || session.role==="orgadmin";
+    const canFix = canManage();
     body.querySelector("#spReady").addEventListener("click", async ()=>{
       out.textContent = "جارٍ الفحص…";
       try{
@@ -2856,13 +2891,24 @@ const SecurityPanel = (function(){
         const r = await readiness();
         out.innerHTML = `<p>المشرف العام: ${r.superOk ? "✅ لديه حساب حقيقي" : "❌ لا حساب حقيقي بعد (سجّل الخروج ثم الدخول به مرة قبل التشديد)"}</p>
           <p>المستخدمون المفعّلون: ${r.total} — المنتقلون: ${r.total - r.missing.length} — المتبقون: <b>${r.missing.length}</b></p>` +
-          (r.missing.length ? `<div style="max-height:240px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:6px">` + r.missing.slice(0,300).map((m,i)=>`<label style="display:block;padding:2px 0">${canDel ? `<input type="checkbox" class="sp-ck" data-i="${i}"> ` : ""}${esc(m.n)} <small>(${esc(m.label)}${m.org ? " — "+esc(m.org) : ""})</small></label>`).join("") + `</div>` +
-            (canDel ? `<div style="margin-top:8px"><button id="spSelAll" style="cursor:pointer;padding:5px 12px">تحديد الكل / إلغاء التحديد</button> <button id="spDel" style="cursor:pointer;padding:5px 12px;color:#b00">حذف المحدد</button></div>
-              <p style="opacity:.75;font-size:12px">الطلاب والمعلمون والمنسقون وأولياء الأمور يُحذفون نهائيًا (تؤخذ نسخة احتياطية محلية قبل الحذف). أما مديرو المؤسسات فيُوقَف حسابهم ولا يُحذف، ويتم ذلك للمشرف العام فقط.</p>` : "") : `<p>✅ الجميع منتقلون.</p>`);
-        if(canDel && r.missing.length){
+          (r.missing.length ? `<div style="max-height:240px;overflow:auto;border:1px solid #8884;border-radius:8px;padding:6px">` + r.missing.slice(0,300).map((m,i)=>`<label style="display:block;padding:2px 0">${(canDel||canFix) ? `<input type="checkbox" class="sp-ck" data-i="${i}"> ` : ""}${esc(m.n)} <small>(${esc(m.label)}${m.org ? " — "+esc(m.org) : ""})</small></label>`).join("") + `</div>` +
+            ((canDel||canFix) ? `<div style="margin-top:8px"><button id="spSelAll" style="cursor:pointer;padding:5px 12px">تحديد الكل / إلغاء التحديد</button> <button id="spFix" style="cursor:pointer;padding:5px 12px;color:#075">🔧 إصلاح الدخول (كلمة مرور جديدة)</button>${canDel ? ` <button id="spDel" style="cursor:pointer;padding:5px 12px;color:#b00">حذف المحدد</button>` : ""}</div>
+              <p style="opacity:.8;font-size:12.5px">«إصلاح الدخول» يعيّن للمحدَّدين كلمة مرور جديدة تكتبها أنت وينشئ لهم حساب الدخول والصلاحية؛ ثم أبلغهم بها. هذا هو الحل لمن يظهر له «بانتظار اعتماد المشرف» وهو غير موجود في طلبات التسجيل.</p>
+              ${canDel ? `<p style="opacity:.75;font-size:12px">الطلاب والمعلمون والمنسقون وأولياء الأمور يُحذفون نهائيًا (تؤخذ نسخة احتياطية محلية قبل الحذف). أما مديرو المؤسسات فيُوقَف حسابهم ولا يُحذف، ويتم ذلك للمشرف العام فقط.</p>` : ""}` : "") : `<p>✅ الجميع منتقلون.</p>`);
+        if((canDel||canFix) && r.missing.length){
           const cks = ()=>[...out.querySelectorAll(".sp-ck")];
           out.querySelector("#spSelAll").addEventListener("click", ()=>{ const all = cks().every(c=>c.checked); cks().forEach(c=>c.checked = !all); });
-          out.querySelector("#spDel").addEventListener("click", async ()=>{
+          out.querySelector("#spFix").addEventListener("click", ()=>{
+            const picked = cks().filter(c=>c.checked).map(c=>r.missing[+c.dataset.i]).filter(Boolean);
+            if(!picked.length){ alert("حدّد حسابًا واحدًا على الأقل."); return; }
+            const pw = prompt("كلمة المرور الجديدة التي ستُعيَّن لـ "+picked.length+" حسابًا (٦ أحرف فأكثر). أبلغ بها أصحابها:", "123456");
+            if(pw===null) return; if(String(pw).length < 6){ alert("كلمة المرور أقل من ٦ أحرف."); return; }
+            let n = 0;
+            picked.forEach(m=>{ if(m.k==="orgAdmins" && session.role!=="admin") return; delete m.r.passHash; delete m.r.passSalt; delete m.r.passIter; m.r.password = pw; n++; });
+            saveDB(); flushSaveDBNow();
+            out.innerHTML = "<p>✅ بدأ إنشاء حسابات الدخول لـ "+n+" حسابًا بكلمة المرور الجديدة. انتظر دقيقة ثم أعد «فحص الجاهزية»؛ ويدخل أصحابها بالاسم وكلمة المرور الجديدة.</p>";
+          });
+          const delBtn = out.querySelector("#spDel"); if(delBtn) delBtn.addEventListener("click", async ()=>{
             const picked = cks().filter(c=>c.checked).map(c=>r.missing[+c.dataset.i]).filter(Boolean);
             if(!picked.length){ alert("حدّد حسابًا واحدًا على الأقل."); return; }
             const adm = picked.filter(m=>m.k==="orgAdmins"), rest = picked.filter(m=>m.k!=="orgAdmins");
@@ -3088,7 +3134,7 @@ const SecurityPanel = (function(){
     }catch(e){}
   }
   function onExit(){ clearInterval(timer); timer = null; try{ if(regRef) regRef.off("child_added"); }catch(e){} regRef = null; if(btn){ btn.remove(); btn = null; } pendingCount = 0; const ov = document.getElementById("secPanelOv"); if(ov) ov.remove(); }
-  return { onEnter, onExit, open };
+  return { onEnter, onExit, open, approve, loadPending };
 })();
 
 
