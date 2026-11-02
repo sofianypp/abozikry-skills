@@ -2705,14 +2705,32 @@ async function strictAuthenticate(username, password){
   CLOUD_ME = { role:R.role, orgId:R.orgId || "", uh:R.u || "" };            // المرحلة 3: الدور والمدرسة من الخادم لا من الجهاز
   try{ detachRealtimeSync(); }catch(e){}
   syncFromCloudInBackground();
+  const fetchOwn = async ()=>{              // يقرأ سجل هذا المستخدم وحده من السحابة (سريع وصغير) ويضعه في الذاكرة إن لم يكن موجودًا
+    try{
+      const toList = v=>Array.isArray(v) ? v : Object.values(v||{}), same = x=>x && x.username && Sec.norm(x.username)===key;
+      let rec = null, kind = null;
+      if(R.role==="student" || R.role==="parent"){
+        const k = R.role==="student" ? "students" : "parents";
+        const sn = await firebaseDB.ref("userData/"+R.orgId+"/"+uh+"/"+k).get();
+        if(sn.exists()){ rec = toList(sn.val()).find(same); kind = k; }
+      } else {
+        const k = ({ teacher:"teachers", coordinator:"coordinators", orgadmin:"orgAdmins" })[R.role];
+        if(k){ const sn = await firebaseDB.ref("orgData/"+R.orgId+"/"+k).get(); if(sn.exists()){ rec = toList(sn.val()).find(same); kind = k; } }
+      }
+      if(rec && kind && !(ROOT[kind]||[]).some(same)){ if(!Array.isArray(ROOT[kind])) ROOT[kind] = []; ROOT[kind].push(Object.assign({ orgId:R.orgId }, JSON.parse(JSON.stringify(rec)))); }
+    }catch(e){ console.warn("fetchOwn", e); }
+  };
+  const isUsable = (x)=> x && (x.rec.builtin || Guard.accountState(x.role, x.rec, x.rec.orgId ? orgById(x.rec.orgId) : null).ok);
   let f = findLocal();
-  const usable = f && (f.rec.builtin || Guard.accountState(f.role, f.rec, f.rec.orgId ? orgById(f.rec.orgId) : null).ok);
+  let usable = isUsable(f);
+  if(!usable && !(R.role==="admin")){ await fetchOwn(); f = findLocal(); usable = isUsable(f); }
   if(usable){ lap("localHit"); }
   else {
     try{ showMsg("جارٍ تحميل بيانات المنصة إلى هذا الجهاز (تحدث مرة واحدة فقط وقد تستغرق وقتًا)…", "ok"); }catch(e){}
     const ok = await waitUntil(()=>cloudSynced, 90000); lap("download");
     if(!ok){ await RealAuth.signOut(); return { special:true, msg:"تعذّر تحميل بيانات المنصة الآن. أعد المحاولة بعد لحظات." }; }
     f = findLocal();
+    if(!f && R.role!=="admin"){ await fetchOwn(); f = findLocal(); }
     if(!f) return { special:true, msg:"تم التحقق من هويتك لكن بيانات حسابك غير موجودة في المنصة. راجع مشرفك." };
   }
   window.__loginTiming = T; console.info("[توقيت الدخول بالمللي ثانية]", T);
@@ -2887,10 +2905,50 @@ const SecurityPanel = (function(){
     const superOk = have.has(await Sec.userHash(SUPER_ADMIN.username));
     return { total, missing, superOk, rolesCount:have.size };
   }
+  /* بصمات كل المستخدمين الموجودين فعليًا في السحابة (لا في ذاكرة هذا الجهاز فقط): أي فشل في القراءة يوقف العملية بدل المخاطرة */
+  async function cloudLiveHashes(){
+    const set = new Set(), toList = v=>Array.isArray(v) ? v : Object.values(v||{});
+    const orgIds = session.role==="admin" ? (ROOT.organizations||[]).map(o=>o.id) : [session.orgId];
+    const ud = session.role==="admin" ? await firebaseDB.ref("userData").get() : await firebaseDB.ref("userData/"+session.orgId).get();
+    if(ud.exists()){ const v = ud.val(); (session.role==="admin" ? Object.values(v) : [v]).forEach(o=>Object.keys(o||{}).forEach(uh=>set.add(uh))); }
+    for(const oid of orgIds){ for(const k of ["teachers","coordinators","orgAdmins"]){
+      const sn = await firebaseDB.ref("orgData/"+oid+"/"+k).get();
+      if(sn.exists()){ for(const r of toList(sn.val())){ if(r && r.username) set.add(await Sec.userHash(r.username)); } }
+    } }
+    return set;
+  }
+  async function scanCloudUsers(){
+    const toList = v=>Array.isArray(v) ? v : Object.values(v||{});
+    const orgIds = session.role==="admin" ? (ROOT.organizations||[]).map(o=>o.id) : [session.orgId], found = [];
+    const ud = session.role==="admin" ? await firebaseDB.ref("userData").get() : await firebaseDB.ref("userData/"+session.orgId).get();
+    if(ud.exists()){ const v = ud.val(); const byOrg = session.role==="admin" ? v : { [session.orgId]: v };
+      Object.keys(byOrg).forEach(org=>Object.values(byOrg[org]||{}).forEach(node=>["students","parents"].forEach(k=>{ if(node && node[k]) toList(node[k]).forEach(rec=>{ if(rec && rec.username) found.push({ kind:k, rec, org }); }); }))); }
+    for(const org of orgIds){ for(const k of ["teachers","coordinators","orgAdmins"]){
+      const sn = await firebaseDB.ref("orgData/"+org+"/"+k).get(); if(sn.exists()) toList(sn.val()).forEach(rec=>{ if(rec && rec.username) found.push({ kind:k, rec, org }); });
+    } }
+    const missing = [];
+    found.forEach(f=>{
+      const has = (ROOT[f.kind]||[]).some(r=>r && r.orgId===f.org && r.username && Sec.norm(r.username)===Sec.norm(f.rec.username));
+      if(has) return;
+      const tomb = (ROOT.deletedUsers||{})[tombKey(f.kind, userKeyOf(f.rec))];
+      missing.push(Object.assign({ tomb:tomb||0, why: tomb ? "شاهد حذف قديم يُخفيه" : "لم يُدمج في جدول هذا الجهاز" }, f));
+    });
+    return { found:found.length, missing };
+  }
+  function applyRecovery(missing){
+    missing.forEach(m=>{
+      const r = JSON.parse(JSON.stringify(m.rec)); r.orgId = m.org; r.createdAt = Math.max(r.createdAt||0, (m.tomb||0)+1, Date.now());
+      if(!Array.isArray(ROOT[m.kind])) ROOT[m.kind] = [];
+      ROOT[m.kind].push(r); if(ROOT.deletedUsers) delete ROOT.deletedUsers[tombKey(m.kind, userKeyOf(r))];
+    });
+    try{ snapshotKnownUsers(); }catch(e){}
+    saveDB(); try{ flushSaveDBNow(); }catch(e){}
+  }
   async function cleanup(dry){
     const s = await firebaseDB.ref("roles").get(); if(!s.exists()) return { removed:0 };
     const live = new Set([await Sec.userHash(SUPER_ADMIN.username)]);
     for(const k of ["admins","orgAdmins","coordinators","teachers","students","parents"]){ for(const r of (ROOT[k]||[])){ if(r && r.username) live.add(await Sec.userHash(r.username)); } }
+    (await cloudLiveHashes()).forEach(h=>live.add(h));
     const stale = Object.entries(s.val()).filter(([uid,v])=>v && v.u && !live.has(v.u)
       && (session.role==="admin" || v.orgId===session.orgId));
     if(!dry){ for(const [uid] of stale){ try{ await firebaseDB.ref("roles/"+uid).remove(); }catch(e){} } }
@@ -2917,6 +2975,10 @@ const SecurityPanel = (function(){
       <p style="opacity:.8;font-size:13px">يملأ الصف والفصل والمرحلة الناقصة لدى الطلاب من أحدث نسخة احتياطية سحابية تحتويها، دون استبدال أي قيمة موجودة.</p>
       <button id="spRestore" style="cursor:pointer;padding:6px 14px">استعادة الصف/الفصل الناقصين من النسخ الاحتياطية</button>
       <div id="spOutR" style="margin-top:10px;font-size:14px"></div>
+      <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">🔎 مقارنة جدول المستخدمين بالسحابة</h4>
+      <p style="opacity:.8;font-size:13px">إن كان عدد الطلاب في الجداول أقل مما هو مسجَّل فعلًا، يقارن هذا الزر ما في السحابة بما في جهازك ويبيّن سبب غياب كل مستخدم، ثم يتيح استرجاعهم إلى الجدول.</p>
+      <button id="spCompare" style="cursor:pointer;padding:6px 14px">قارن الجدول بالسحابة</button>
+      <div id="spOutC" style="margin-top:10px;font-size:14px"></div>
       <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">⚡ السرعة وحجم البيانات</h4>
       <p style="opacity:.8;font-size:13px">يكشف ما يُبطئ التحميل، وينقل الصور/الفيديوهات القديمة المضمّنة داخل النماذج إلى تخزين منفصل فتخفّ قاعدة البيانات كثيرًا.</p>
       <button id="spSize" style="cursor:pointer;padding:6px 14px">فحص الحجم والسرعة</button>
@@ -2990,6 +3052,17 @@ const SecurityPanel = (function(){
         const r = await restoreMissingFromBackups();
         o.innerHTML = r.restored ? ("✅ استُعيدت بيانات <b>"+r.restored+"</b> طالبًا من "+r.scanned+" نسخة: "+esc(r.names.join("، "))+(r.left?(" — ما زال ناقصًا: "+r.left):"")) : (r.left ? ("لم أجد لهؤلاء بيانات في النسخ الاحتياطية ("+r.left+" طالبًا)؛ أكملها يدويًا من جدول الطلاب.") : "لا يوجد طلاب ناقصو الصف والفصل.");
       }catch(e){ o.textContent = "تعذّرت الاستعادة: "+(e.message||e); }
+    });
+    body.querySelector("#spCompare").addEventListener("click", async ()=>{
+      const o = body.querySelector("#spOutC"); o.textContent = "جارٍ قراءة السحابة…";
+      try{
+        if(typeof cloudSynced!=="undefined" && !cloudSynced){ o.textContent = "انتظر اكتمال تحميل البيانات من السحابة ثم أعد المحاولة."; return; }
+        const r = await scanCloudUsers();
+        const local = ["students","parents","teachers","coordinators","orgAdmins"].reduce((a,k)=>a+(ROOT[k]||[]).filter(Boolean).length, 0);
+        if(!r.missing.length){ o.innerHTML = "✅ في السحابة <b>"+r.found+"</b> مستخدمًا وفي جدولك <b>"+local+"</b>؛ لا يوجد مفقودون."; return; }
+        o.innerHTML = "⚠ في السحابة <b>"+r.found+"</b> مستخدمًا وفي جدولك <b>"+local+"</b>. المفقودون من جدولك (<b>"+r.missing.length+"</b>):<ul style='margin:6px 0 6px 0'>"+r.missing.map(m=>"<li>"+esc(m.rec.username)+" — "+esc(BACKUP_KIND_LABEL[m.kind]||m.kind)+" — "+esc(m.why)+"</li>").join("")+"</ul><button id='spRecover' style='cursor:pointer;padding:6px 14px'>استرجاع المفقودين إلى الجدول</button>";
+        o.querySelector("#spRecover").addEventListener("click", ()=>{ applyRecovery(r.missing); o.innerHTML = "✅ استُرجع "+r.missing.length+" مستخدمًا إلى الجدول وسيُحفظون في السحابة."; });
+      }catch(e){ o.textContent = "تعذّرت المقارنة: "+(e.code||e.message||e); }
     });
     const out2 = body.querySelector("#spOut2");
     const findLegacy = ()=>{ const found = [], seen = new WeakSet();
@@ -3202,7 +3275,7 @@ const SecurityPanel = (function(){
     }catch(e){}
   }
   function onExit(){ clearInterval(timer); timer = null; try{ if(regRef) regRef.off("child_added"); }catch(e){} regRef = null; if(btn){ btn.remove(); btn = null; } pendingCount = 0; const ov = document.getElementById("secPanelOv"); if(ov) ov.remove(); }
-  return { onEnter, onExit, open, approve, loadPending, cloudFindAccount };
+  return { onEnter, onExit, open, approve, loadPending, cloudFindAccount, scanCloudUsers, applyRecovery, cleanup };
 })();
 
 
@@ -3765,6 +3838,13 @@ async function syncFromCloudInBackground(){
     await Promise.race([ Backup.daily(cloudRaw), sleepMs(15000) ]);
   }
   cloudHydrated = true;
+  // فحص صامت بعد اكتمال المزامنة: إن وُجد مستخدمون في السحابة غائبون عن جدول هذا الجهاز ننبّه المشرف بدل أن يظن أن الطلاب ضاعوا
+  try{ if(typeof session!=="undefined" && session && isStaffRole(session.role) && typeof SecurityPanel!=="undefined" && firebaseDB){
+    setTimeout(async ()=>{ try{
+      const r = await SecurityPanel.scanCloudUsers();
+      if(r.missing.length) safetyBar("missingBar","err","⚠ يوجد "+r.missing.length+" مستخدمًا في السحابة غير ظاهرين في جدولك ("+r.missing.slice(0,3).map(m=>m.rec.username).join("، ")+(r.missing.length>3?"…":"")+"). افتح 🔐 ثم «قارن الجدول بالسحابة» واضغط «استرجاع المفقودين». لا تضغط «إلغاء صلاحيات الحسابات المحذوفة» قبل ذلك.");
+    }catch(e){ console.warn("scan", e); } }, 4000);
+  } }catch(e){}
   if(healed) healFromLocal();
   await runMigrations();
   persistDBNow();                                                  // يرفع فروق هذا الجهاز فقط (إن وُجدت)
