@@ -2485,12 +2485,14 @@ function purgeForeign(oid){
   ROOT.admins = [];
 }
 function prepareScope(){            // يُنفَّذ بعد القراءة الناجحة: لا يبقى على الجهاز شيء من مدرسة أخرى، ولا خط أساس مبنيّ على منظور مستخدم آخر
-  if(LAYOUT < 2 || !CLOUD_ME) return;
+  if(LAYOUT < 2 || !CLOUD_ME) return false;
+  let ownerSwitched = false;   /* P-02 */
   const owner = CLOUD_ME.role==="admin" ? "*" : (USPLIT ? CLOUD_ME.orgId + (isStaffRole(CLOUD_ME.role) ? "|staff" : "|u:"+CLOUD_ME.uh) : CLOUD_ME.orgId);   // تبديل المنظور على الجهاز نفسه يُصفّر خط الأساس فلا يُعدّ غياب سجلات الزملاء «حذفًا»
   let prev = null; try{ prev = localStorage.getItem("platform-db-owner"); }catch(e){}
-  if(prev !== owner){ baseHashes = null; try{ localStorage.removeItem(BASE_KEY); }catch(e){} }
+  if(prev !== owner){ if(prev !== null) ownerSwitched = true; baseHashes = null; try{ localStorage.removeItem(BASE_KEY); }catch(e){} }
   if(CLOUD_ME.role !== "admin") purgeForeign(CLOUD_ME.orgId);
   try{ localStorage.setItem("platform-db-owner", owner); }catch(e){}
+  return ownerSwitched;   /* P-02 */
 }
 let __rtRefs = [];
 function detachRealtimeSync(){
@@ -3794,7 +3796,8 @@ async function syncFromCloudInBackground(){
     readOk = true;
   }
 
-  try{ if(USPLIT) await warmUH(ROOT); prepareScope(); }catch(e){ console.error(e); }          // المرحلة 3: عزل ما على الجهاز بحسب المدرسة قبل الدمج
+  let ownerSwitched = false;   /* P-02 */
+  try{ if(USPLIT) await warmUH(ROOT); ownerSwitched = !!prepareScope(); }catch(e){ console.error(e); }          // المرحلة 3: عزل ما على الجهاز بحسب المدرسة قبل الدمج
   if(cloudSaved && (cloudSaved.schemaVersion||0) > SCHEMA_VERSION){ latestCloud = cloudSaved; lockSchema(); cloudHydrated = true; cloudSynced = true; return; }
   latestCloud = cloudSaved;
   await waitUntil(()=>!(saveTimer || saveInFlight), 10000);
@@ -3814,7 +3817,9 @@ async function syncFromCloudInBackground(){
       absorbCloud(cloudSaved);                                   // دمج ثلاثي آمن
     } else {
       // جهاز بلا خط أساس (جهاز جديد أو أول تشغيل بعد هذا التحديث): القاعدة القديمة للنسخة كاملة
-      if(cloudTs > localTs) applyCloudSnapshot(cloudSaved);
+      /* P-02: تبدّل المنظور (مستخدم آخر على المتصفح نفسه) => النسخة المحلية تخص غيره؛ نتبنّى السحابة دائمًا حتى لا يُعدّ غياب سجلات الآخرين «حذفًا» */
+      if(ownerSwitched){ try{ await LocalBackup.save(JSON.stringify(ROOT), "نسخة الجهاز قبل تبديل المستخدم", true); }catch(e){} }
+      if(cloudTs > localTs || ownerSwitched) applyCloudSnapshot(cloudSaved);
       if(useFirebase) setBaseFromCloud(cloudSaved);
     }
     sanitizeLoadedModels();
