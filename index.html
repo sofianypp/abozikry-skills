@@ -917,6 +917,9 @@
   .lvm-panel input[type=search]{ width:100%; box-sizing:border-box; margin-bottom:4px; padding:6px 8px; border:1.5px solid #bbb; border-radius:6px; font:inherit; }
   .lvm-all{ border-bottom:1.5px solid #ddd; margin-bottom:3px; color:var(--accent,#0f5c53); }
   .lv-ro .lv-stage{ overflow:hidden; }
+  /* إيقاف المعلم لتمرير الطلاب: الشاشة تتحرك فقط بتمرير المعلم (يبقى التمرير البرمجي من المعلم يعمل) */
+  .lv-noscroll .lv-stage{ overflow:hidden !important; }
+  #lvScrollToggle.lv-sc-off{ background:#fee2e2; border-color:#dc2626; color:#b91c1c; font-weight:800; }
   #lvView .ha-reload, #lvView .ha-full, #lvView #hlBack{ display:none !important; }
   .lv-overlay{ height:100vh; height:100dvh; }
   .lv-badge .lv-short{ display:none; }
@@ -2588,15 +2591,22 @@ const RealAuth = (function(){
     const auth = firebase.auth(); await authRestored();
     const uh = await Sec.userHash(username), pw = fbPw(password), ck = "platform-ver-"+uh.slice(0,16);
     let n = 0; try{ n = parseInt(localStorage.getItem(ck), 10) || 0; }catch(e){}
+    const diag = window.__loginDiag = { tried:[], ver:"?", errs:[] };
     const attempt = async v=>{
+      diag.tried.push(v);
       try{ const u = (await auth.signInWithEmailAndPassword(emailFor(uh, v), pw)).user; try{ localStorage.setItem(ck, String(v)); }catch(e){} return u; }
-      catch(e){ if(KNOWN_BAD(e && e.code)) return null; throw e; }
+      catch(e){ diag.errs.push(v+":"+String((e && e.code)||"?").replace("auth/","")); if(KNOWN_BAD(e && e.code)) return null; throw e; }
     };
     if(n){ const u = await attempt(n); if(u) return u; }          // الإصدار المحفوظ على الجهاز أولًا: يوفّر رحلة شبكة كاملة
     await ensureFirebaseAuth();
-    const sv = await getVer(uh);
-    if(sv === n) return null;
-    return await attempt(sv);
+    let sv = 1;
+    try{ const s0 = await firebaseDB.ref("ver/"+uh).get(); if(s0.exists()){ const v0 = s0.val(); sv = Math.max(1, parseInt(v0 && v0.n, 10) || 1); diag.ver = String(sv); } else diag.ver = "absent"; }
+    catch(e){ diag.ver = "ERR:"+String((e && e.code)||(e && e.message)||"?").slice(0,30); }
+    if(sv !== n){ const u = await attempt(sv); if(u) return u; }
+    // احتياط: إن كان رقم الإصدار في السحابة غير مقروء أو لا يطابق الحساب الفعلي نجرّب الإصدارات القريبة (حدّ أقصى 4 محاولات)
+    let extra = 0;
+    for(const v of [1, 2, 3, sv-1, sv+1]){ if(v < 1 || diag.tried.indexOf(v) >= 0 || extra >= 4) continue; extra++; const u = await attempt(v); if(u) return u; }
+    return null;
   }
   /* حساب ثانوي (نسخة Firebase منفصلة) كي لا يخرج المشرف من جلسته عند إنشاء حساب لغيره */
   function secondaryAuth(){
@@ -3018,6 +3028,10 @@ const SecurityPanel = (function(){
       <p style="opacity:.8;font-size:13px">إن كان عدد الطلاب في الجداول أقل مما هو مسجَّل فعلًا، يقارن هذا الزر ما في السحابة بما في جهازك ويبيّن سبب غياب كل مستخدم، ثم يتيح استرجاعهم إلى الجدول.</p>
       <button id="spCompare" style="cursor:pointer;padding:6px 14px">قارن الجدول بالسحابة</button>
       <div id="spOutC" style="margin-top:10px;font-size:14px"></div>
+      <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">🔑 إعادة ضبط دخول مستخدمين</h4>
+      <p style="opacity:.8;font-size:13px">لمن يظهر له «اسم المستخدم أو كلمة المرور غير صحيحة» رغم وجوده في الجدول: حدّدهم وعيّن لهم كلمة مرور جديدة، فيُنشأ لهم حساب دخول وصلاحية جديدان ويدخلون بها فورًا.</p>
+      <input id="spAllQ" placeholder="بحث بالاسم (اتركه فارغًا لعرض الكل)" style="padding:5px 8px;width:min(320px,100%)"> <button id="spAllShow" style="cursor:pointer;padding:6px 14px">عرض المستخدمين</button>
+      <div id="spOutA" style="margin-top:10px;font-size:14px"></div>
       <hr style="margin:14px 0;opacity:.3"><h4 style="margin:6px 0">⚡ السرعة وحجم البيانات</h4>
       <p style="opacity:.8;font-size:13px">يكشف ما يُبطئ التحميل، وينقل الصور/الفيديوهات القديمة المضمّنة داخل النماذج إلى تخزين منفصل فتخفّ قاعدة البيانات كثيرًا.</p>
       <button id="spSize" style="cursor:pointer;padding:6px 14px">فحص الحجم والسرعة</button>
@@ -3102,6 +3116,25 @@ const SecurityPanel = (function(){
         o.innerHTML = "⚠ في السحابة <b>"+r.found+"</b> مستخدمًا وفي جدولك <b>"+local+"</b>. المفقودون من جدولك (<b>"+r.missing.length+"</b>):<ul style='margin:6px 0 6px 0'>"+r.missing.map(m=>"<li>"+esc(m.rec.username)+" — "+esc(BACKUP_KIND_LABEL[m.kind]||m.kind)+" — "+esc(m.why)+"</li>").join("")+"</ul><button id='spRecover' style='cursor:pointer;padding:6px 14px'>استرجاع المفقودين إلى الجدول</button>";
         o.querySelector("#spRecover").addEventListener("click", ()=>{ applyRecovery(r.missing); o.innerHTML = "✅ استُرجع "+r.missing.length+" مستخدمًا إلى الجدول وسيُحفظون في السحابة."; });
       }catch(e){ o.textContent = "تعذّرت المقارنة: "+(e.code||e.message||e); }
+    });
+    body.querySelector("#spAllShow").addEventListener("click", ()=>{
+      const o = body.querySelector("#spOutA"), q = Sec.norm(body.querySelector("#spAllQ").value || "");
+      const kinds = [["students","طالب"],["teachers","معلم"],["parents","ولي أمر"],["coordinators","منسق"]];
+      const rows = []; kinds.forEach(([k,lab])=>(ROOT[k]||[]).forEach(r=>{ if(r && r.username && (!q || Sec.norm(r.username).indexOf(q)>=0)) rows.push({ k, lab, r }); }));
+      if(!rows.length){ o.textContent = "لا يوجد مستخدمون مطابقون."; return; }
+      const shown = rows.slice(0, 300);
+      o.innerHTML = "<div style='max-height:260px;overflow:auto;border:1px solid #ccc;border-radius:8px;padding:6px'>"+shown.map((m,i)=>"<label style='display:block;padding:2px 0'><input type='checkbox' class='sp-ua' data-i='"+i+"'> "+esc(m.r.username)+" <small style='opacity:.65'>("+m.lab+(m.r.grade?" — "+esc(m.r.grade):"")+")</small></label>").join("")+"</div>"+(rows.length>shown.length?"<p style='opacity:.7'>يُعرض أول 300 من "+rows.length+"؛ ضيّق البحث لرؤية الباقي.</p>":"")+"<div style='margin-top:8px'><button id='spUaAll' style='cursor:pointer;padding:5px 12px'>تحديد الكل / إلغاء التحديد</button> <button id='spUaGo' style='cursor:pointer;padding:5px 12px;color:#075'>🔑 تعيين كلمة مرور جديدة للمحدَّدين</button></div>";
+      const cks = ()=>[...o.querySelectorAll(".sp-ua")];
+      o.querySelector("#spUaAll").addEventListener("click", ()=>{ const all = cks().every(c=>c.checked); cks().forEach(c=>c.checked = !all); });
+      o.querySelector("#spUaGo").addEventListener("click", ()=>{
+        const picked = cks().filter(c=>c.checked).map(c=>shown[+c.dataset.i]).filter(Boolean);
+        if(!picked.length){ alert("حدّد مستخدمًا واحدًا على الأقل."); return; }
+        const pw = prompt("كلمة المرور الجديدة لـ "+picked.length+" مستخدمًا (٦ أحرف فأكثر). أبلغ بها أصحابها:", "123456");
+        if(pw===null) return; if(String(pw).length < 6){ alert("كلمة المرور أقل من ٦ أحرف."); return; }
+        picked.forEach(m=>{ delete m.r.passHash; delete m.r.passSalt; delete m.r.passIter; m.r.password = pw; });
+        saveDB(); flushSaveDBNow();
+        o.innerHTML = "<p>✅ بدأ إنشاء حسابات الدخول لـ "+picked.length+" مستخدمًا بكلمة المرور الجديدة. انتظر دقيقة (أطول إن كانوا كثيرين) ثم جرّب دخول أحدهم.</p>";
+      });
     });
     const out2 = body.querySelector("#spOut2");
     const findLegacy = ()=>{ const found = [], seen = new WeakSet();
@@ -4398,7 +4431,7 @@ async function doLogin(){
       cloudGuardWrite(uh, r.userState);
       await sleepMs(500 + Math.random()*400);
       if(r.lock) showLock(r.lock);
-      else showMsg(`اسم المستخدم أو كلمة المرور غير صحيحة. (المتبقي ${r.left} محاولات قبل الإيقاف المؤقت)` + (STRICT ? " إن كان حسابك قديمًا ولم تدخل منذ تفعيل الحماية، اطلب من مشرفك إعادة تعيين كلمة المرور." : ""), "err");
+      else showMsg(`اسم المستخدم أو كلمة المرور غير صحيحة. (المتبقي ${r.left} محاولات قبل الإيقاف المؤقت)` + (STRICT ? " إن كان حسابك قديمًا ولم تدخل منذ تفعيل الحماية، اطلب من مشرفك إعادة تعيين كلمة المرور." : "") + ((STRICT && window.__loginDiag) ? " [تشخيص: إصدار الحساب في السحابة="+window.__loginDiag.ver+" · جُرّبت الإصدارات "+window.__loginDiag.tried.join("،")+" · "+window.__loginDiag.errs.join(" ")+"]" : ""), "err");
       return;
     }
     if(found.special){ showMsg(found.msg, "err"); return; }
@@ -16617,6 +16650,7 @@ async function openStage(sid, asTeacher, pre){
       ${ST.teacher ? `<span class="lv-badge off" id="lvCount">المتصلون: 0</span>
         <button class="chip-btn" id="lvSideToggle" title="إظهار/إخفاء قائمة المشاركين">👥 القائمة</button>
         <button class="chip-btn" id="lvHandToggle" title="إظهار/إخفاء مؤشر المعلم للطلاب">🖐 مؤشري: متوقف</button>
+        <button class="chip-btn" id="lvScrollToggle" title="السماح للطلاب بتحريك (تمرير) الشاشة أو إيقاف ذلك">📜 تمرير الطلاب: مسموح</button>
         <button class="chip-btn" id="lvReset" title="إعادة المحتوى لحالته الأولى عند الجميع">🔄 إعادة ضبط</button>
         <button class="chip-btn" id="lvEnd" style="color:#c62828;">⏹ إنهاء الحصة</button>
         <button class="chip-btn" id="lvHide" title="تصغير: الرجوع للمنصة مع بقاء الحصة مفتوحة">▾ تصغير</button>`
@@ -16644,7 +16678,7 @@ async function openStage(sid, asTeacher, pre){
   ST.timers.push(setInterval(()=>{
     placeAll();
     // من لا يملك المؤشر: إن انحرف موضع شاشته عن موضع المعلم (مثلًا بتركيز تلقائي على عنصر) نُعيده فورًا
-    if(ST && !ST.allowed && ST.lastSc && ST.stageEl){
+    if(ST && (!ST.allowed || scrollLockedForMe()) && ST.lastSc && ST.stageEl){
       const el = ST.stageEl, max = el.scrollHeight - el.clientHeight;
       if(max > 0 && Math.abs(el.scrollTop/max - (Number(ST.lastSc.f)||0)) > 0.02) applyScroll(ST.lastSc);
     }
@@ -16769,7 +16803,7 @@ function onFrameMsg(e){
   const i = frameIdx(e.source); if(i<0) return;
   if(d.type==="ready"){
     ST.fr[i] = { ready:true };
-    toFrame(i, { type:"mode", allowed:ST.allowed });
+    toFrame(i, { type:"mode", allowed:ST.allowed, noScroll:scrollLockedForMe() });
     (ST.fq[i]||[]).forEach(m=>toFrame(i, m)); ST.fq[i] = [];
   } else if(d.type==="ev"){ emit({ t:"hx", i, a:d.a }); }
   else if(d.type==="sc"){ if(ST.allowed) ST.ref.child("c/_hs"+i).set({ k:ST.key, f:d.f, t:TS() }); }
@@ -16784,7 +16818,7 @@ function onFrameMsg(e){
 }
 /* الجسر: يُنفَّذ داخل الإطار (لا يستخدم أي متغير خارجي) */
 function bridgeMain(SEED){
-  var P = window.parent, allowed = false, replaying = false, pressed = false, noScr = 0, lastMv = 0, lastPm = 0, lastSc = 0, dragSrc = null, vt = {};
+  var P = window.parent, allowed = false, replaying = false, pressed = false, noScr = 0, lastMv = 0, lastPm = 0, lastSc = 0, dragSrc = null, vt = {}, scLocked = false;
   (function(){ var a = SEED|0; Math.random = function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();
   function send(m){ m.__lv = 1; try{ P.postMessage(m, "*"); }catch(e){} }
   var DE = document.documentElement;
@@ -16828,7 +16862,7 @@ function bridgeMain(SEED){
     document.addEventListener(n, function(e){ if(!allowed && e.isTrusted){ e.preventDefault(); e.stopImmediatePropagation(); } }, { capture: true, passive: false });
   });
   function sendScroll(){
-    if(!allowed || Date.now() < noScr) return; var now = Date.now();
+    if(!allowed || scLocked || Date.now() < noScr) return; var now = Date.now();
     if(now - lastSc < 80){ clearTimeout(sendScroll.t); sendScroll.t = setTimeout(sendScroll, 90); return; } lastSc = now;
     var s = document.scrollingElement || DE, max = s.scrollHeight - s.clientHeight;
     send({ type: "sc", f: max > 0 ? s.scrollTop / max : 0 });
@@ -16860,7 +16894,12 @@ function bridgeMain(SEED){
   }
   window.addEventListener("message", function(e){
     var d = e.data; if(!d || d.__lv !== 1) return;
-    if(d.type === "mode") allowed = !!d.allowed;
+    if(d.type === "mode"){
+      allowed = !!d.allowed; scLocked = !!d.noScroll;
+      var st = document.getElementById("__lvScLock");
+      if(scLocked && !st){ st = document.createElement("style"); st.id = "__lvScLock"; st.textContent = "html,body{overflow:hidden !important;}"; (document.head || DE).appendChild(st); }
+      else if(!scLocked && st){ st.parentNode.removeChild(st); }
+    }
     else if(d.type === "replay") replay(d.a);
     else if(d.type === "scroll"){ var s = document.scrollingElement || DE, max = s.scrollHeight - s.clientHeight; noScr = Date.now() + 300; s.scrollTop = Math.max(0, Math.min(1, +d.f || 0)) * Math.max(0, max); }
   });
@@ -16875,12 +16914,17 @@ LV.bridgeScript = function(){
 
 /* ---------- حالة السماح ---------- */
 function computeAllowed(){ if(ST.teacher) return true; if(ST.rmOn && ST.quizEnded) return false; return !!(ST.allowAll || ST.grants[ST.key] || (ST.rmOn && ST.myRoom)); }
+/* قفل التمرير يخص الطلاب فقط؛ المعلم يتحرك بحرية وتمريره يظل يُبَث للجميع */
+function scrollLockedForMe(){ return !!(ST && !ST.teacher && ST.scLock); }
 function refreshMode(){
   if(!ST) return;
   const was = ST.allowed;
   ST.allowed = computeAllowed();
   ST.ov.classList.toggle("lv-ro", !ST.allowed);
   ST.ov.classList.toggle("lv-allowed", ST.allowed && (!ST.teacher || ST.handOn));
+  ST.ov.classList.toggle("lv-noscroll", scrollLockedForMe());
+  const scBtn = q("#lvScrollToggle", ST.ov);
+  if(scBtn){ scBtn.textContent = "📜 تمرير الطلاب: " + (ST.scLock ? "موقوف" : "مسموح"); scBtn.classList.toggle("lv-sc-off", !!ST.scLock); }
   const badge = q("#lvMode", ST.ov);
   if(badge){
     const set = (l, s, cls)=>{ badge.innerHTML = '<span class="lv-long">'+l+'</span><span class="lv-short">'+s+'</span>'; if(cls) badge.className = cls; };
@@ -16893,7 +16937,7 @@ function refreshMode(){
     if(!ST.allowed){ try{ ST.ref.child("c/"+ST.key).remove(); }catch(e){} }
   }
   updateMyHand();
-  Object.keys(ST.fr).forEach(i=>{ if(ST.fr[i] && ST.fr[i].ready) toFrame(+i, { type:"mode", allowed:ST.allowed }); });
+  Object.keys(ST.fr).forEach(i=>{ if(ST.fr[i] && ST.fr[i].ready) toFrame(+i, { type:"mode", allowed:ST.allowed, noScroll:scrollLockedForMe() }); });
   if(ST.teacher) drawSide();
 }
 
@@ -17007,7 +17051,7 @@ function attachInput(){
   });
   const onScroll = ()=>{
     placeAll();
-    if(!ST || !ST.allowed || Date.now() < (ST.noScrollUntil||0)) return;
+    if(!ST || !ST.allowed || scrollLockedForMe() || Date.now() < (ST.noScrollUntil||0)) return;
     const t = Date.now(); if(t - (ST.lastScrollSend||0) < 80){ clearTimeout(ST.scT); ST.scT = setTimeout(onScroll, 90); return; }
     ST.lastScrollSend = t;
     const el = ST.stageEl, max = el.scrollHeight - el.clientHeight;
@@ -17079,6 +17123,9 @@ function attachListeners(){
     const c = s.val();
     if(!c || c.status==="ended"){ if(!ST.teacher) toast("أنهى المعلم الحصة المباشرة"); setTimeout(()=>closeStage(true), ST.teacher?0:1500); return; }
     ST.allowAll = !!c.all;
+    const prevLock = !!ST.scLock; ST.scLock = !!c.noScroll;
+    if(!ST.teacher && ST.ctlSeen && prevLock !== ST.scLock) toast(ST.scLock ? "🔒 أوقف المعلم تمرير الشاشة عند الطلاب" : "📜 سمح المعلم بتمرير الشاشة");
+    ST.ctlSeen = true;
     if(!ST.teacher){
       if(c.off && !ST.offTimer){
         ST.offTimer = setTimeout(()=>{ ST && (toast("غادر المعلم الحصة المباشرة فانتهت"), closeStage(true)); }, GRACE_MS);
@@ -17140,6 +17187,7 @@ function bindTeacherUi(){
     if(!ST.handOn){ try{ ST.ref.child("c/"+ST.key).remove(); }catch(_){} }
     refreshMode();
   });
+  q("#lvScrollToggle", ov).addEventListener("click", ()=>{ ST.ref.child("ctl/noScroll").set(!ST.scLock); });
   q("#lvReset", ov).addEventListener("click", ()=>{
     if(confirm("إعادة ضبط المحتوى لحالته الأولى عند جميع المشاركين؟ ستُمسح إجابات هذه الجولة.")) ST.ref.child("ctl/epoch").set((ST.epoch||0)+1);
   });
