@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%A3%D9%86%D8%AA%20%D9%88%D9%86%D8%AD%D9%86%20%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%D9%85%D9%8A%D8%A9%20%7C%20Abozikry%20Skills%22%2C%20%22short_name%22%3A%20%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%A3%D9%86%D8%AA%20%D9%88%D9%86%D8%AD%D9%86%20%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22dir%22%3A%20%22rtl%22%2C%20%22lang%22%3A%20%22ar%22%2C%20%22background_color%22%3A%20%22%23ffffff%22%2C%20%22theme_color%22%3A%20%22%231a73e8%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520192%2520192%2522%253E%253Crect%2520width%253D%2522192%2522%2520height%253D%2522192%2522%2520rx%253D%252236%2522%2520fill%253D%2522%25231a73e8%2522/%253E%253Ctext%2520x%253D%252296%2522%2520y%253D%2522128%2522%2520font-size%253D%2522110%2522%2520text-anchor%253D%2522middle%2522%2520fill%253D%2522%2523fff%2522%2520font-family%253D%2522sans-serif%2522%253E%25D8%25A3%253C/text%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22any%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%2C%20%22purpose%22%3A%20%22any%22%7D%5D%7D">
 <meta name="theme-color" content="#1a73e8">
-<meta name="app-version" content="20261123.0258">
+<meta name="app-version" content="20261123.2311">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <title>منصة أنت ونحن التعليمية | Abozikry Skills</title>
 <meta name="description" content="منصة أنت ونحن التعليمية (Abozikry Skills): منصة عربية للمعلمين والطلاب وأولياء الأمور، فيها نماذج واختبارات إلكترونية وشروح تفاعلية وحصص مباشرة وتدريب على المهارات اللغوية ومتابعة تقدّم الطلاب.">
@@ -2003,6 +2003,30 @@ try{ if(document.readyState === "loading") document.addEventListener("DOMContent
 /* رفع آمن (دفاع إضافي من جهة المتصفح — الحماية الملزمة تكون في الـBackend/القواعد):
    يفحص بصمة الملف الفعلية (magic bytes) لا الامتداد فقط، يمنع التنفيذي/السكربت/SVG، يحدّ الحجم بـ5MB،
    ويعيد ترميز الصور عبر canvas فيُنتج صورة جديدة نظيفة (تُزال أي حمولة مخفية أو بيانات وصفية). */
+
+/* ربط الـBackend (اختياري). اترك BACKEND_URL فارغًا فيبقى السلوك الحالي كما هو تمامًا.
+   عند ضبطه تُرسَل الصور إلى الخادم ليعيد معالجتها بمكتبة موثوقة، ويُرجع صورة نظيفة. */
+const BACKEND_URL = "";            // مثال: "https://platform-backend.onrender.com"
+const APP_CHECK_SITE_KEY = "";     // مفتاح reCAPTCHA v3 من Firebase ▸ App Check (اختياري؛ انظر SECURITY-RUNBOOK.md)
+const Backend = {
+  on(){ return !!BACKEND_URL; },
+  async token(){ const u = firebase.auth().currentUser; if(!u || u.isAnonymous) throw Object.assign(new Error("سجّل الدخول أولًا"), { status: 401 }); return u.getIdToken(); },
+  async call(method, path, body){
+    const r = await fetch(BACKEND_URL.replace(/\/$/, "") + path, { method, headers: Object.assign({ Authorization: "Bearer " + await this.token() }, body && !(body instanceof FormData) ? { "Content-Type": "application/json" } : {}), body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw Object.assign(new Error(j.error || ("خطأ " + r.status)), { status: r.status, detail: j });
+    return j;
+  },
+  uploadImage(file){ const fd = new FormData(); fd.append("file", file, file.name || "image"); return this.call("POST", "/api/media?inline=1", fd); },
+  updateMe(patch){ return this.call("PATCH", "/api/me", patch); }
+};
+try{
+  if(APP_CHECK_SITE_KEY && typeof firebase !== "undefined"){
+    const s = document.createElement("script"); s.src = "https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js";
+    s.onload = ()=>{ try{ firebase.appCheck().activate(APP_CHECK_SITE_KEY, true); }catch(e){} }; document.head.appendChild(s);
+  }
+}catch(e){}
+
 const SafeUpload = {
   MAX: 5 * 1024 * 1024, MAXDIM: 2000,
   EXT: { png:["png"], jpeg:["jpg","jpeg","jfif"], gif:["gif"], webp:["webp"], pdf:["pdf"], docx:["docx","xlsx","pptx"], ole:["doc","xls","ppt"], mp3:["mp3","mpeg","mpga"], wav:["wav"], ogg:["ogg","oga","ogv","opus"], webm:["webm","weba"], mp4:["mp4","m4a","m4v","mov"], text:["txt","csv","md"] },
@@ -2058,7 +2082,13 @@ const SafeUpload = {
   },
   read(reader, file, kind, onFail){
     (async ()=>{
-      try{ reader.readAsDataURL(await this.clean(file, kind)); }
+      try{
+        if(kind === "image" && Backend.on()){
+          try{ const j = await Backend.uploadImage(file); reader.readAsDataURL(await (await fetch(j.dataUrl)).blob()); return; }
+          catch(e){ if(e && e.status >= 400 && e.status < 500) throw e; /* الخادم غير متاح (شبكة/5xx): نعود للمعالجة المحلية */ }
+        }
+        reader.readAsDataURL(await this.clean(file, kind));
+      }
       catch(e){ const m = (e && e.message) || "ملف غير مسموح"; try{ alert("تعذّر رفع الملف: " + m); }catch(_){} if(onFail) onFail(new Error(m)); }
     })();
   }
@@ -2489,6 +2519,13 @@ function canWriteGlobal(me, k){
   return false;
 }
 /* يحوّل مفاتيح متغيّرة (كما كانت تُكتب في platform-db) إلى كتابات شرائح. يعيد {ups, hs, skipped} دون أي شبكة */
+/* أمان: في الوضع الصارم (STRICT) تُدار كلمات المرور في Firebase Authentication، فلا نكتب تجزئات كلمات المرور في سجلات السحابة
+   (كانت تُقرأ من كل أعضاء المؤسسة، ويمكن تخمينها دون اتصال). تبقى نسخة الجهاز المحلية كما هي. */
+const CRED_HASH_FIELDS = ["passHash", "passSalt", "passIter"], CRED_KINDS_CLOUD = ["students", "parents", "orgAdmins", "coordinators", "teachers"];
+function credStrip(kind, list){
+  if(!STRICT || !Array.isArray(list) || !CRED_KINDS_CLOUD.includes(kind)) return list;
+  return list.map(r=>{ if(!r || typeof r !== "object") return r; const c = Object.assign({}, r); CRED_HASH_FIELDS.forEach(f=>{ delete c[f]; }); return c; });
+}
 function planShardWrites(payload, me){
   const ups = {}, hs = {}, pk = {}, skipped = [], isAdm = !!me && me.role==="admin";
   const set = (path, key, val)=>{ const h = hashKey(val); if(shardHashes[key] === h) return; ups[path] = (h==="" ? null : val); hs[key] = h; pk[path] = key; };
@@ -2508,7 +2545,7 @@ function planShardWrites(payload, me){
         if(!isStaffRole(me.role) && !(uh === me.uh && k === "results")) return;
         // لا نمسح عقدة طالب/ولي أمر من السحابة لمجرد غيابه من ذاكرة هذا الجهاز؛ فقط إن حُذف صراحةً (أو نُقل/أُعيدت تسميته)
         if((k==="students" || k==="parents") && !(byU[oid] && byU[oid][uh]) && !shrinkAllowedNow() && !explicitShardDeletes.has(c)) return;   // الطالب لا يكتب إلا نتائجه في عقدته؛ سجله (الصف/التفعيل/الرسوم) وسجل ولي الأمر يديرهما الطاقم فقط، وتُهمَل محاولات غير ذلك بصمت
-        set("userData/"+oid+"/"+uh+"/"+k, oid+"|u|"+uh+"|"+k, (byU[oid] && byU[oid][uh]) || []);
+        set("userData/"+oid+"/"+uh+"/"+k, oid+"|u|"+uh+"|"+k, credStrip(k, (byU[oid] && byU[oid][uh]) || []));
       });
       return;
     }
@@ -2518,7 +2555,7 @@ function planShardWrites(payload, me){
       orgs.forEach(oid=>{
         if(!isAdm && oid !== me.orgId) return;
         if(!canWriteShard(me,k)){ skipped.push(k); return; }
-        set("orgData/"+oid+"/"+k, oid+"|"+k, by[oid]);
+        set("orgData/"+oid+"/"+k, oid+"|"+k, credStrip(k, by[oid]));
       });
       return;
     }
@@ -5437,7 +5474,12 @@ function openProfileModal(){
       const oldPw = $("pfOld").value, np = $("pfNew").value, np2 = $("pfNew2").value;
       let newCred = null;
       if(oldPw || np || np2){
-        if(!(await Sec.verify(oldPw, rec))){ setMsg("كلمة المرور الحالية غير صحيحة."); return; }
+        { let okOld = false;
+if(STRICT){                                          // الوضع الصارم: التحقق من كلمة المرور الحالية عبر Firebase نفسه (لا نعتمد على تجزئة محلية)
+try{ const cu = firebase.auth().currentUser; if(cu && !cu.isAnonymous && cu.email){ const pad = String(oldPw).length >= 6 ? String(oldPw) : String(oldPw) + "#".repeat(6 - String(oldPw).length); await cu.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(cu.email, pad)); okOld = true; } }catch(e){ okOld = false; }
+}
+if(!okOld) okOld = !!(rec.passHash && await Sec.verify(oldPw, rec));
+if(!okOld){ setMsg("كلمة المرور الحالية غير صحيحة."); return; } }
         if(np.length<6){ setMsg("كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف."); return; }
         if(np!==np2){ setMsg("كلمتا المرور الجديدتان غير متطابقتين."); return; }
         if(Sec.norm(np)===Sec.norm(rec.username)){ setMsg("كلمة المرور ضعيفة: لا تجعلها اسم المستخدم."); return; }
@@ -5448,7 +5490,7 @@ function openProfileModal(){
             await cu.updatePassword(np);
           }catch(e){ console.error(e); setMsg("تعذّر تغيير كلمة المرور في الخادم (قد تحتاج لتسجيل الخروج ثم الدخول من جديد قبل تغييرها). لم يتغيّر شيء."); return; }
         }
-        newCred = await Sec.hashPassword(np);
+        newCred = STRICT ? {} : await Sec.hashPassword(np);   /* في الوضع الصارم لا نخزّن تجزئة */
       }
       const targets = rec === session.user ? [rec] : [rec, session.user];
       targets.forEach(t=>{ Object.assign(t, upd); if(newCred) Object.assign(t, newCred); t.profileUpdatedAt = Date.now(); });
@@ -16358,7 +16400,7 @@ function planUsersImport(data){
           return;
         }
         if(item.create && usernameTakenAnywhere(u.username)){ item.skipped.push({name:u.username, why:"الاسم مستخدم في مؤسسة أخرى"}); return; }
-        if(!u.passHash && typeof u.password!=="string"){ item.skipped.push({name:u.username, why:"بلا كلمة مرور"}); return; }
+        if(!STRICT && !u.passHash && typeof u.password!=="string"){ item.skipped.push({name:u.username, why:"بلا كلمة مرور"}); return; }
         seen.add(key);
         item.add[k].push(u); item.counts[k]++;
       });
@@ -16467,7 +16509,7 @@ function planPortableImport(data, targetOrgId){
         const ex = allAccountRecords().find(r=>r && r.username && Sec.norm(r.username)===key);
         plan.skipped.push({name:u.username, why:(ex && ex.orgId===target.id) ? "موجود مسبقًا في هذه المؤسسة" : "الاسم مستخدم في مؤسسة أخرى"}); return;
       }
-      if(!u.passHash && typeof u.password!=="string"){ plan.skipped.push({name:u.username, why:"بلا كلمة مرور"}); return; }
+      if(!STRICT && !u.passHash && typeof u.password!=="string"){ plan.skipped.push({name:u.username, why:"بلا كلمة مرور"}); return; }
       seen.add(key); plan.add[k].push(u); plan.counts[k]++;
     });
   });
