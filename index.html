@@ -5,6 +5,11 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%A3%D9%86%D8%AA%20%D9%88%D9%86%D8%AD%D9%86%20%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%D9%85%D9%8A%D8%A9%20%7C%20Abozikry%20Skills%22%2C%20%22short_name%22%3A%20%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%A3%D9%86%D8%AA%20%D9%88%D9%86%D8%AD%D9%86%20%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22dir%22%3A%20%22rtl%22%2C%20%22lang%22%3A%20%22ar%22%2C%20%22background_color%22%3A%20%22%23ffffff%22%2C%20%22theme_color%22%3A%20%22%231a73e8%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520192%2520192%2522%253E%253Crect%2520width%253D%2522192%2522%2520height%253D%2522192%2522%2520rx%253D%252236%2522%2520fill%253D%2522%25231a73e8%2522/%253E%253Ctext%2520x%253D%252296%2522%2520y%253D%2522128%2522%2520font-size%253D%2522110%2522%2520text-anchor%253D%2522middle%2522%2520fill%253D%2522%2523fff%2522%2520font-family%253D%2522sans-serif%2522%253E%25D8%25A3%253C/text%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22any%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%2C%20%22purpose%22%3A%20%22any%22%7D%5D%7D">
+<meta name="theme-color" content="#1a73e8">
+<meta name="app-version" content="20261123.0258">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <title>منصة أنت ونحن التعليمية | Abozikry Skills</title>
 <meta name="description" content="منصة أنت ونحن التعليمية (Abozikry Skills): منصة عربية للمعلمين والطلاب وأولياء الأمور، فيها نماذج واختبارات إلكترونية وشروح تفاعلية وحصص مباشرة وتدريب على المهارات اللغوية ومتابعة تقدّم الطلاب.">
@@ -989,6 +994,29 @@
 .lvr-dl-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
 #saBoardOverlay .sab-name[readonly]{ pointer-events:none; }
 </style>
+<style id="a11yBasics">
+/* سهولة الوصول (بند 2.16): مؤشر تركيز واضح للوحة المفاتيح، واحترام تفضيل تقليل الحركة */
+:focus-visible{ outline:3px solid #1a73e8 !important; outline-offset:2px; }
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+</style>
+<style id="noInnerFrames">
+/* بند 12: لا إطار ثابت الارتفاع داخل النوافذ؛ المحتوى (نماذج/شروح/بنوك/جداول) يمتد لأسفل بنهايته والتمرير للصفحة كلها */
+.forms-layout{ height:auto !important; min-height:calc(100vh - 80px); overflow:visible !important; align-items:stretch; }
+.forms-layout .forms-sidebar{ align-self:flex-start; position:sticky; top:64px; max-height:calc(100vh - 80px); overflow-y:auto; }
+.forms-layout .forms-sidebar.collapsed{ overflow:hidden; }
+.workshop{ overflow:visible !important; }
+.workshop-scroll{ flex:0 0 auto !important; overflow:visible !important; }
+.workshop-topbar{ position:sticky; top:56px; z-index:60; background:var(--paper); }
+.table-wrap{ max-height:none !important; overflow-y:visible !important; }
+.view table.data{ max-height:none !important; }
+@media (max-width:900px){ .forms-layout .forms-sidebar{ position:static; max-height:none; } }
+</style>
+<style id="noAuxToolsInTests">
+/* بند 8: لا شاشة ولا مشبك ولا لمبة ولا حذف إجابتين في الاختبارات (الحالية والمستقبلية) */
+.no-aux-tools .hint-bulb,.no-aux-tools .hint-tools,.no-aux-tools .media-row,.no-aux-tools .screenbtn,.no-aux-tools .clipbtn,.no-aux-tools .mcq-fifty,
+.no-aux-tools .lv-hint,.no-aux-tools .cf-hint-bulb,.no-aux-tools .mm-hint-bulb{display:none !important}
+body.editing-test .bulb,body.editing-test .bulb-stack,body.editing-test .screenbtn,body.editing-test .clipbtn,body.editing-test .media-row{display:none !important}
+</style>
 </head>
 <body>
 
@@ -1679,8 +1707,8 @@ function renameCreds(r, oldName, newName){
   try{
     if(!r || Sec.norm(oldName)===Sec.norm(newName) || !String(newName||"").trim()) return;
     if(isPlaceholderName(oldName) && !isPlaceholderName(newName)){
-      delete r.passHash; delete r.passSalt; delete r.passIter; r.password = "1234";
-      tnToast("تم ضبط كلمة المرور المبدئية 1234 للاسم «"+newName+"»؛ غيّرها من خانة كلمة المرور إن شئت.");
+      delete r.passHash; delete r.passSalt; delete r.passIter; r.password = genTempPassword();
+      tnToast("تم توليد كلمة مرور مؤقتة عشوائية للاسم «"+newName+"»: "+r.password+" — سلّمها للمستخدم، ويمكنك تغييرها من خانة كلمة المرور.");
     } else if(r.passHash){
       tnToast("غيّرتَ اسم مستخدم له حساب سابق؛ أعد كتابة كلمة المرور للاسم الجديد «"+newName+"» ليُنشأ له حساب دخول.", "err");
     }
@@ -1781,6 +1809,17 @@ const SUPER_ADMIN = {
   builtin: true
 };
 
+
+/* كلمة مرور مؤقتة عشوائية (بديل كلمة المرور الثابتة القديمة): 10 خانات من حروف وأرقام غير ملتبسة، مولَّدة بمولّد عشوائي آمن.
+   تظهر للمشرف في خانة كلمة المرور ليسلّمها للمستخدم، ويُنصح بتغييرها عند أول دخول. */
+function genTempPassword(){
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const u = new Uint32Array(10);
+  (window.crypto||window.msCrypto).getRandomValues(u);
+  let s = ""; for(let i=0;i<u.length;i++) s += A[u[i] % A.length];
+  return s;
+}
+
 const Sec = (function(){
   const ITER = 310000;   // كلمات المرور القديمة (120,000) تُرقّى تلقائيًا عند أول دخول ناجح
   const enc = new TextEncoder();
@@ -1854,6 +1893,178 @@ function hash53(str, seed){
 function regEsc(s){
   return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
+/* تعقيم HTML الغني (قطع فهم المقروء وما شابهها): يبقي التنسيق الشائع ويزيل السكربتات والأحداث والروابط الخطرة */
+const Sanitize = {
+  html(str){
+    try{
+      const tpl = document.createElement("template"); tpl.innerHTML = String(str == null ? "" : str);
+      const BAD = "script,style,iframe,object,embed,link,meta,base,form,input,button,textarea,select,svg,math,video,audio,source,frame,frameset";
+      tpl.content.querySelectorAll(BAD).forEach(n=>n.remove());
+      tpl.content.querySelectorAll("*").forEach(n=>{
+        [...n.attributes].forEach(a=>{
+          const nm = a.name.toLowerCase(), v = String(a.value||"").replace(/[\s\u0000-\u001f]/g, "").toLowerCase();
+          if(nm.startsWith("on") || nm === "srcdoc" || nm === "formaction"){ n.removeAttribute(a.name); return; }
+          if((nm === "href" || nm === "src" || nm === "xlink:href" || nm === "action") && (v.startsWith("javascript:") || v.startsWith("vbscript:") || (v.startsWith("data:") && !v.startsWith("data:image/")))) n.removeAttribute(a.name);
+        });
+      });
+      return tpl.innerHTML;
+    }catch(e){ return regEsc(str); }
+  }
+};
+
+/* سجل التدقيق (Audit Log): يُسجَّل في auditLog/<مؤسسة> للإضافة فقط (لا تعديل ولا حذف إلا للمشرف العام) — مجاني ضمن Realtime Database.
+   لا يكسر أي وظيفة: أي فشل في التسجيل يُتجاهل بصمت. لا تُسجَّل كلمات مرور ولا بيانات حساسة. */
+const Audit = {
+  log(action, detail){
+    try{
+      if(typeof firebaseDB === "undefined" || !firebaseDB || typeof CLOUD_ME === "undefined" || !CLOUD_ME || !CLOUD_ME.role) return;
+      const org = CLOUD_ME.orgId || "_platform";
+      firebaseDB.ref("auditLog/" + org).push({ u: String(CLOUD_ME.uh || "").slice(0,64), r: String(CLOUD_ME.role).slice(0,20), a: String(action).slice(0,40), d: String(detail || "").slice(0,200), t: firebase.database.ServerValue.TIMESTAMP }).catch(()=>{});
+    }catch(e){}
+  }
+};
+
+/* مزامنة التحديثات: تتحقق الصفحة دوريًا من النسخة المنشورة؛ إن وُجدت نسخة أحدث تُظهر شريطًا للتحديث بزر واحد.
+   لا تُعيد التحميل تلقائيًا أثناء حل اختبار أو حصة مباشرة أو تحرير، وتحفظ بياناتها قبل التحديث. لا تخزّن نسخة قديمة (no-store). */
+const UpdateSync = {
+  cur: (document.querySelector('meta[name="app-version"]') || {}).content || "",
+  shown: false,
+  busy(){ return !!(document.getElementById("solveArea") || document.querySelector(".lv-overlay") || document.getElementById("workshopScroll")); },
+  async check(){
+    try{
+      if(!this.cur || this.shown || !/^https?:/.test(location.protocol)) return;
+      const r = await fetch(location.pathname + "?_v=" + Date.now(), { cache:"no-store", credentials:"omit" });
+      if(!r.ok) return;
+      const m = (await r.text()).match(/<meta name="app-version" content="([^"]+)"/);
+      if(m && m[1] && m[1] !== this.cur) this.banner(m[1]);
+    }catch(e){}
+  },
+  banner(){
+    if(this.shown) return; this.shown = true;
+    const b = document.createElement("div");
+    b.style.cssText = "position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:100100;background:#1a73e8;color:#fff;padding:10px 16px;border-radius:999px;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,.35);display:flex;gap:10px;align-items:center;max-width:94vw;font-size:14px;";
+    b.innerHTML = '<span>يتوفر تحديث جديد للمنصة. بياناتك محفوظة.</span><button type="button" style="background:#fff;color:#1a73e8;border:0;border-radius:999px;padding:5px 14px;font:inherit;font-weight:800;cursor:pointer;">حدّث الآن</button><button type="button" title="لاحقًا" style="background:transparent;color:#fff;border:0;font-size:16px;cursor:pointer;">✕</button>';
+    const go = b.querySelectorAll("button");
+    go[0].addEventListener("click", async ()=>{
+      if(this.busy() && !confirm("أنت الآن في اختبار أو حصة أو تحرير. احفظ عملك أولًا ثم أكمل التحديث؟")) return;
+      try{ if(typeof flushSaveDBNow === "function") await flushSaveDBNow(); }catch(e){}
+      location.replace(location.pathname + "?_u=" + Date.now() + (location.hash || ""));
+    });
+    go[1].addEventListener("click", ()=>{ b.remove(); this.shown = false; this._snooze = Date.now() + 600000; });
+    document.body.appendChild(b);
+  },
+  start(){
+    const run = ()=>{ if(!this._snooze || Date.now() > this._snooze) this.check(); };
+    setTimeout(run, 20000); setInterval(run, 300000);
+    document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) run(); });
+  }
+};
+try{ UpdateSync.start(); }catch(e){}
+
+/* تحميل تدريجي عام للجداول الكبيرة: يخفي الصفوف بعد 50 ويضيف زر «عرض المزيد».
+   لا يمسّ الجداول التي فيها حقول إدخال/تحديد (حتى لا يُحدَّد صف مخفي بالخطأ)، والطباعة تعرض كل الصفوف، وأي فشل يُتجاهل. */
+const Progressive = {
+  PAGE: 50, MIN: 80, tmr: null,
+  css(){ const s = document.createElement("style"); s.id = "progressiveCss"; s.textContent = ".prog-hid{display:none !important;} @media print{ .prog-hid{display:table-row !important;} .prog-more{display:none !important;} }"; document.head.appendChild(s); },
+  apply(root){
+    try{
+      (root || document).querySelectorAll("table").forEach(tb=>{
+        if(tb.dataset.progDone) return;
+        const body = tb.tBodies && tb.tBodies[0]; if(!body) return;
+        const rows = [...body.rows]; if(rows.length < this.MIN) return;
+        if(tb.querySelector("input,select,textarea")) { tb.dataset.progDone = "skip"; return; }
+        tb.dataset.progDone = "1";
+        let shown = this.PAGE; rows.forEach((r,i)=>{ if(i >= shown) r.classList.add("prog-hid"); });
+        const cols = (rows[0].cells || []).length || 1;
+        const tr = document.createElement("tr"); tr.className = "prog-more";
+        const td = document.createElement("td"); td.colSpan = cols; td.style.cssText = "text-align:center;padding:10px;";
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "chip-btn accent";
+        const label = ()=>"عرض المزيد (" + (rows.length - shown) + " متبقٍ من " + rows.length + ")";
+        btn.textContent = label();
+        btn.addEventListener("click", ()=>{
+          const next = shown + this.PAGE; rows.forEach((r,i)=>{ if(i >= shown && i < next) r.classList.remove("prog-hid"); });
+          shown = next; if(shown >= rows.length) tr.remove(); else btn.textContent = label();
+        });
+        td.appendChild(btn); tr.appendChild(td); body.appendChild(tr);
+      });
+    }catch(e){}
+  },
+  start(){
+    try{
+      this.css();
+      const go = ()=>{ clearTimeout(this.tmr); this.tmr = setTimeout(()=>this.apply(document.getElementById("viewArea")), 150); };
+      const va = document.getElementById("viewArea"); if(!va) return;
+      new MutationObserver(go).observe(va, { childList:true, subtree:true });
+    }catch(e){}
+  }
+};
+try{ if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>Progressive.start()); else Progressive.start(); }catch(e){}
+
+/* رفع آمن (دفاع إضافي من جهة المتصفح — الحماية الملزمة تكون في الـBackend/القواعد):
+   يفحص بصمة الملف الفعلية (magic bytes) لا الامتداد فقط، يمنع التنفيذي/السكربت/SVG، يحدّ الحجم بـ5MB،
+   ويعيد ترميز الصور عبر canvas فيُنتج صورة جديدة نظيفة (تُزال أي حمولة مخفية أو بيانات وصفية). */
+const SafeUpload = {
+  MAX: 5 * 1024 * 1024, MAXDIM: 2000,
+  EXT: { png:["png"], jpeg:["jpg","jpeg","jfif"], gif:["gif"], webp:["webp"], pdf:["pdf"], docx:["docx","xlsx","pptx"], ole:["doc","xls","ppt"], mp3:["mp3","mpeg","mpga"], wav:["wav"], ogg:["ogg","oga","ogv","opus"], webm:["webm","weba"], mp4:["mp4","m4a","m4v","mov"], text:["txt","csv","md"] },
+  ALLOW: { image:["png","jpeg","gif","webp"], audio:["mp3","wav","ogg","webm","mp4"], video:["mp4","webm","ogg"], attach:["png","jpeg","gif","webp","pdf","docx","ole","mp3","wav","ogg","webm","mp4","text"] },
+  BLOCK_EXT: /\.(html?|xhtml|svg|svgz|js|mjs|jsx|ts|exe|dll|bat|cmd|com|scr|msi|sh|bash|php\d?|phtml|asp|aspx|jsp|cgi|pl|py|rb|jar|apk|vbs|ps1|hta|lnk|swf|xml|xsl)$/i,
+  async sniff(file){
+    const b = new Uint8Array(await file.slice(0, 4096).arrayBuffer()), s = (a, n)=>String.fromCharCode.apply(null, Array.from(b.slice(a, a + n)));
+    if(b.length < 4) return null;
+    if(b[0] === 0x4D && b[1] === 0x5A) return "exe"; if(b[0] === 0x7F && s(1,3) === "ELF") return "exe"; if(s(0,2) === "#!") return "exe";
+    if(b[0] === 0x89 && s(1,3) === "PNG") return "png";
+    if(b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return "jpeg";
+    if(s(0,6) === "GIF87a" || s(0,6) === "GIF89a") return "gif";
+    if(s(0,4) === "RIFF" && s(8,4) === "WEBP") return "webp";
+    if(s(0,4) === "RIFF" && s(8,4) === "WAVE") return "wav";
+    if(s(0,4) === "OggS") return "ogg";
+    if(s(0,5) === "%PDF-") return "pdf";
+    if(b[0] === 0x1A && b[1] === 0x45 && b[2] === 0xDF && b[3] === 0xA3) return "webm";
+    if(s(4,4) === "ftyp") return "mp4";
+    if(s(0,3) === "ID3" || (b[0] === 0xFF && (b[1] & 0xE0) === 0xE0)) return "mp3";
+    if(b[0] === 0x50 && b[1] === 0x4B && b[2] === 3 && b[3] === 4) return "docx";
+    if(b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0) return "ole";
+    const txt = s(0, Math.min(b.length, 4096)).toLowerCase();
+    if(!b.includes(0) && !/<\s*(script|html|svg|\?php|!doctype|iframe|object|embed)/.test(txt)) return "text";
+    return null;
+  },
+  async decode(file){
+    if(typeof createImageBitmap === "function"){ try{ return await createImageBitmap(file); }catch(e){} }
+    const url = URL.createObjectURL(file);
+    try{ return await new Promise((res, rej)=>{ const i = new Image(); i.onload = ()=>res(i); i.onerror = ()=>rej(new Error("الملف ليس صورة صالحة")); i.src = url; }); }
+    finally{ setTimeout(()=>URL.revokeObjectURL(url), 5000); }
+  },
+  async clean(file, kind){
+    if(!file) throw new Error("لم يُختر ملف");
+    if(file.size > this.MAX) throw new Error("حجم الملف أكبر من 5 ميجابايت");
+    if(file.size < 4) throw new Error("الملف فارغ أو تالف");
+    const name = String(file.name || ""), ext = (name.match(/\.([A-Za-z0-9]+)$/) || [])[1];
+    if(name && this.BLOCK_EXT.test(name)) throw new Error("هذا النوع من الملفات غير مسموح (" + name.split(".").pop() + ")");
+    const type = await this.sniff(file);
+    if(!type || type === "exe") throw new Error("محتوى الملف لا يطابق نوعًا مسموحًا (قد يكون ملفًا ضارًّا أو مُعاد تسميته)");
+    if(!(this.ALLOW[kind] || []).includes(type)) throw new Error("نوع محتوى الملف (" + type + ") غير مسموح هنا");
+    if(ext && !(this.EXT[type] || []).includes(ext.toLowerCase())) throw new Error("امتداد الملف لا يطابق محتواه الحقيقي (" + type + ")");
+    if(kind !== "image") return file;
+    const bmp = await this.decode(file);
+    const w0 = bmp.width || bmp.naturalWidth, h0 = bmp.height || bmp.naturalHeight; if(!w0 || !h0) throw new Error("الصورة غير صالحة");
+    const sc = Math.min(1, this.MAXDIM / Math.max(w0, h0)), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(w0 * sc)); c.height = Math.max(1, Math.round(h0 * sc));
+    const g = c.getContext("2d"); g.drawImage(bmp, 0, 0, c.width, c.height);
+    const toBlob = (t, q)=>new Promise(res=>c.toBlob(res, t, q));
+    let out = (type === "png" || type === "gif" || type === "webp") ? await toBlob("image/png") : await toBlob("image/jpeg", 0.88);
+    if(out && out.size > this.MAX) out = await toBlob("image/jpeg", 0.8);
+    if(!out || out.size > this.MAX) throw new Error("تعذّر تصغير الصورة تحت 5 ميجابايت");
+    return out;
+  },
+  read(reader, file, kind, onFail){
+    (async ()=>{
+      try{ reader.readAsDataURL(await this.clean(file, kind)); }
+      catch(e){ const m = (e && e.message) || "ملف غير مسموح"; try{ alert("تعذّر رفع الملف: " + m); }catch(_){} if(onFail) onFail(new Error(m)); }
+    })();
+  }
+};
+
+
 function sleepMs(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
 /* ---- التفعيل التلقائي للتسجيل الجديد (يُتحكَّم به من واجهة المشرف العام) ---- */
@@ -2938,8 +3149,10 @@ const SecurityPanel = (function(){
     }catch(e){ /* لا صلاحية قراءة أو لا اتصال: لا شيء */ }
     finally{ busy = false; }
   }
-  async function readiness(){
-    const s = await firebaseDB.ref("roles").get(), have = new Set();
+  /* قراءة سجلات الأدوار ضمن نطاق المستخدم: المشرف العام كل شيء، ومدير المؤسسة/المنسق مؤسسته فقط (القواعد تفرض ذلك) */
+function rolesInScope(){ return session.role === "admin" ? firebaseDB.ref("roles").get() : firebaseDB.ref("roles").orderByChild("orgId").equalTo(session.orgId).get(); }
+async function readiness(){
+    const s = await rolesInScope(), have = new Set();
     if(s.exists()) Object.values(s.val()).forEach(v=>{ if(v && v.u) have.add(v.u); });
     const kinds = [["orgAdmins","مدير مؤسسة"],["coordinators","منسق"],["teachers","معلم"],["students","طالب"],["parents","ولي أمر"]];
     const missing = []; let total = 0;
@@ -2951,7 +3164,7 @@ const SecurityPanel = (function(){
         if(!have.has(await Sec.userHash(r.username))){ const o = orgById(r.orgId); missing.push({ n:r.username, label, org:o ? o.name : "", k, r }); }
       }
     }
-    const superOk = have.has(await Sec.userHash(SUPER_ADMIN.username));
+    const superOk = session.role !== "admin" ? true : have.has(await Sec.userHash(SUPER_ADMIN.username));
     return { total, missing, superOk, rolesCount:have.size };
   }
   /* بصمات كل المستخدمين الموجودين فعليًا في السحابة (لا في ذاكرة هذا الجهاز فقط): أي فشل في القراءة يوقف العملية بدل المخاطرة */
@@ -2994,7 +3207,7 @@ const SecurityPanel = (function(){
     saveDB(); try{ flushSaveDBNow(); }catch(e){}
   }
   async function cleanup(dry){
-    const s = await firebaseDB.ref("roles").get(); if(!s.exists()) return { removed:0 };
+    const s = await rolesInScope(); if(!s.exists()) return { removed:0 };
     const live = new Set([await Sec.userHash(SUPER_ADMIN.username)]);
     for(const k of ["admins","orgAdmins","coordinators","teachers","students","parents"]){ for(const r of (ROOT[k]||[])){ if(r && r.username) live.add(await Sec.userHash(r.username)); } }
     (await cloudLiveHashes()).forEach(h=>live.add(h));
@@ -3076,10 +3289,11 @@ const SecurityPanel = (function(){
           out.querySelector("#spFix").addEventListener("click", ()=>{
             const picked = cks().filter(c=>c.checked).map(c=>r.missing[+c.dataset.i]).filter(Boolean);
             if(!picked.length){ alert("حدّد حسابًا واحدًا على الأقل."); return; }
-            const pw = prompt("كلمة المرور الجديدة التي ستُعيَّن لـ "+picked.length+" حسابًا (٦ أحرف فأكثر). أبلغ بها أصحابها:", "123456");
+            const pw = prompt("كلمة المرور الجديدة التي ستُعيَّن لـ "+picked.length+" حسابًا (٦ أحرف فأكثر). أبلغ بها أصحابها:", genTempPassword());
             if(pw===null) return; if(String(pw).length < 6){ alert("كلمة المرور أقل من ٦ أحرف."); return; }
             let n = 0;
             picked.forEach(m=>{ if(m.k==="orgAdmins" && session.role!=="admin") return; delete m.r.passHash; delete m.r.passSalt; delete m.r.passIter; m.r.password = pw; n++; });
+try{ Audit.log("bulk_password_reset", "bulk"); }catch(e){}
             saveDB(); flushSaveDBNow();
             out.innerHTML = "<p>✅ بدأ إنشاء حسابات الدخول لـ "+n+" حسابًا بكلمة المرور الجديدة. انتظر دقيقة ثم أعد «فحص الجاهزية»؛ ويدخل أصحابها بالاسم وكلمة المرور الجديدة.</p>";
           });
@@ -3129,9 +3343,10 @@ const SecurityPanel = (function(){
       o.querySelector("#spUaGo").addEventListener("click", ()=>{
         const picked = cks().filter(c=>c.checked).map(c=>shown[+c.dataset.i]).filter(Boolean);
         if(!picked.length){ alert("حدّد مستخدمًا واحدًا على الأقل."); return; }
-        const pw = prompt("كلمة المرور الجديدة لـ "+picked.length+" مستخدمًا (٦ أحرف فأكثر). أبلغ بها أصحابها:", "123456");
+        const pw = prompt("كلمة المرور الجديدة لـ "+picked.length+" مستخدمًا (٦ أحرف فأكثر). أبلغ بها أصحابها:", genTempPassword());
         if(pw===null) return; if(String(pw).length < 6){ alert("كلمة المرور أقل من ٦ أحرف."); return; }
         picked.forEach(m=>{ delete m.r.passHash; delete m.r.passSalt; delete m.r.passIter; m.r.password = pw; });
+try{ Audit.log("bulk_password_reset", "bulk"); }catch(e){}
         saveDB(); flushSaveDBNow();
         o.innerHTML = "<p>✅ بدأ إنشاء حسابات الدخول لـ "+picked.length+" مستخدمًا بكلمة المرور الجديدة. انتظر دقيقة (أطول إن كانوا كثيرين) ثم جرّب دخول أحدهم.</p>";
       });
@@ -4969,11 +5184,13 @@ document.getElementById("logoutBtn").addEventListener("click", async ()=>{
 
 const NAV = {
   admin: [
+["home","الصفحة الرئيسة"],
     ["orgs","المؤسسات والاشتراكات"],
     ["backup","النسخ الاحتياطي والاستعادة"],
     ["aboutedit","تعديل نافذة (من نحن)"],
   ],
   orgadmin: [
+["home","الصفحة الرئيسة"],
     ["orghome","لوحة المؤسسة"],
     ["fees","الطلاب والرسوم"],
     ["parentsMgmt","أولياء الأمور"],
@@ -4981,6 +5198,7 @@ const NAV = {
     ["classtt","الجداول الصفية للمراحل"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
+    ["skills","إتقان المهارات"],
     ["attachments","المرفقات"],
     ["tasks","التكليفات الإدارية"],
     ["correspondence","المراسلات الإدارية"],
@@ -4991,8 +5209,10 @@ const NAV = {
     ["groupresults","نتائج المجموعات"],
   ],
   coordinator: [
+["home","الصفحة الرئيسة"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
+    ["skills","إتقان المهارات"],
     ["attachments","المرفقات"],
     ["tasksSent","التكليفات المرسلة"],
     ["tasksInbox","التكليفات الواردة"],
@@ -5006,6 +5226,8 @@ const NAV = {
     ["groupresults","نتائج المجموعات"],
   ],
   teacher: [
+["home","الصفحة الرئيسة"],
+    ["ai","الإنشاء بـ Ai"],
     ["forms","النماذج التعليمية"],
     ["lessons","الشروح التفاعلية"],
     ["live","الحصة المباشرة"],
@@ -5018,6 +5240,7 @@ const NAV = {
     ["mystudents","بيانات طلابي"],
     ["analysis","تحليل النتائج"],
     ["challenges","تحليل التحديات"],
+    ["skills","إتقان المهارات"],
     ["attachments","المرفقات"],
     ["tasksSent","التكليفات المرسلة"],
     ["tasksInbox","التكليفات الواردة"],
@@ -5025,9 +5248,11 @@ const NAV = {
     ["parentsLink","ربط أولياء الأمور بالطلاب"],
   ],
   parent: [
+["home","الصفحة الرئيسة"],
     ["parentscores","نتائج الأبناء"],
   ],
   student: [
+["home","الصفحة الرئيسة"],
     ["allmodels","جميع النماذج"],
     ["solved","نماذج تم حلها"],
     ["unsolved","نماذج لم تحلها"],
@@ -5036,6 +5261,7 @@ const NAV = {
     ["timetable","جدول الحصص والتواصل"],
     ["scores","درجاتي وترتيبي"],
     ["mychallenges","التحديات"],
+    ["skills","مهاراتي"],
     ["attachments","المرفقات"],
     ["tasks","التكليفات"],
   ],
@@ -5056,6 +5282,7 @@ function buildSidenav(role){
     if(i===0){ b.classList.add("active"); renderView(role,key); }
   });
   try{ if(window.LIVE) LIVE.boot(role); }catch(e){}
+try{ if(!window.__previewing) Audit.log("login", role); }catch(e){}
 }
 function selectNav(role,key,btn){
   document.querySelectorAll("#sidenav button").forEach(b=>b.classList.remove("active"));
@@ -5063,12 +5290,29 @@ function selectNav(role,key,btn){
   renderView(role,key);
 }
 
+/* ===== الصفحة الرئيسة: نافذة افتتاحية لكل دور فيها أيقونات تفتح النوافذ المرتبطة بها (الافتراضية عند الدخول) ===== */
+const HOME_ICONS = { skills:"🧩", ai:"🤖", orgs:"🏢", backup:"💾", aboutedit:"✏️", orghome:"📊", fees:"💳", parentsMgmt:"👪", assignments:"🧑‍💼", classtt:"🗓️", analysis:"📈", challenges:"🎯", attachments:"📎", tasks:"📝", correspondence:"✉️", banks:"🏦", forms:"📚", mindbank:"🧠", live:"🔴", groupresults:"👥", tasksSent:"📤", tasksInbox:"📥", mystudents:"🎓", parentsLink:"🔗", lessons:"💡", timetable:"⏰", plans:"🗂️", essaygrading:"✍️", parentscores:"🧾", allmodels:"📖", solved:"✅", unsolved:"⏳", scores:"🏆", mychallenges:"🎯" };
+function renderHomeWindow(view, role){
+  const items = (NAV[role] || []).filter(([k])=>k!=="home");
+  const who = (session && session.user && (session.user.name || session.user.username)) || "";
+  view.innerHTML = `<h2>الصفحة الرئيسة</h2><p class="sub">${who ? "مرحبًا " + regEsc(who) + " — " : ""}اضغط على أي أيقونة للانتقال إلى النافذة المرتبطة بها.</p>
+  <div class="home-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:14px;">
+  ${items.map(([k,label])=>`<button type="button" class="home-tile" data-go="${k}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:18px 10px;min-height:112px;border:2px solid var(--ink);border-radius:14px;background:var(--paper);cursor:pointer;font-weight:800;font-size:14px;"><span style="font-size:36px;line-height:1;">${HOME_ICONS[k] || "📁"}</span><span>${regEsc(label)}</span></button>`).join("")}
+  </div>`;
+  view.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click", ()=>{
+    const nb = document.querySelector(`#sidenav button[data-key="${b.dataset.go}"]`);
+    if(nb) nb.click();
+  }));
+}
 let __currentTableScopeKey = "";
 function renderView(role,key){
   __currentTableScopeKey = (role||"")+":"+(key||"");
   const view = document.getElementById("viewArea");
   view.innerHTML = "";
   view.classList.remove("lesson-theme"); if(view.__lessonMO){ view.__lessonMO.disconnect(); view.__lessonMO = null; }
+if(key==="home"){ renderHomeWindow(view, role); return; }
+if(key==="ai"){ renderAICreateWindow(view, role); return; }
+if(key==="skills"){ renderSkillsWindow(view, role); return; }
   if(key==="orgs"){ renderOrgsWindow(view); return; }
   if(key==="backup"){ renderBackupWindow(view); return; }
   if(key==="orghome"){ renderOrgHomeWindow(view); return; }
@@ -5887,11 +6131,11 @@ function renderAssignmentsWindow(view){
 
   document.getElementById("addRowBtn").addEventListener("click", ()=>{
     if(adminsLocked()){ alert("أدخل كلمة مرور المشرف العام أولًا من الجدول لفتح إمكانية التعديل."); return; }
-    if(activeTab==="admins") DB.admins.push({username:nextDefaultName("مشرف_جديد", DB.admins), password:"1234", email:""});
+    if(activeTab==="admins") DB.admins.push({username:nextDefaultName("مشرف_جديد", DB.admins), password:genTempPassword(), email:""});
     if(activeTab==="subjects"){ migrateSubjectsIfNeeded(); DB.subjects.rows.push({role:"المعلم", cells:{}}); }
-    if(activeTab==="coords") DB.coordinators.push({username:nextDefaultName("منسق_جديد", DB.coordinators), password:"1234", teachers:[], grades:[], classes:[], subjects:[]});
-    if(activeTab==="teachers") DB.teachers.push({username:nextDefaultName("معلم_جديد", DB.teachers), password:"1234", grades:[], classes:[], subjects:[]});
-    if(activeTab==="students") DB.students.push({username:nextDefaultName("طالب_جديد", DB.students), password:"1234", grade:"", cls:"", active:false});
+    if(activeTab==="coords") DB.coordinators.push({username:nextDefaultName("منسق_جديد", DB.coordinators), password:genTempPassword(), teachers:[], grades:[], classes:[], subjects:[]});
+    if(activeTab==="teachers") DB.teachers.push({username:nextDefaultName("معلم_جديد", DB.teachers), password:genTempPassword(), grades:[], classes:[], subjects:[]});
+    if(activeTab==="students") DB.students.push({username:nextDefaultName("طالب_جديد", DB.students), password:genTempPassword(), grade:"", cls:"", active:false});
     saveDB();
     drawAssignTable(activeTab);
   });
@@ -5914,7 +6158,7 @@ function renderAssignmentsWindow(view){
       if(!row) return;
       const username = String(row[0]==null?"":row[0]).trim();
       if(!username) return;
-      const password = String(row[1]==null?"":row[1]).trim() || "1234";
+      const password = String(row[1]==null?"":row[1]).trim() || genTempPassword();
       if(tab==="admins"){
         DB.admins.push({username, password, email: String(row[2]==null?"":row[2]).trim()});
       } else if(tab==="subjects"){
@@ -6065,7 +6309,7 @@ function renderRelationsLookup(){
         <label style="font-weight:700; display:block; margin-bottom:6px;">استعلام بحسب طالب</label>
         <select id="relStudentSelect" style="width:100%; padding:8px; border:1.5px solid var(--ink); border-radius:7px;">
           <option value="">اختر طالبًا</option>
-          ${DB.students.map(s=>`<option value="${s.username}">${s.username}</option>`).join("")}
+          ${DB.students.map(s=>`<option value="${regEsc(s.username)}">${regEsc(s.username)}</option>`).join("")}
         </select>
         <div id="relStudentResult" style="margin-top:12px;"></div>
       </div>
@@ -6081,7 +6325,7 @@ function renderRelationsLookup(){
         <label style="font-weight:700; display:block; margin-bottom:6px;">استعلام بحسب المنسق</label>
         <select id="relCoordSelect" style="width:100%; padding:8px; border:1.5px solid var(--ink); border-radius:7px;">
           <option value="">اختر منسقًا</option>
-          ${DB.coordinators.filter(c=>c.username).map(c=>`<option value="${c.username}">${c.username}</option>`).join("")}
+          ${DB.coordinators.filter(c=>c.username).map(c=>`<option value="${regEsc(c.username)}">${regEsc(c.username)}</option>`).join("")}
         </select>
         <div id="relCoordResult" style="margin-top:12px;"></div>
       </div>
@@ -7144,6 +7388,7 @@ function renderFormsWindow(view, role, bankMode){
     const isTest = !!(activeModel && activeModel.kind==="test");
     btn.textContent = isTest ? "إلى نموذج" : "إلى اختبار";
     btn.classList.toggle("test-active", isTest);
+    document.body.classList.toggle("editing-test", isTest);
   }
 
   /* ---- كشف الأسئلة المكررة داخل النموذج/الاختبار: المقارنة بنص السؤال فقط (بعد توحيد التشكيل والهمزات والمسافات) دون النظر للخيارات ---- */
@@ -7262,7 +7507,8 @@ function renderFormsWindow(view, role, bankMode){
 
   function handleSaveClick(){
     if(!activeModel){ alert("لا يوجد نموذج مفتوح."); return; }
-    openPublishChoiceModal(activeModel, (choice, scheduledAt)=>{
+    /* إعادة نشر الاختبار أو تعديل موعده مسموح دائمًا (حتى بعد انتهاء وقته)؛ تغيير الموعد لا يمسّ results ولا محاولات الطلاب إطلاقًا */
+openPublishChoiceModal(activeModel, (choice, scheduledAt)=>{
       if(choice==="now"){
         activeModel.scheduledAt = null;
       } else if(choice==="schedule"){
@@ -7270,7 +7516,9 @@ function renderFormsWindow(view, role, bankMode){
       } else {
         return; // أُلغي
       }
-      performSave();
+if(activeModel.aiDraft){ activeModel.aiDraft = false; activeModel.aiApprovedAt = Date.now(); try{ Audit.log("ai_model_approved", activeModel.id); }catch(e){} }  /* اعتماد بشري لمحتوى الذكاء الاصطناعي */
+try{ Audit.log("model_save_publish", (activeModel.kind||"model")+":"+(choice==="schedule"?"scheduled":"now")+":"+activeModel.id); }catch(e){}
+performSave();
       recomputeGroupNumbers(activeModel.term, activeModel.grade, activeModel.subject);
       refreshNumbers();
     });
@@ -7969,8 +8217,8 @@ async function htmlAppResolveEdits(edits){      // يجلب صور التعدي�
 }
 async function htmlAppImageToDataUrl(file){
   if(!/^image\//.test(file.type)) throw new Error("الملف ليس صورة");
-  const raw = await new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); r.readAsDataURL(file); });
-  if(file.type === "image/svg+xml" || file.type === "image/gif"){ if(raw.length > 2.5e6) throw new Error("الصورة كبيرة جدًا"); return raw; }
+  const raw = await new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); SafeUpload.read(r, file, "image", rej); });
+/* SVG/GIF لم تعد تُمرَّر كما هي: كل الصور تُعاد معالجتها في SafeUpload */
   const img = await new Promise((res, rej)=>{ const i = new Image(); i.onload = ()=>res(i); i.onerror = ()=>rej(new Error("تعذّرت قراءة الصورة")); i.src = raw; });
   const sc = Math.min(1, 1400 / Math.max(img.width, img.height)), png = file.type === "image/png";
   const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
@@ -8162,8 +8410,21 @@ function renderHtmlLessonView(view, model){
 
 function serializeModel(model, warnings){
   warnings = warnings || [];
-  const data = [];
-  model.blocks.forEach(b=>{
+const data = [];
+/* بند: ربط الأسئلة بقطعة فهم المقروء — كل سؤال مربوط يحمل rcLink وrcId القطعة السابقة له مباشرة */
+let __rcEl = null, __rcLast = "";
+const __rcPush = data.push.bind(data);
+data.push = function(...items){
+  items.forEach(x=>{
+    if(!x || !__rcEl) return;
+    if(x.type === "reading"){
+      if(!__rcEl.dataset.rcId) __rcEl.dataset.rcId = "rc" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+      x.rcId = __rcEl.dataset.rcId; __rcLast = x.rcId;
+    } else if(__rcEl.dataset.rcLink === "1" && __rcLast){ x.rcLink = true; x.rcId = __rcLast; }
+  });
+  return __rcPush(...items);
+};
+  model.blocks.forEach(b=>{ __rcEl = b.el;
     const el = b.el;
     if(typeof el.getHtmlAppData === "function"){ const hd = el.getHtmlAppData(); if(hd) data.push(hd); return; }
     const mcqList = el.querySelector(".mcq-list");
@@ -9021,7 +9282,7 @@ function openMicSettings(bulb){
     <label>أدنى نسبة لجودة القراءة المطلوبة (%)</label><input type="number" id="mcPass" min="30" max="100" step="5" value="${cur.pass || 70}" style="width:100%;">
     <label>مهلة الصمت قبل إغلاق الميكروفون (بالثواني)</label><input type="number" id="mcWait" min="2" max="60" step="1" value="${cur.wait || 10}" style="width:100%;">
     <label>الانتظار بعد قراءة آخر كلمة قبل احتساب الجودة (بالثواني)</label><input type="number" id="mcEnd" min="0.2" max="10" step="0.1" value="${cur.end || 0.5}" style="width:100%;">
-    <div style="display:flex;gap:8px;margin-top:12px;"><button type="button" class="primary-btn" id="mcSave" style="flex:1;">حفظ وتطبيق على النموذج</button><button type="button" class="chip-btn" id="mcCancel">إلغاء</button><button type="button" class="chip-btn" id="mcReset" title="الرجوع للقيم الافتراضية">افتراضي</button></div></div>`;
+    <div style="display:flex;gap:8px;margin-top:12px;"><button type="button" class="primary-btn" id="mcSave" style="flex:1;">حفظ وتطبيق على النموذج</button><button type="button" class="chip-btn" id="mcCancel">إلغاء</button><button type="button" class="chip-btn" id="mcReset" title="الرجوع للقيم الافتراضية">افتراضي</button></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;"><button type="button" class="chip-btn accent" id="mcAllOn" style="flex:1;" title="يفعّل القراءة الإلزامية لكل أسئلة الاختيار من متعدد والصواب والخطأ في هذا النموذج/الاختبار فقط">🎤 تشغيل لجميع الأسئلة</button><button type="button" class="chip-btn" id="mcAllOff" style="flex:1;" title="يوقف الميكروفون في جميع أسئلة هذا النموذج/الاختبار">إيقاف عن الجميع</button></div></div>`;
   document.body.appendChild(ov);
   const close = ()=>ov.remove();
   ov.addEventListener("click", e=>{ if(e.target === ov) close(); });
@@ -9034,6 +9295,21 @@ function openMicSettings(bulb){
     close();
   };
   ov.querySelector("#mcReset").addEventListener("click", ()=>apply(null));
+/* بند 4: تشغيل/إيقاف الميكروفون لجميع أسئلة الاختيار من متعدد والصواب والخطأ في هذا النموذج/الاختبار فقط (عناصر المحرر المفتوح)، دون المساس بأي نموذج آخر */
+const setAll = on=>{
+  const p = Math.min(100, Math.max(30, Number(ov.querySelector("#mcPass").value) || 70));
+  const w = Math.min(60, Math.max(2, Number(ov.querySelector("#mcWait").value) || 10));
+  const n = Math.min(10, Math.max(0.2, Number(ov.querySelector("#mcEnd").value) || 0.5));
+  [...document.querySelectorAll(".bulb")].filter(b=>b._mic).forEach(b=>{
+    if(on){ b.dataset.mic = "1"; b.dataset.micPass = p; b.dataset.micWait = w; b.dataset.micEnd = n; }
+    else { b.dataset.mic = ""; delete b.dataset.micPass; delete b.dataset.micWait; delete b.dataset.micEnd; }
+    try{ refreshMic(b); }catch(e){}
+  });
+  if(bulb._mic) bulb._mic.dispatchEvent(new Event("change", { bubbles:true }));
+  close();
+};
+ov.querySelector("#mcAllOn").addEventListener("click", ()=>setAll(true));
+ov.querySelector("#mcAllOff").addEventListener("click", ()=>setAll(false));
   ov.querySelector("#mcSave").addEventListener("click", ()=>{
     const p = Math.min(100, Math.max(30, Number(ov.querySelector("#mcPass").value) || 70));
     const w = Math.min(60, Math.max(2, Number(ov.querySelector("#mcWait").value) || 10));
@@ -9196,7 +9472,7 @@ function compressImageFile(file){
     const rd = new FileReader();
     rd.onerror = ()=>reject(new Error("read"));
     rd.onload = ()=>{
-      if(file.type==="image/svg+xml" || (file.type==="image/gif" && file.size<=2*1024*1024)){ resolve(rd.result); return; }
+/* SVG/GIF لم تعد تُمرَّر كما هي */
       const img = new Image();
       img.onerror = ()=>reject(new Error("img"));
       img.onload = ()=>{
@@ -9207,7 +9483,7 @@ function compressImageFile(file){
       };
       img.src = rd.result;
     };
-    rd.readAsDataURL(file);
+    SafeUpload.read(rd, file, "image", reject);
   });
 }
 /* data URL → Blob URL: التشغيل عبر Blob يدعم التقديم/التأخير ويعمل في كل المتصفحات (بما فيها سفاري) بخلاف data URL الكبير */
@@ -9284,7 +9560,7 @@ function openMediaEditor(bulb){
         setMsg("جارٍ فحص الفيديو…", true);
         const probe = await probeVideo(URL.createObjectURL(f));
         if(!probe.ok){ setMsg(MSG_VIDEO_UNSUPPORTED); e.target.value = ""; return; }
-        const src = await new Promise((res, rej)=>{ const rd = new FileReader(); rd.onload = ()=>res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
+        const src = await new Promise((res, rej)=>{ const rd = new FileReader(); rd.onload = ()=>res(rd.result); rd.onerror = rej; SafeUpload.read(rd, f, "video", rej); });
         setBlob(""); cur = {src, type:"video", id:""}; setMsg("");
       } else if(f.type.startsWith("image/")){
         setBlob(""); cur = {src: await compressImageFile(f), type:"image", id:""};
@@ -9622,6 +9898,8 @@ function buildBlockByTool(tool, savedData){
   else if(tool==="htmlapp") el = buildHtmlAppBlock(savedData);
   if(el){
     el.dataset.tool = tool;
+{ const __sd = Array.isArray(savedData) ? savedData[0] : savedData;
+  if(__sd && typeof __sd === "object"){ if(__sd.rcId && (tool === "reading" || __sd.rcLink)) el.dataset.rcId = __sd.rcId; if(__sd.rcLink) el.dataset.rcLink = "1"; } }
     // بند 5: نتذكر آخر صيغة كتبها المعلم لرأس هذا النوع من الأسئلة، ونطبّقها تلقائيًا
     // في كل مرة يُضاف فيها هذا النوع من جديد (ما لم تكن هناك صيغة محفوظة ضمن بيانات السؤال نفسه).
     const titleInput = el.querySelector(".htitle");
@@ -9651,7 +9929,7 @@ function rebuildBlocksFromData(data){
     if(multiTypes[item.type]){
       const group = [item];
       let j = i+1;
-      while(j < data.length && data[j].type === item.type){ group.push(data[j]); j++; }
+      while(j < data.length && data[j].type === item.type && !!data[j].rcLink === !!item.rcLink && (data[j].rcId||"") === (item.rcId||"")){ group.push(data[j]); j++; }
       blocks.push({el: buildBlockByTool(multiTypes[item.type], group)});
       i = j;
     } else if(item.type === "grammarreq"){
@@ -9680,6 +9958,33 @@ function rebuildBlocksFromData(data){
   return blocks;
 }
 
+/* بند: زر «ربطه بفهم المقروء» يظهر في كل سؤال يأتي بعد سؤال فهم المقروء، وعند تفعيله يُربط السؤال بآخر قطعة تسبقه */
+function refreshRcButtons(){
+  const scroll = document.getElementById("workshopScroll"); if(!scroll) return;
+  let seen = false;
+  [...scroll.children].forEach(el=>{
+    if(!el.classList || !el.classList.contains("qblock")) return;
+    const isReading = el.dataset.tool === "reading" || !!el.querySelector(".rp-passage");
+    const actions = el.querySelector(".qblock-head .qblock-actions"); if(!actions) return;
+    let btn = actions.querySelector(".rc-link-btn");
+    if(isReading){ seen = true; if(btn) btn.remove(); delete el.dataset.rcLink; return; }
+    if(!seen){ if(btn) btn.remove(); delete el.dataset.rcLink; return; }
+    if(!btn){
+      btn = document.createElement("button"); btn.type = "button"; btn.className = "chip-btn rc-link-btn";
+      btn.addEventListener("click", ()=>{ el.dataset.rcLink = el.dataset.rcLink === "1" ? "" : "1"; refreshRcButtons(); });
+      actions.insertBefore(btn, actions.firstChild);
+    }
+    const on = el.dataset.rcLink === "1";
+    btn.textContent = on ? "🔗 مربوط بفهم المقروء" : "ربطه بفهم المقروء";
+    btn.title = on ? "هذا السؤال مربوط بقطعة فهم المقروء السابقة له (اضغط للإلغاء)" : "اربط هذا السؤال بقطعة فهم المقروء السابقة له";
+    btn.classList.toggle("accent", on);
+  });
+}
+(function(){
+  let tmr = null;
+  const start = ()=>{ try{ new MutationObserver(()=>{ clearTimeout(tmr); tmr = setTimeout(refreshRcButtons, 120); }).observe(document.body, { childList:true, subtree:true }); }catch(e){} };
+  if(document.body) start(); else document.addEventListener("DOMContentLoaded", start);
+})();
 function addBlock(tool){
   const scroll = document.getElementById("workshopScroll");
   if(scroll.querySelector(".empty-note")) scroll.innerHTML = "";
@@ -10052,6 +10357,16 @@ function buildGrammarBlock(savedReqRows){
     ov.addEventListener("click", e=>{ if(e.target===ov) close(); });
     return ov;
   };
+/* المطلوبات الجاهزة من القطعة النحوية (بند 7) — تُستعمل في «🧩 صناعة سكريبت» وفي «الإنشاء بـ Ai» */
+const GZ_PRESET_REQS = ["أسلوب نداء","همزة قطع","همزة وصل","فاعل مرفوع بعلامة فرعية","ظرف زمان","خبر مرفوع بعلامة فرعية","أسلوب تفضيل","خبر مرفوع بعلامة أصلية","اسم تفضيل","فاعل مرفوع بعلامة أصلية","أسلوب أمر","ظرف مكان","فعل أمر","فعل من الأفعال الخمسة","همزة متطرفة","ألف مقصورة","فعل ماضٍ","اسم موصول","أسلوب توكيد","أسلوب رجاء","جمع مذكر سالم","ضمير متكلم","جمع مؤنث سالم","مفعول مطلق","جمع تكسير","اسم إشارة","همزة متوسطة","اسم مجرور","اسم استفهام","أسلوب استفهام","أسلوب تعجب","مبتدأ مرفوع بعلامة أصلية","مثنى","منادى","مفعول به","اسم من الأسماء الخمسة","ضمير غائب","ضمير مخاطب","فعل مضارع","حرف نداء","أسلوب مدح","مبتدأ مرفوع بعلامة فرعية","أسلوب ذم","المُفَضَّل","المُفَضَّل عليه"];
+/* شروط مشتركة تُضاف إلى جميع سكربتات الذكاء الاصطناعي */
+const AI_COMMON_RULES = [
+  "جميع النصوص منضبطة بالحركات ضبطًا تامًّا صحيحًا، سواء في الأسئلة أو الخيارات أو البطاقات أو التصنيفات أو غيرها.",
+  "جميع الأسئلة تحتوي على إجابات صحيحة منضبطة بالحركات ضبطًا تامًّا صحيحًا.",
+  "جميع الأسئلة تحتوي على تلميحات بسيطة موجِّهة مساعدة، وجميعها منضبطة بالحركات ضبطًا تامًّا صحيحًا.",
+  "عناية تامة بعلامات الترقيم، ومراعاة البنية الصرفية والتركيبية الصحيحة والسياق السليم؛ فلا تصنع قطعة أفكارها أو جملها منفصلة أو غير مترابطة أو غير منسجمة.",
+  "الاهتمام بالقيم الإسلامية والأخلاق الطيبة في جميع الأسئلة والقطع والنصوص."
+];
   function gzBuildScript(opts, reqs){
     const L = [];
     L.push("أنت خبير في اللغة العربية والنحو والإعراب، وتعدّ مواد تعليمية للطلاب.");
@@ -10066,6 +10381,7 @@ function buildGrammarBlock(savedReqRows){
     L.push("2) تُنقل الإجابات حرفيًّا من القطعة نفسها بالكلمات نفسها وبالضبط نفسه بالحركات، كلمةً أو أكثر.");
     L.push("3) لكل مطلوب تلميح مختصر يُرشد الطالب إلى الإجابة دون أن يذكرها صراحة. إن ورد للمطلوب «تلميح مقترح» فاستخدمه أو حسّنه، وإن لم يرد فاكتب تلميحًا مناسبًا.");
     L.push("4) لا تُغيّر نص المطلوب ولا ترتيبه.");
+AI_COMMON_RULES.forEach((r,i)=>L.push((5+i) + ") " + r));
     L.push("");
     L.push("المطلوبات (" + reqs.length + "):");
     reqs.forEach((r,i)=>{ L.push((i+1) + ". " + r.text + (r.hint ? "   — تلميح مقترح: " + r.hint : "   — (اكتب له تلميحًا)")); });
@@ -10100,6 +10416,12 @@ function buildGrammarBlock(savedReqRows){
         <label style="display:flex;align-items:center;gap:6px;">عدد الكلمات تقريبًا <input type="number" id="gzsWords" value="60" min="20" max="400" style="width:80px;"></label>
       </div>
       <div id="gzsList" style="margin-top:10px;"></div>
+<div style="border:1.5px solid #ccc;border-radius:10px;padding:8px;margin-top:10px;">
+<b>المطلوبات من القطعة</b>
+<div id="gzsPreset" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 10px;margin-top:6px;"></div>
+<label style="display:flex;align-items:center;gap:6px;margin-top:8px;"><input type="checkbox" id="gzsOtherOn"> أخرى</label>
+<input type="text" id="gzsOtherTxt" placeholder="اكتب مطلوبات أخرى (افصل بينها بفاصلة «،»)" style="width:100%;display:none;margin-top:4px;">
+</div>
       <div style="border:1.5px dashed #bbb;border-radius:10px;padding:8px;margin-top:10px;">
         <b>➕ مطلوب جديد</b>
         <div class="toolbar" style="gap:8px;flex-wrap:wrap;margin-top:6px;">
@@ -10132,6 +10454,8 @@ function buildGrammarBlock(savedReqRows){
       list.querySelectorAll(".bulb").forEach(b=>b.addEventListener("click", ()=>{ const j = +b.dataset.b, box = list.querySelector('[data-h="'+j+'"]'); box.textContent = items[j].hint || "لا يوجد تلميح لهذا المطلوب."; box.style.display = box.style.display==="none" ? "block" : "none"; }));
     }
     draw();
+{ const pb = ov.querySelector("#gzsPreset"); pb.innerHTML = GZ_PRESET_REQS.map((r,i)=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" class="gzsPre" data-p="${i}"> <span>${gzEsc(r)}</span></label>`).join("");
+  const oo = ov.querySelector("#gzsOtherOn"), ot = ov.querySelector("#gzsOtherTxt"); oo.addEventListener("change", ()=>{ ot.style.display = oo.checked ? "" : "none"; }); }
     ov.querySelector("#gzsAdd").addEventListener("click", ()=>{
       const t = ov.querySelector("#gzsNewText").value.trim(), h = ov.querySelector("#gzsNewHint").value.trim();
       if(!t){ alert("اكتب نص المطلوب أولًا."); return; }
@@ -10141,7 +10465,9 @@ function buildGrammarBlock(savedReqRows){
       ov.querySelector("#gzsNewText").value = ""; ov.querySelector("#gzsNewHint").value = ""; draw();
     });
     ov.querySelector("#gzsMake").addEventListener("click", ()=>{
-      const chosen = items.filter(i=>i.on);
+const chosen = items.filter(i=>i.on);
+ov.querySelectorAll(".gzsPre:checked").forEach(c=>chosen.push({ text:GZ_PRESET_REQS[+c.dataset.p], hint:"" }));
+if(ov.querySelector("#gzsOtherOn").checked){ ov.querySelector("#gzsOtherTxt").value.split(/[،,\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>chosen.push({ text:s, hint:"" })); }
       if(!chosen.length){ alert("حدّد مطلوبًا واحدًا على الأقل."); return; }
       const txt = gzBuildScript({ grade:ov.querySelector("#gzsGrade").value.trim(), topic:ov.querySelector("#gzsTopic").value.trim(), words:ov.querySelector("#gzsWords").value }, chosen);
       ov.querySelector("#gzsText").value = txt; ov.querySelector("#gzsOut").style.display = "block";
@@ -10236,7 +10562,7 @@ function buildReadingBlock(savedData){
       <button class="chip-btn rp-image">إدراج صورة</button>
       <span style="font-size:12px; color:#888;">(بدون درجات — لعرض القطعة قبل الأسئلة المرتبطة بها. يمكن أيضًا لصق صورة مباشرة داخل مربع النص)</span>
     </div>
-    <div class="passage-box rp-passage" contenteditable="true" style="min-height:120px;">${hasText ? savedData.text : defaultText}</div>
+    <div class="passage-box rp-passage" contenteditable="true" style="min-height:120px;">${hasText ? Sanitize.html(savedData.text) : defaultText}</div>
     <input type="file" accept="image/*" class="rp-file" style="display:none;">
     <div class="qrow rp-align-row" style="margin-top:8px; ${hasImg?"":"display:none;"}">
       <span style="font-size:12px; color:#888;">محاذاة الصورة:</span>
@@ -10285,7 +10611,7 @@ function buildReadingBlock(savedData){
       if(!imgWrap.style.width || imgWrap.style.width==="0px") imgWrap.style.width="280px";
       imgWrap.style.height = "auto";
     };
-    reader.readAsDataURL(f);
+    SafeUpload.read(reader, f, "image");
   }
   body.querySelector(".rp-image").addEventListener("click", ()=>body.querySelector(".rp-file").click());
   body.querySelector(".rp-file").addEventListener("change", (e)=>{
@@ -10589,7 +10915,7 @@ function buildSpellAudioBlock(savedItems){
           player.src = reader.result;
           statusEl.textContent = "ملف مرفوع ✔ ("+f.name+")";
         };
-        reader.readAsDataURL(f);
+        SafeUpload.read(reader, f, "audio");
       }
     });
     row.querySelector(".sa-play").addEventListener("click", ()=>{
@@ -10943,7 +11269,7 @@ function buildMindmapBlock(savedItems, savedConnections, savedBg, savedQ){
       };
       tmp.src = ev.target.result;
     };
-    reader.readAsDataURL(file);
+    SafeUpload.read(reader, file, "image");
     e.target.value = "";
   });
   mmRemoveBtn.addEventListener("click", ()=>applyBg(""));
@@ -11433,13 +11759,13 @@ function buildClassifyBlock(savedData){
 /* ================= واجهة الطالب: قوائم النماذج ================= */
 function studentModelsFor(){
   const grade = session.user.grade;
-  return DB.models.filter(m=>m.grade===grade && m.data && m.data.length && !(m.scheduledAt && m.scheduledAt>Date.now()));
+  return DB.models.filter(m=>m.grade===grade && m.data && m.data.length && !m.aiDraft && !(m.scheduledAt && m.scheduledAt>Date.now()));
 }
 function hasResult(modelId){ return DB.results.some(r=>r.studentUsername===session.user.username && r.modelId===modelId); }
 
 function studentLessonsFor(){
   const grade = session.user.grade;
-  return (DB.banks||[]).filter(m=>m && m.lesson===true && m.grade===grade && m.data && m.data.length && !(m.scheduledAt && m.scheduledAt>Date.now()));
+  return (DB.banks||[]).filter(m=>m && m.lesson===true && m.grade===grade && m.data && m.data.length && !m.aiDraft && !(m.scheduledAt && m.scheduledAt>Date.now()));
 }
 function renderStudentLessonsList(view){
   const subjectOptions = [...new Set(studentLessonsFor().map(m=>m.subject).filter(Boolean))];
@@ -11776,6 +12102,19 @@ function openSpellBoard(q, noCheck, list, startIdx){
   mountWord();
 }
 
+/* بند: عرض قطعة فهم المقروء للطالب في نافذة مستطيلة أعلى الشاشة بخط واضح مثل التلميح (نص و/أو صورة) */
+function rcShowPassage(p){
+  const old = document.getElementById("rcPassageOverlay");
+  if(old){ old.remove(); if(old.__pid === (p && p.rcId)) return; }
+  if(!p) return;
+  const ov = document.createElement("div"); ov.id = "rcPassageOverlay"; ov.__pid = p.rcId;
+  ov.style.cssText = "position:fixed;top:0;left:0;right:0;max-height:48vh;overflow:auto;z-index:100060;background:#fffbe6;border-bottom:3px solid #111;box-shadow:0 6px 18px rgba(0,0,0,.35);padding:14px 18px;direction:rtl;font-size:21px;line-height:1.9;font-weight:700;";
+  ov.innerHTML = '<button type="button" style="position:sticky;top:0;float:left;border:2px solid #111;background:#fff;border-radius:8px;padding:4px 12px;font-weight:800;cursor:pointer;">إغلاق ✕</button>' +
+    (p.text ? '<div>' + p.text + '</div>' : '') +
+    (p.imgSrc ? '<img src="' + p.imgSrc + '" style="max-width:100%;max-height:40vh;display:block;margin:8px auto 0;border-radius:8px;">' : '');
+  ov.querySelector("button").addEventListener("click", ()=>ov.remove());
+  document.body.appendChild(ov);
+}
 function renderSolveView(view, model, forceRetry, justSubmitted){
   if(model && model.lesson===true && Array.isArray(model.data) && model.data.length && model.data.every(q=>q && q.type==="htmlapp")){ renderHtmlLessonView(view, model); return; }
   view.innerHTML = `
@@ -11787,6 +12126,8 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
     <button class="primary-btn" id="solveSubmit" style="margin-top:16px; width:auto; padding:12px 30px;">إرسال</button>
     <div class="msg" id="solveMsg"></div>
   `;
+  document.body.classList.remove("editing-test");
+  view.classList.toggle("no-aux-tools", !!(model && model.testMode));
   document.getElementById("solveBack").addEventListener("click", ()=>{
     if(testTimerInterval){ clearInterval(testTimerInterval); testTimerInterval = null; }
     removeTestTimeUpOverlay();
@@ -11818,7 +12159,24 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
   let qNumCounter = 0;
 
   const consumedGrammarIdx = new Set();
-  model.data.forEach((q,idx)=>{
+const __rcPass = {}; model.data.forEach(x=>{ if(x && x.type === "reading" && x.rcId) __rcPass[x.rcId] = x; });
+let __rcQ = null;
+{ const __rcAppend = area.appendChild.bind(area);
+  area.appendChild = function(n){
+    try{
+      if(__rcQ && __rcQ.rcLink && __rcQ.rcId && __rcPass[__rcQ.rcId] && n && n.nodeType === 1 && !n.__rcDone && n.classList && !n.classList.contains("passage-box")){
+        n.__rcDone = true; n.dataset.noShuffle = "1";
+        const pid = __rcQ.rcId, h = document.createElement("div"); h.className = "rc-head";
+        h.style.cssText = "margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+        h.innerHTML = '<b style="color:#6a1b9a;">(فهم المقروء): </b><button type="button" class="chip-btn rc-show-btn">عرض القطعة</button>';
+        h.querySelector("button").addEventListener("click", ()=>rcShowPassage(__rcPass[pid]));
+        n.insertBefore(h, n.firstChild);
+      }
+    }catch(e){ console.error(e); }
+    return __rcAppend(n);
+  };
+}
+  model.data.forEach((q,idx)=>{ __rcQ = q;
     if(consumedGrammarIdx.has(idx)) return;
     if(q.type==="htmlapp"){ area.appendChild(htmlAppMountEl(q, { height:"75vh" })); return; }
     if(q.type==="reading"){
@@ -11828,7 +12186,7 @@ function renderSolveView(view, model, forceRetry, justSubmitted){
       const rpAlignCss = rpAlign==="center" ? "margin-left:auto; margin-right:auto;" : rpAlign==="left" ? "margin-left:0; margin-right:auto;" : "margin-right:0; margin-left:auto;";
       const rpSizeCss = (q.imgW && q.imgH) ? `width:${q.imgW}px; height:${q.imgH}px;` : "width:auto; height:auto;";
       box.innerHTML = `<div style="font-weight:700; margin-bottom:6px; color:var(--muted); font-size:12px;">اقرأ القطعة جيدًا واستعن بها على إجابة الأسئلة التالية</div>
-        ${q.text ? `<div>${q.text}</div>` : ""}
+        ${q.text ? `<div>${Sanitize.html(q.text)}</div>` : ""}
         ${q.imgSrc ? `<img src="${q.imgSrc}" style="max-width:100%; ${rpSizeCss} ${rpAlignCss} display:block; margin-top:8px; border-radius:8px; object-fit:fill;">` : ""}`;
       area.appendChild(box);
       return;
@@ -13006,8 +13364,8 @@ function buildTermGradeTable(term, results){
   // تغيّر العرض؛ الأعمدة الآن أعمدة عادية قابلة للتوسيع/التضييق بحرية كبقية أعمدة الجدول،
   // مع عرض ابتدائي مريح يمنع تزاحم النص.
   let html = `<div class="table-wrap"><table class="data" id="termGradeTable"><thead><tr>
-    <th style="min-width:120px;">الطالب</th><th style="min-width:70px;">الصف</th><th style="min-width:60px;">الفصل</th>${modelNums.map(n=>`<th>نموذج ${n}</th>`).join("")}<th>نماذج لم تحل</th><th>المجموع التحصيلي</th><th>التقدير العام</th></tr></thead><tbody>`;
-  html += `<tr style="background:#fdf6e3; font-weight:700;"><td colspan="3">الدرجة الكلية لكل نموذج</td>${modelNums.map(n=>`<td>${modelTotals[n]}</td>`).join("")}<td>—</td><td>${grandTotal}</td><td>—</td></tr>`;
+    <th style="min-width:120px;">الطالب</th><th style="min-width:70px;">الصف</th><th style="min-width:60px;">الفصل</th>${modelNums.map(n=>`<th>اختبار ${n}</th>`).join("")}<th>اختبارات لم تحل</th><th>المجموع التحصيلي</th><th>التقدير العام</th></tr></thead><tbody>`;
+  html += `<tr style="background:#fdf6e3; font-weight:700;"><td colspan="3">الدرجة الكلية لكل اختبار</td>${modelNums.map(n=>`<td>${modelTotals[n]}</td>`).join("")}<td>—</td><td>${grandTotal}</td><td>—</td></tr>`;
 
   // ترتيب الطلاب مجمّعين حسب (الصف ثم الفصل) لإدراج صفوف "درجات الفصل" و"درجات الصف" بعد كل مجموعة
   const studentEntries = Object.entries(byStudent).sort((a,b)=>{
@@ -13092,7 +13450,7 @@ function renderAnalysisWindow(view, role){
       <select id="filGrade" style="width:auto; flex:1 1 160px; min-width:120px;"><option value="">كل الصفوف</option>${gradeOptions.map(g=>`<option>${g}</option>`).join("")}</select>
       <select id="filSubject" style="width:auto; flex:1 1 160px; min-width:120px;"><option value="">كل المواد</option>${subjectOptions.map(s=>`<option>${s}</option>`).join("")}</select>
       <select id="filClass" style="width:auto; flex:1 1 160px; min-width:120px;"><option value="">كل الفصول</option>${classOptions.map(c=>`<option>${c}</option>`).join("")}</select>
-      <select id="filModel" style="width:auto; flex:1 1 160px; min-width:120px;"><option value="">كل النماذج</option>${[...new Set(allResults.map(r=>r.modelNumber))].sort((a,b)=>a-b).map(n=>`<option>${n}</option>`).join("")}</select>
+      <select id="filModel" style="width:auto; flex:1 1 160px; min-width:120px;"><option value="">كل الاختبارات</option>${[...new Set(allResults.map(r=>r.modelNumber))].sort((a,b)=>a-b).map(n=>`<option>${n}</option>`).join("")}</select>
       <button class="chip-btn" id="filReset">إعادة ضبط الترشيح</button>
     </div>
 
@@ -13118,15 +13476,15 @@ function renderAnalysisWindow(view, role){
     </div>
     <div id="termTableWrap"></div>
 
-    <h3 style="font-family:'Amiri',serif; margin-top:26px;">المخطط الأول: مقارنة الصفوف في نموذج محدد</h3>
-    <label style="max-width:260px;">اختر النموذج للمقارنة (اتركه فارغًا للجميع)</label>
-    <select id="chart1Model" style="max-width:260px; margin-bottom:10px;"><option value="">كل النماذج</option>${[...new Set(allResults.map(r=>r.modelNumber))].sort((a,b)=>a-b).map(n=>`<option>${n}</option>`).join("")}</select>
+    <h3 style="font-family:'Amiri',serif; margin-top:26px;">المخطط الأول: مقارنة الصفوف في اختبار محدد</h3>
+    <label style="max-width:260px;">اختر الاختبار للمقارنة (اتركه فارغًا للجميع)</label>
+    <select id="chart1Model" style="max-width:260px; margin-bottom:10px;"><option value="">كل الاختبارات</option>${[...new Set(allResults.map(r=>r.modelNumber))].sort((a,b)=>a-b).map(n=>`<option>${n}</option>`).join("")}</select>
     <div id="chartWrap"></div>
 
-    <h3 style="font-family:'Amiri',serif; margin-top:26px;">المخطط الثاني: مقارنة الفصول داخل صف محدد في نموذج محدد</h3>
+    <h3 style="font-family:'Amiri',serif; margin-top:26px;">المخطط الثاني: مقارنة الفصول داخل صف محدد في اختبار محدد</h3>
     <div class="toolbar">
       <select id="chart2Grade"><option value="">اختر الصف</option>${ALL_GRADES.map(g=>`<option>${g}</option>`).join("")}</select>
-      <select id="chart2Model"><option value="">اختر النموذج</option>${[...new Set(allResults.map(r=>r.modelNumber))].sort((a,b)=>a-b).map(n=>`<option>${n}</option>`).join("")}</select>
+      <select id="chart2Model"><option value="">اختر الاختبار</option>${[...new Set(allResults.map(r=>r.modelNumber))].sort((a,b)=>a-b).map(n=>`<option>${n}</option>`).join("")}</select>
     </div>
     <div id="chart2Wrap"></div>
   `;
@@ -13149,7 +13507,7 @@ function renderAnalysisWindow(view, role){
   function redrawChart2(){
     const grade = document.getElementById("chart2Grade").value, modelNum = document.getElementById("chart2Model").value;
     const box = document.getElementById("chart2Wrap");
-    if(!grade || !modelNum){ box.innerHTML = '<div class="empty-note">اختر الصف والنموذج لعرض المقارنة بين الفصول.</div>'; return; }
+    if(!grade || !modelNum){ box.innerHTML = '<div class="empty-note">اختر الصف والاختبار لعرض المقارنة بين الفصول.</div>'; return; }
     const filtered = subjectScopedResults().filter(r=>r.grade===grade && String(r.modelNumber)===modelNum);
     const classSums = {};
     filtered.forEach(r=>{
@@ -13158,8 +13516,8 @@ function renderAnalysisWindow(view, role){
       classSums[cls] = (classSums[cls]||0) + r.score;
     });
     const labels = Object.keys(classSums);
-    if(!labels.length){ box.innerHTML = '<div class="empty-note">لا توجد بيانات لهذا الصف والنموذج بعد.</div>'; return; }
-    box.innerHTML = buildBarChart(`مقارنة الفصول — ${grade} — نموذج ${modelNum}`, labels, labels.map(l=>classSums[l]));
+    if(!labels.length){ box.innerHTML = '<div class="empty-note">لا توجد بيانات لهذا الصف والاختبار بعد.</div>'; return; }
+    box.innerHTML = buildBarChart(`مقارنة الفصول — ${grade} — اختبار ${modelNum}`, labels, labels.map(l=>classSums[l]));
   }
 
   function currentFilteredResults(){
@@ -13196,7 +13554,7 @@ function renderAnalysisWindow(view, role){
         dashCard(`جيد (≥${th.good}%)`, 0), dashCard("ضعيف", 0),
       ].join("");
       renderSearchableTable(document.getElementById("analysisTableWrap"),
-        ["الطالب","الفصل الدراسي","الصف","المادة","الفصل","رقم النموذج","الدرجة","من","النسبة","التاريخ"], []);
+        ["الطالب","الفصل الدراسي","الصف","المادة","الفصل","رقم الاختبار","الدرجة","من","النسبة","التاريخ"], []);
       return;
     }
     const results = currentFilteredResults();
@@ -13239,7 +13597,7 @@ function renderAnalysisWindow(view, role){
     ].join("");
 
     renderSearchableTable(document.getElementById("analysisTableWrap"),
-      ["الطالب","الفصل الدراسي","الصف","المادة","الفصل","رقم النموذج","الدرجة","من","النسبة","التاريخ"],
+      ["الطالب","الفصل الدراسي","الصف","المادة","الفصل","رقم الاختبار","الدرجة","من","النسبة","التاريخ"],
       results.map(r=>{
         const st = DB.students.find(s=>s.username===r.studentUsername);
         return [r.studentUsername, r.term, r.grade, r.subject||"—", st?(st.cls||"—"):"—", r.modelNumber, r.score, r.total, Math.round(r.score/r.total*100)+"%", r.date];
@@ -13263,7 +13621,7 @@ function renderAnalysisWindow(view, role){
     const nums = [...new Set(scoped.map(r=>r.modelNumber))].sort((a,b)=>a-b);
     const sel = document.getElementById("filModel");
     const prev = sel.value;
-    sel.innerHTML = '<option value="">كل النماذج</option>' + nums.map(n=>`<option>${n}</option>`).join("");
+    sel.innerHTML = '<option value="">كل الاختبارات</option>' + nums.map(n=>`<option>${n}</option>`).join("");
     sel.value = nums.includes(Number(prev)) ? prev : "";
   }
   function redrawTermTable(){
@@ -13304,7 +13662,7 @@ function renderAnalysisWindow(view, role){
   });
   document.getElementById("analysisExport").addEventListener("click", ()=>{
     const results = currentFilteredResults();
-    exportCSV(["الطالب","الفصل الدراسي","الصف","المادة","الفصل","رقم النموذج","الدرجة","من","النسبة","التاريخ"],
+    exportCSV(["الطالب","الفصل الدراسي","الصف","المادة","الفصل","رقم الاختبار","الدرجة","من","النسبة","التاريخ"],
       results.map(r=>{
         const st = DB.students.find(s=>s.username===r.studentUsername);
         return [r.studentUsername, r.term, r.grade, r.subject||"—", st?(st.cls||"—"):"—", r.modelNumber, r.score, r.total, Math.round(r.score/r.total*100)+"%", r.date];
@@ -13336,7 +13694,7 @@ function dashCard(label, value){
 /* ================= تحليل التحديات (مشترك) ================= */
 function renderChallengesWindow(view, role){
   const results = visibleResultsFor(role);
-  // بند 9: قوائم منسدلة (الفصل الدراسي، الصف، المادة، الفصل، الطالب، النموذج) لترشيح التحديات
+  // بند 9: قوائم منسدلة (الفصل الدراسي، الصف، المادة، الفصل، الطالب، الاختبار) لترشيح التحديات
   // ضمن نفس نطاق الصلاحية (visibleResultsFor) — لا تُظهر أي بيانات خارج صلاحية الدور الحالي.
   const TERMS = ["الفصل الأول","الفصل الثاني","الفصل الثالث"];
   // بند 10: قائمة الصفوف تُقيَّد بالصفوف المسندة للمعلم/المنسق فقط.
@@ -13362,15 +13720,15 @@ function renderChallengesWindow(view, role){
   // قائمة الطالب: البيانات الموجودة في عمود "اسم المستخدم" بجدول "بيانات الطلاب" (ضمن نطاق صلاحية الدور)
   const studentOptions = [...new Set(scopedStudentsList.map(s=>s.username).filter(Boolean))];
 
-  // قائمة النموذج: أسماء النماذج (ضمن ما هو مرئي لهذا الدور عبر النتائج المتاحة)
+  // قائمة الاختبار: أسماء الاختبارات (ضمن ما هو مرئي لهذا الدور عبر النتائج المتاحة)
   const modelOptions = [...new Set(results.map(r=>r.modelId))].map(id=>{
     const m = DB.models.find(mm=>mm.id===id);
-    return {id, label: m ? (m.title || ("نموذج "+m.number)) : id};
+    return {id, label: m ? (m.title || ("اختبار "+m.number)) : id};
   });
 
   view.innerHTML = `
     <h2>تحليل التحديات</h2>
-    <p class="sub">الأسئلة الأكثر تكرارًا في الخطأ، ضمن ما تملك صلاحية الاطلاع عليه — رشّح حسب الفصل الدراسي/الصف/المادة/الفصل/الطالب/النموذج.</p>
+    <p class="sub">الأسئلة الأكثر تكرارًا في الخطأ، ضمن ما تملك صلاحية الاطلاع عليه — رشّح حسب الفصل الدراسي/الصف/المادة/الفصل/الطالب/الاختبار.</p>
     <div class="toolbar chal-toolbar" style="flex-wrap:wrap; gap:10px;">
       <label style="display:flex; align-items:center; gap:6px; font-size:13px;">الفصل الدراسي:
         <select id="chFilTerm"><option value="">الكل</option>${TERMS.map(t=>`<option value="${t}">${t}</option>`).join("")}</select>
@@ -13387,7 +13745,7 @@ function renderChallengesWindow(view, role){
       <label style="display:flex; align-items:center; gap:6px; font-size:13px;">الطالب:
         <select id="chFilStudent"><option value="">الكل</option>${studentOptions.map(s=>`<option value="${s}">${s}</option>`).join("")}</select>
       </label>
-      <label style="display:flex; align-items:center; gap:6px; font-size:13px;">النموذج:
+      <label style="display:flex; align-items:center; gap:6px; font-size:13px;">الاختبار:
         <select id="chFilModel"><option value="">الكل</option>${modelOptions.map(o=>`<option value="${o.id}">${o.label}</option>`).join("")}</select>
       </label>
       <button class="chip-btn" id="chClearFilters">مسح الترشيح</button>
@@ -13453,6 +13811,403 @@ function renderChallengesWindow(view, role){
 }
 
 /* ================= تصحيح الأسئلة المقالية (مشترك) ================= */
+/* =====================================================================
+   الإنشاء بـ Ai: نافذة لتحديد مراد المعلم وصناعة سكريبت جاهز للذكاء الاصطناعي،
+   ثم استيراد ردّ الذكاء الاصطناعي (JSON) كاختبار/نموذج/بنك ضمن صلاحيات المعلم.
+   ===================================================================== */
+const AI_FORMAT = "anta-wa-nahnu/ai-model";
+const AI_TYPES = [
+  { k:"grammar",     label:"نموذج نحوي" },
+  { k:"reading",     label:"سؤال فهم المقروء" },
+  { k:"mcq",         label:"سؤال اختياري" },
+  { k:"tf",          label:"سؤال الصواب والخطأ" },
+  { k:"spellchoice", label:"سؤال خيارات للإملاء" },
+  { k:"spellaudio",  label:"سؤال سماعي للإملاء" },
+  { k:"essay",       label:"سؤال مقالي" },
+  { k:"match",       label:"سؤال توصيل" },
+  { k:"reorder",     label:"سؤال إعادة ترتيب" },
+  { k:"mindmap",     label:"سؤال خريطة ذهنية" },
+  { k:"classify",    label:"سؤال تصنيف" }
+];
+const AI_SPELL_PHEN = ["اللام الشمسية، واللام القمرية","التاء المربوطة والهاء المربوطة","التاء المفتوحة","تنوين الفتح، والضم والكسر","التمييز بين الضاد والظاء","علامات الترقيم ومواضع استخدامها","همزة الوصل، وهمزة القطع","حذف الألف من وسط بعض الكلمات","حذف همزة الوصل من (أل) التعريف إذا سبقتها لام الجر أو اللام المزحلقة","الهمزة المتطرفة","الهمزة المتوسطة على الألف","الهمزة المتوسطة على الواو","الهمزة المتوسطة على الياء (النبرة)","الهمزة المتوسطة المفردة على السطر","الهمزة الممدودة (آ) في أول الكلمة ووسطها","الألف اللينة في آخر الأفعال الثلاثية وغير الثلاثية","الألف اللينة في آخر الأسماء الثلاثية وغير الثلاثية","الألف اللينة في آخر الحروف","همزة الوصل بالأسماء السماعية","حذف همزة (ابن / ابنة) وإثباتها","حروف تنطق ولا تكتب","حروف تُكتب ولا تُنطق","حذف الألف من (ما) الاستفهامية إذا سبقتها حروف الجر","وصل (من، عن) بـ (مَنْ، ما)","وصل (أنْ) الناصبة بـ (لا) النافية، ووصل (إنْ) الشرطية بـ (لا)","حذف حرف العلة من آخر الفعل المضارع المعتل الآخر المجزوم، وفعل الأمر المعتل الآخر","مواضع كتابة التاء المربوطة، والفرق الدقيق بينها وبين تاء التأنيث الساكنة وتاء الفاعل المتحركة"];
+const AI_ORD = ["الأولى","الثانية","الثالثة","الرابعة","الخامسة","السادسة","السابعة","الثامنة","التاسعة","العاشرة"];
+
+function aiBuildScript(S){
+  const kindName = S.kind === "test" ? "اختبار" : (S.kind === "bank" ? "بنك أسئلة" : "نموذج تعليمي");
+  const curr = S.curriculum === "أخرى" ? (S.curriculumOther || "منهج آخر") : S.curriculum;
+  const on = AI_TYPES.filter(t=>S.types[t.k].on);
+  const L = [];
+  L.push("أنت خبير تربوي ومعلّم متمكّن في إعداد المواد التعليمية والاختبارات، وخبير في اللغة العربية وضبطها بالحركات، وتعدّ مادة لمنصة تعليمية عربية.");
+  L.push("");
+  L.push("المهمة: أنشئ «" + kindName + "» كاملًا وفق البيانات التالية، ثم أخرجه بصيغة JSON واحدة فقط (التفاصيل في آخر السكريبت) ليتمكّن المعلم من استيراده في المنصة.");
+  L.push("");
+  L.push("== بيانات الإنشاء ==");
+  L.push("- النوع المطلوب: " + kindName + ".");
+  L.push("- المنهج: " + (curr || "—") + ".");
+  L.push("- الفصل الدراسي: " + (S.term || "—") + ".");
+  L.push("- الصف: " + (S.grade || "—") + ".");
+  L.push("- المادة: " + (S.subject || "—") + ".");
+  L.push("- موضوع النموذج: " + (S.topic || "(غير محدد — استنبطه من الملفات المرفقة، وإن لم توجد فمن المنهج والصف المحددين)") + ".");
+  if(S.kind === "test") L.push("- معلومات الاختبار: موعد النشر " + (S.pubAt ? S.pubAt.replace("T"," ") : "فوري") + "، ومدة الاختبار " + (S.duration || 30) + " دقيقة (للعلم فقط؛ تُضبط في المنصة).");
+  L.push("");
+  if(S.files){
+    L.push("== الملفات المرفقة ==");
+    L.push("أرفقتُ لك ملفات مع هذا السكريبت" + (S.filesNote ? " (" + S.filesNote + ")" : "") + ". التزم بها التزامًا تامًّا: لا تخرج عن نطاق الملفات المرفقة في الأسئلة ولا في القطع ولا في الإجابات، ولا تضف معلومات من خارجها.");
+    L.push("");
+  }
+  L.push("== شروط عامة تلزم جميع المخرجات ==");
+  AI_COMMON_RULES.forEach((r,i)=>L.push((i+1) + ") " + r));
+  L.push("");
+  L.push("== الأنماط المطلوبة وبياناتها ==");
+  on.forEach((t,ti)=>{
+    const c = S.types[t.k];
+    L.push((ti+1) + ") [" + t.label + "]");
+    L.push("   - عدد الأسئلة من هذا النمط: " + c.count + ".");
+    L.push("   - موضوع السؤال: " + (c.topic || "(غير محدد — استنبطه كما في الخطوة الخامسة)") + ".");
+    const titles = (c.titles || []).slice(0, c.count).map((x,i)=>x ? ("عنوان " + t.label + " " + (AI_ORD[i] || (i+1)) + ": " + x) : "").filter(Boolean);
+    if(c.count > 1 && titles.length) titles.forEach(x=>L.push("   - " + x + "."));
+    if(t.k === "spellaudio"){
+      const ph = AI_SPELL_PHEN.filter((p,i)=>c.phen && c.phen[i]);
+      if(c.otherPhenOn && c.otherPhen) c.otherPhen.split(/[،,\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>ph.push(s));
+      L.push("   - الظواهر الإملائية المطلوبة: " + (ph.length ? ph.join(" — ") : "(غير محددة — اختر ظواهر مناسبة للصف)") + ".");
+      L.push("   - كل سؤال: الكلمة أو الجملة المُملاة (answer) مضبوطة بالحركات، مع تلميح بسيط.");
+    }
+    if(t.k === "grammar"){
+      L.push("   - قطع النحو مرفقة في ملف: " + (c.passageFile ? "نعم (استخرج القطع من الملف دون تغيير نصها)" : "لا") + ".");
+      L.push("   - المطلوبات مرفقة في ملف: " + (c.reqFile ? "نعم (استخرجها من الملف)" : "لا") + ".");
+      if(!c.passageFile) L.push("   - عدد قطع النحو (ولّدها أنت): " + c.count + ".");
+      if(!c.reqFile) L.push("   - عدد المطلوبات في كل قطعة (ولّدها أنت): " + c.reqPer + ".");
+      const rq = GZ_PRESET_REQS.filter((p,i)=>c.reqs && c.reqs[i]);
+      if(c.otherReqOn && c.otherReq) c.otherReq.split(/[،,\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>rq.push(s));
+      L.push("   - المطلوبات من القطعة: " + (rq.length ? rq.join(" — ") : "(غير محددة — اختر مطلوبات نحوية مناسبة للصف)") + ".");
+      L.push("   - يجب أن تتوافر في كل قطعة إجابة صحيحة واضحة لكل مطلوب، تُنقل حرفيًّا من القطعة بالضبط نفسه بالحركات؛ ولكل مطلوب تلميح بسيط.");
+    }
+    if(t.k === "reading"){
+      L.push("   - عدد الأسئلة المرتبطة بكل قطعة فهم مقروء: " + c.linked + " (أسئلة اختيار من متعدد تتبع القطعة مباشرة وتحمل rcLink=true).");
+    }
+  });
+  L.push("");
+  L.push("== خطوات العمل (التزم بها بالترتيب) ==");
+  L.push("الخطوة 1: لكل نمط راعِ عدد الأسئلة وموضوعها كما هو محدد أعلاه.");
+  L.push("الخطوة 2: في السؤال السماعي للإملاء التزم بالظواهر الإملائية المحددة.");
+  L.push("الخطوة 3: في النموذج النحوي التزم بالقطع والمطلوبات والأعداد المحددة.");
+  L.push("الخطوة 4: عند تكرار النمط وتحديد عناوين مختلفة لكل سؤال فاجعل كل سؤال على عنوانه الخاص (الأولى فالثانية فالثالثة...).");
+  L.push("الخطوة 5: عند عدم تحديد عنوان للسؤال فاصنعه بفهمك لمضمون الملفات المرفقة، وإن لم توجد ملفات فمن المنهج والصف المحددين أعلاه.");
+  L.push("الخطوة 6: ابحث عن الإجابات في الملفات المرفقة، فإن لم تجدها فتحقق منها وولّدها وراجعها وتأكد من صحتها.");
+  L.push("الخطوة 7: اهتم بالقيم الإسلامية والأخلاق الطيبة، وراعِ البنية الصرفية والتركيبية الصحيحة والسياق السليم، ولا تصنع قطعة أفكارها أو جملها منفصلة أو غير مترابطة.");
+  L.push("الخطوة 8: اعتنِ بعلامات الترقيم والضبط التام بالحركات، وأضف الإجابات الصحيحة من القطعة، وتلميحًا بسيطًا يساعد الطالب في جميع الأنماط والأسئلة.");
+  L.push("");
+  L.push("== صيغة المخرجات (JSON) ==");
+  L.push("أعد كائن JSON واحدًا فقط، دون أي نص قبله أو بعده ودون علامات ``` ودون شرح، وبالشكل التالي (يمكن تحميله واستيراده مباشرة في المنصة). استعمل علامات اقتباس مزدوجة عادية، ولا تضع فواصل أسطر داخل النصوص:");
+  L.push("{");
+  L.push('  "format": "' + AI_FORMAT + '",');
+  L.push('  "version": 1,');
+  L.push('  "title": "عنوان ' + kindName + ' مضبوط بالحركات",');
+  L.push('  "questions": [ ...عناصر الأسئلة بالترتيب... ]');
+  L.push("}");
+  L.push("");
+  L.push("شكل عنصر السؤال لكل نمط (استعمل الأنماط المطلوبة أعلاه فقط):");
+  const SCH = {
+    grammar: '{ "type":"grammar", "title":"عنوان القطعة", "passage":"القطعة كاملة ومشكولة", "requirements":[ { "question":"نص المطلوب", "answers":["كلمة من القطعة حرفيًّا"], "hint":"تلميح بسيط" } ] }   // عنصر واحد لكل قطعة',
+    reading: '{ "type":"reading", "title":"عنوان القطعة", "text":"قطعة الفهم المقروء مشكولة" }   // وبعدها مباشرة أسئلتها المرتبطة وكل منها يحمل "rcLink": true',
+    mcq: '{ "type":"mcq", "question":"...", "options":["...","...","...","..."], "correct":0, "hint":"..." }   // correct = رقم الخيار الصحيح ابتداءً من 0',
+    tf: '{ "type":"tf", "statement":"...", "correct":true, "hint":"..." }',
+    spellchoice: '{ "type":"spellchoice", "options":["الكتابة الأولى","الكتابة الثانية","الكتابة الثالثة"], "correct":[0], "hint":"..." }   // correct = أرقام الكتابات الصحيحة ابتداءً من 0',
+    spellaudio: '{ "type":"spellaudio", "answer":"الكلمة أو الجملة المُملاة مشكولة", "hint":"..." }',
+    essay: '{ "type":"essay", "question":"...", "hint":"...", "modelAnswer":"إجابة نموذجية مشكولة" }',
+    match: '{ "type":"match", "pairs":[ { "left":"...", "right":"..." } ], "hint":"..." }',
+    reorder: '{ "type":"reorder", "correctOrder":["العنصر الأول","العنصر الثاني","العنصر الثالث"], "hint":"..." }   // الترتيب الصحيح',
+    mindmap: '{ "type":"mindmap", "title":"العنوان المركزي", "branches":[ { "label":"عنوان الفرع", "children":[ { "clue":"ما يظهر في الصندوق", "answer":"البطاقة الصحيحة", "hint":"..." } ] } ], "extraBankCards":["بطاقات تمويه اختيارية"] }',
+    classify: '{ "type":"classify", "columns":["عمود 1","عمود 2"], "columnHints":["تلميح 1","تلميح 2"], "items":[ { "text":"البطاقة", "col":0 } ] }   // col = رقم العمود الصحيح ابتداءً من 0'
+  };
+  on.forEach(t=>L.push("- " + t.label + ": " + SCH[t.k]));
+  L.push("");
+  L.push("تذكير نهائي: جميع النصوص والخيارات والبطاقات والتصنيفات والإجابات والتلميحات مضبوطة بالحركات ضبطًا تامًّا صحيحًا، والخرج JSON صالح فقط.");
+  return L.join("\n");
+}
+
+function aiConvert(items, warn){
+  const data = []; let lastRc = "", seq = 0;
+  const clean = s=>String(s==null?"":s).trim();
+  (items || []).forEach(q=>{
+    if(!q || typeof q !== "object"){ warn.push("عنصر غير صالح"); return; }
+    const t = String(q.type||"").toLowerCase(), start = data.length;
+    const hint = clean(q.hint);
+    if(t === "reading"){
+      const text = clean(q.text); if(!text){ warn.push("قطعة فهم مقروء بلا نص"); return; }
+      lastRc = "rc" + Date.now().toString(36) + (++seq);
+      data.push({ type:"reading", text:(q.title ? "<b>" + regEsc(clean(q.title)) + "</b><br>" : "") + regEsc(text), imgSrc:null, imgW:null, imgH:null, imgAlign:"right", rcId:lastRc });
+      return;
+    }
+    if(t === "mcq"){
+      const options = (q.options||[]).map(clean).filter(Boolean), correct = Number(q.correct);
+      if(!clean(q.question) || options.length < 2 || !(correct >= 0 && correct < options.length)){ warn.push("اختياري غير صالح: " + clean(q.question).slice(0,40)); return; }
+      data.push({ type:"mcq", question:clean(q.question), options, correct, boxMode:false, hint });
+    } else if(t === "tf"){
+      if(!clean(q.statement) || typeof q.correct !== "boolean"){ warn.push("صواب/خطأ غير صالح"); return; }
+      data.push({ type:"tf", statement:clean(q.statement), correct:q.correct, hint });
+    } else if(t === "spellchoice"){
+      const options = (q.options||[]).map(clean).filter(Boolean), correct = (Array.isArray(q.correct)?q.correct:[q.correct]).map(Number).filter(n=>n>=0 && n<options.length);
+      if(options.length < 2 || !correct.length){ warn.push("خيارات إملاء غير صالحة"); return; }
+      data.push({ type:"spellchoice", options, correct, hint });
+    } else if(t === "spellaudio"){
+      if(!clean(q.answer)){ warn.push("سؤال سماعي بلا إجابة"); return; }
+      data.push({ type:"spellaudio", answer:clean(q.answer), audioUrl:"", hint });
+    } else if(t === "essay"){
+      if(!clean(q.question)){ warn.push("مقالي بلا نص"); return; }
+      const o = { type:"essay", question:clean(q.question), hint }; if(clean(q.modelAnswer)) o.modelAnswer = clean(q.modelAnswer); data.push(o);
+    } else if(t === "reorder"){
+      const order = (q.correctOrder||[]).map(clean).filter(Boolean);
+      if(order.length < 2){ warn.push("إعادة ترتيب غير صالحة"); return; }
+      data.push({ type:"reorder", correctOrder:order, hint });
+    } else if(t === "match"){
+      const pairs = (q.pairs||[]).map(p=>({ left:clean(p && p.left), right:clean(p && p.right) })).filter(p=>p.left && p.right);
+      if(pairs.length < 2){ warn.push("توصيل غير صالح"); return; }
+      data.push({ type:"match", pairs, hint, rightAll:pairs.map(p=>p.right), leftAll:pairs.map(p=>p.left), rightMeta:[] });
+    } else if(t === "classify"){
+      const columns = (q.columns||[]).map(clean).filter(Boolean), its = (q.items||[]).map(i=>({ text:clean(i && i.text), col:Number(i && i.col) })).filter(i=>i.text && i.col >= 0 && i.col < columns.length);
+      if(columns.length < 2 || !its.length){ warn.push("تصنيف غير صالح"); return; }
+      data.push({ type:"classify", columns, columnHints:columns.map((c,i)=>clean((q.columnHints||[])[i])), columnMedia:columns.map(()=>({})), items:its });
+    } else if(t === "grammar"){
+      const passage = clean(q.passage), words = passage.split(/\s+/).filter(Boolean), reqs = (q.requirements||[]).filter(r=>r && clean(r.question));
+      if(words.length < 5 || !reqs.length){ warn.push("نموذج نحوي غير صالح"); return; }
+      const tagged = words.map(w=>({ text:w, tag:false, group:"", color:"" }));
+      reqs.forEach((r,ri)=>{
+        const ans = (r.answers||[]).map(clean).filter(Boolean);
+        const missing = ans.filter(a=>!words.includes(a));
+        if(missing.length) warn.push("مطلوب نحوي: «" + clean(r.question).slice(0,30) + "» — إجابة ليست حرفيًا في القطعة: " + missing.join("، "));
+        data.push({ type:"grammarreq", passageWords:words, passageWordsTagged:tagged, question:clean(r.question), correctWords:ans.filter(a=>words.includes(a)), strict:false, hint:clean(r.hint), rowId:"row" + (ri+1), isEirab:false, rowSlot:0 });
+      });
+    } else if(t === "mindmap"){
+      const branches = (q.branches||[]).filter(b=>b && clean(b.label));
+      if(!clean(q.title) || !branches.length){ warn.push("خريطة ذهنية غير صالحة"); return; }
+      const items = [], conns = [], bank = [];
+      items.push({ label:clean(q.title), answer:"", isLabel:true, isTitle:true, color:"", hint:"", x:Math.max(260, branches.length*105 - 60), y:10, w:0, h:0 });
+      branches.forEach((b,bi)=>{
+        const bx = 30 + bi*220, bIdx = items.length;
+        items.push({ label:clean(b.label), answer:"", isLabel:true, isTitle:false, color:"", hint:"", x:bx, y:120, w:0, h:0 });
+        conns.push({ a:0, b:bIdx });
+        (b.children||[]).filter(c=>c && clean(c.answer)).forEach((c,ci)=>{
+          const cIdx = items.length;
+          items.push({ label:clean(c.clue), answer:clean(c.answer), isLabel:false, isTitle:false, color:"", hint:clean(c.hint), x:bx, y:230 + ci*100, w:0, h:0 });
+          conns.push({ a:bIdx, b:cIdx }); bank.push(clean(c.answer));
+        });
+      });
+      (q.extraBankCards||[]).map(clean).filter(Boolean).forEach(x=>bank.push(x));
+      data.push({ type:"mindmap", items, connections:conns, bankCards:bank, bg:"" });
+    } else { warn.push("نمط غير معروف: " + t); return; }
+    if(q.rcLink && lastRc){ for(let i=start;i<data.length;i++){ data[i].rcLink = true; data[i].rcId = lastRc; } }
+  });
+  return data;
+}
+
+function renderAICreateWindow(view, role){
+  const TERMS = ["الفصل الأول","الفصل الثاني","الفصل الثالث"];
+  const isAdminish = (role === "admin" || role === "orgadmin");
+  const ALLG = ["الأول","الثاني","الثالث","الرابع","الخامس","السادس","أول متوسط","ثاني متوسط","ثالث متوسط","أول ثانوي","ثاني ثانوي","ثالث ثانوي"];
+  const GRADES = isAdminish ? ALLG : assignedGradesFor();
+  const SUBJECTS = isAdminish ? subjectNamesList() : assignedSubjectsFor();
+  const S = { kind:"model", pubAt:"", duration:30, curriculum:"المنهج السعودي", curriculumOther:"", term:"", grade:"", subject:"", topic:"", files:false, filesNote:"", types:{} };
+  AI_TYPES.forEach(t=>{ S.types[t.k] = { on:false, count:1, topic:"", titles:[], phen:{}, otherPhenOn:false, otherPhen:"", passageFile:false, reqFile:false, reqPer:4, reqs:{}, otherReqOn:false, otherReq:"", linked:3 }; });
+  let scriptText = "";
+  const setPath = (path, v)=>{ const p = path.split("."); let o = S; for(let i=0;i<p.length-1;i++) o = o[p[i]]; o[p[p.length-1]] = v; };
+  const stepper = (path, val)=>`<span style="display:inline-flex;align-items:center;gap:4px;"><button type="button" class="chip-btn" data-step="${path}" data-d="-1">−</button><input type="number" min="1" max="30" value="${val}" data-p="${path}" data-num="1" style="width:64px;text-align:center;"><button type="button" class="chip-btn" data-step="${path}" data-d="1">+</button></span>`;
+  function typeRow(t){
+    const c = S.types[t.k];
+    let h = `<div style="border:1.5px solid ${c.on?"var(--accent)":"#d8d8d8"};border-radius:10px;padding:8px 10px;margin-bottom:8px;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:800;cursor:pointer;"><input type="checkbox" data-p="types.${t.k}.on" data-redraw="1" ${c.on?"checked":""}> ➕ إضافة ${t.label}</label>`;
+    if(c.on){
+      h += `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px;">
+        <span>${t.k==="grammar" ? "عدد القطع" : (t.k==="reading" ? "عدد القطع" : "عدد الأسئلة من هذا النمط")}: ${stepper("types."+t.k+".count", c.count)}</span>
+        <label style="display:flex;align-items:center;gap:6px;flex:1;min-width:220px;">موضوع السؤال <input type="text" data-p="types.${t.k}.topic" value="${regEsc(c.topic)}" style="flex:1;"></label></div>`;
+      if(c.count > 1){
+        h += `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;">عناوين الأسئلة المتكررة (اختياري)</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;margin-top:6px;">` +
+          Array.from({length:c.count}, (_,i)=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;">عنوان ${t.label} ${AI_ORD[i]||(i+1)} <input type="text" data-p="types.${t.k}.titles.${i}" value="${regEsc(c.titles[i]||"")}" style="flex:1;"></label>`).join("") + `</div></details>`;
+      }
+      if(t.k === "spellaudio"){
+        h += `<div style="margin-top:8px;"><b>الظواهر الإملائية المطلوبة</b><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 10px;margin-top:4px;">` +
+          AI_SPELL_PHEN.map((p,i)=>`<label style="display:flex;gap:6px;align-items:flex-start;font-size:13px;"><input type="checkbox" data-p="types.spellaudio.phen.${i}" ${c.phen[i]?"checked":""}> <span>${regEsc(p)}</span></label>`).join("") +
+          `</div><label style="display:flex;gap:6px;align-items:center;margin-top:6px;"><input type="checkbox" data-p="types.spellaudio.otherPhenOn" data-redraw="1" ${c.otherPhenOn?"checked":""}> أخرى</label>${c.otherPhenOn ? `<input type="text" data-p="types.spellaudio.otherPhen" value="${regEsc(c.otherPhen)}" placeholder="اكتب ظواهر أخرى (افصل بينها بفاصلة «،»)" style="width:100%;margin-top:4px;">` : ""}</div>`;
+      }
+      if(t.k === "grammar"){
+        h += `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+          <label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-p="types.grammar.passageFile" data-redraw="1" ${c.passageFile?"checked":""}> قطع النحو مرفقة في ملف</label>
+          <label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-p="types.grammar.reqFile" data-redraw="1" ${c.reqFile?"checked":""}> المطلوبات مرفقة في ملف</label>
+          ${c.reqFile ? "" : `<span>عدد المطلوبات في كل قطعة: ${stepper("types.grammar.reqPer", c.reqPer)}</span>`}</div>`;
+        if(!c.reqFile){
+          h += `<div style="margin-top:8px;"><b>المطلوبات من القطعة</b><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 10px;margin-top:4px;">` +
+            GZ_PRESET_REQS.map((p,i)=>`<label style="display:flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" data-p="types.grammar.reqs.${i}" ${c.reqs[i]?"checked":""}> <span>${regEsc(p)}</span></label>`).join("") +
+            `</div><label style="display:flex;gap:6px;align-items:center;margin-top:6px;"><input type="checkbox" data-p="types.grammar.otherReqOn" data-redraw="1" ${c.otherReqOn?"checked":""}> أخرى</label>${c.otherReqOn ? `<input type="text" data-p="types.grammar.otherReq" value="${regEsc(c.otherReq)}" placeholder="اكتب مطلوبات أخرى (افصل بينها بفاصلة «،»)" style="width:100%;margin-top:4px;">` : ""}</div>`;
+        }
+      }
+      if(t.k === "reading"){
+        h += `<div style="margin-top:8px;">عدد الأسئلة المرتبطة بكل قطعة: ${stepper("types.reading.linked", c.linked)}</div>`;
+      }
+    }
+    return h + `</div>`;
+  }
+  function draw(){
+    const y = window.scrollY;
+    view.innerHTML = `<h2>الإنشاء بـ Ai 🤖</h2>
+    <p class="sub">حدّد ما تريد إنشاءه، ثم اضغط «صناعة السكريبت المطلوب» وضعه في أي نموذج ذكاء اصطناعي (كلود أو جيميناي أو شات جي بي تي)، ثم استورد رده (JSON) هنا ليُحفظ تلقائيًا ضمن صلاحياتك.</p>
+    <div style="border:2px solid var(--ink);border-radius:12px;padding:12px;margin-bottom:14px;">
+      <h3 style="margin:0 0 8px;">أريد إنشاء</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:18px;">
+        ${[["test","اختبار"],["model","نموذج"],["bank","بنك"]].map(([v,l])=>`<label style="display:flex;gap:6px;align-items:center;font-weight:800;cursor:pointer;"><input type="radio" name="aiKind" value="${v}" data-p="kind" data-redraw="1" ${S.kind===v?"checked":""}> ${l}</label>`).join("")}
+      </div>
+      ${S.kind==="test" ? `<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;"><label>موعد النشر <input type="datetime-local" data-p="pubAt" value="${S.pubAt}"></label><label>مدة الاختبار (دقيقة) <input type="number" min="1" max="600" data-p="duration" data-num="1" value="${S.duration}" style="width:90px;"></label></div>` : ""}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px;">
+      <label>المنهج <select data-p="curriculum" data-redraw="1">${["المنهج السعودي","المنهج المصري","أخرى"].map(x=>`<option ${S.curriculum===x?"selected":""}>${x}</option>`).join("")}</select></label>
+      ${S.curriculum==="أخرى" ? `<label>اكتب المنهج <input type="text" data-p="curriculumOther" value="${regEsc(S.curriculumOther)}"></label>` : ""}
+      <label>الفصل الدراسي <select data-p="term"><option value="">اختر</option>${TERMS.map(x=>`<option ${S.term===x?"selected":""}>${x}</option>`).join("")}</select></label>
+      <label>الصف <select data-p="grade"><option value="">اختر</option>${GRADES.map(x=>`<option ${S.grade===x?"selected":""}>${regEsc(x)}</option>`).join("")}</select></label>
+      <label>المادة <select data-p="subject"><option value="">اختر</option>${SUBJECTS.map(x=>`<option ${S.subject===x?"selected":""}>${regEsc(x)}</option>`).join("")}</select></label>
+    </div>
+    ${(!isAdminish && (!GRADES.length || !SUBJECTS.length)) ? `<div class="msg show err">لا توجد صفوف أو مواد مسندة إليك؛ تواصل مع إدارة المؤسسة. لا يمكنك الإنشاء إلا للصف والمادة المسندين إليك.</div>` : ""}
+    <label style="display:block;margin-bottom:14px;"><b>موضوع النموذج</b><input type="text" data-p="topic" value="${regEsc(S.topic)}" placeholder="اكتب موضوع الاختبار/النموذج/البنك" style="width:100%;"></label>
+    <div style="border:1.5px dashed #bbb;border-radius:10px;padding:8px 10px;margin-bottom:14px;">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:800;cursor:pointer;"><input type="checkbox" data-p="files" data-redraw="1" ${S.files?"checked":""}> سأرفق ملفات (منهج/قطع/أسئلة) مع السكريبت في الذكاء الاصطناعي</label>
+      ${S.files ? `<input type="text" data-p="filesNote" value="${regEsc(S.filesNote)}" placeholder="وصف مختصر للملفات المرفقة (اختياري)" style="width:100%;margin-top:6px;">` : ""}
+    </div>
+    <h3>نوعية الأسئلة وعددها</h3>
+    ${AI_TYPES.map(typeRow).join("")}
+    <div class="toolbar" style="margin-top:14px;"><button class="primary-btn" id="aiMake" style="width:auto;padding:12px 30px;">⚙️ صناعة السكريبت المطلوب</button></div>
+    <div id="aiOut" style="display:${scriptText?"block":"none"};margin-top:12px;">
+      <textarea id="aiText" rows="16" readonly style="width:100%;direction:rtl;">${regEsc(scriptText)}</textarea>
+      <div class="toolbar" style="gap:8px;margin-top:6px;flex-wrap:wrap;">
+        <button class="chip-btn accent" id="aiCopy">📋 نسخ السكريبت</button>
+        <button class="chip-btn" id="aiDl">⬇ تحميل (.txt)</button>
+        <button class="chip-btn" data-open="https://claude.ai/new?q=">↗ فتح كلود</button>
+        <button class="chip-btn" data-open="https://chatgpt.com/?q=">↗ فتح شات جي بي تي</button>
+        <button class="chip-btn" data-open="https://gemini.google.com/app">↗ فتح جيميناي</button>
+      </div>
+      <p class="sub">تُنسخ النسخة إلى الحافظة عند الفتح؛ إن لم يُملأ مربع الكتابة تلقائيًا فالصقها بـ Ctrl+V. (الدمج المباشر داخل المنصة يحتاج مفاتيح اشتراك API مدفوعة وخادمًا آمنًا، فلم أفعّله دون إذنك.)</p>
+    </div>
+    <div style="border:2px solid var(--ink);border-radius:12px;padding:12px;margin-top:18px;">
+      <h3 style="margin:0 0 6px;">📥 استيراد ردّ الذكاء الاصطناعي (JSON)</h3>
+      <textarea id="aiImpText" rows="7" style="width:100%;direction:ltr;" placeholder='{"format":"${AI_FORMAT}", ...}'></textarea>
+      <div class="toolbar" style="gap:8px;margin-top:6px;"><input type="file" id="aiImpFile" accept=".json,.txt,application/json,text/plain"><button class="primary-btn" id="aiImpGo" style="width:auto;padding:10px 24px;">إنشاء من الرد</button></div>
+      <div class="msg" id="aiImpMsg"></div>
+    </div>`;
+    bind(); window.scrollTo(0, y);
+  }
+  function bind(){
+    view.querySelectorAll("[data-p]").forEach(el=>{
+      const evt = (el.type === "text" || el.tagName === "TEXTAREA" || el.type === "number" || el.type === "datetime-local") ? "input" : "change";
+      el.addEventListener(evt, ()=>{
+        let v = el.type === "checkbox" ? el.checked : (el.type === "radio" ? el.value : el.value);
+        if(el.dataset.num) v = Math.max(1, Math.min(30, Number(v)||1));
+        if(el.type === "radio" && !el.checked) return;
+        setPath(el.dataset.p, v);
+        if(el.dataset.redraw) draw();
+        else if(/\.count$/.test(el.dataset.p)) draw();
+      });
+    });
+    view.querySelectorAll("[data-step]").forEach(b=>b.addEventListener("click", ()=>{
+      const p = b.dataset.step.split("."); let o = S; for(let i=0;i<p.length-1;i++) o = o[p[i]];
+      const k = p[p.length-1]; o[k] = Math.max(1, Math.min(30, (Number(o[k])||1) + Number(b.dataset.d))); draw();
+    }));
+    const mk = view.querySelector("#aiMake");
+    mk.addEventListener("click", ()=>{
+      if(!S.term || !S.grade || !S.subject){ alert("حدّد الفصل الدراسي والصف والمادة أولًا."); return; }
+      if(!isAdminish && (!GRADES.includes(S.grade) || !SUBJECTS.includes(S.subject))){ alert("ليست لديك صلاحية على هذا الصف أو هذه المادة."); return; }
+      if(!AI_TYPES.some(t=>S.types[t.k].on)){ alert("اختر نمط أسئلة واحدًا على الأقل."); return; }
+      scriptText = aiBuildScript(S); draw();
+      const o = document.getElementById("aiOut"); if(o) o.scrollIntoView({ behavior:"smooth", block:"start" });
+    });
+    const cp = view.querySelector("#aiCopy");
+    if(cp){
+      cp.addEventListener("click", async ()=>{ try{ await navigator.clipboard.writeText(scriptText); }catch(e){ const ta = document.getElementById("aiText"); ta.select(); document.execCommand("copy"); } tnToast("تم نسخ السكريبت."); });
+      view.querySelector("#aiDl").addEventListener("click", ()=>{
+        const blob = new Blob([scriptText], { type:"text/plain;charset=utf-8" }); const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = "سكريبت-الإنشاء-بالذكاء-الاصطناعي.txt"; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      });
+      view.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click", async ()=>{
+        try{ await navigator.clipboard.writeText(scriptText); }catch(e){}
+        let url = b.dataset.open; const enc = encodeURIComponent(scriptText);
+        if(/\?q=$/.test(url)){ url = enc.length < 6000 ? url + enc : url.replace(/\?q=$/, ""); }
+        window.open(url, "_blank", "noopener"); tnToast("نُسخ السكريبت — الصقه في نافذة الذكاء الاصطناعي إن لم يظهر تلقائيًا.");
+      }));
+    }
+    view.querySelector("#aiImpFile").addEventListener("change", e=>{ const f = e.target.files[0]; if(!f) return; const rd = new FileReader(); rd.onload = ()=>{ view.querySelector("#aiImpText").value = String(rd.result||""); }; rd.readAsText(f, "utf-8"); });
+    view.querySelector("#aiImpGo").addEventListener("click", ()=>{
+      const msg = view.querySelector("#aiImpMsg");
+      const fail = m=>{ msg.className = "msg show err"; msg.textContent = m; };
+      try{
+        if(!S.term || !S.grade || !S.subject){ fail("حدّد الفصل الدراسي والصف والمادة أعلاه قبل الاستيراد."); return; }
+        if(!isAdminish && (!GRADES.includes(S.grade) || !SUBJECTS.includes(S.subject))){ fail("ليست لديك صلاحية على هذا الصف أو هذه المادة."); return; }
+        let tx = String(view.querySelector("#aiImpText").value||"").trim().replace(/^```[a-zA-Z]*\s*/,"").replace(/```\s*$/,"").trim();
+        const a = tx.indexOf("{"), b = tx.lastIndexOf("}"); if(a < 0 || b <= a){ fail("لم أجد JSON صالحًا في النص."); return; }
+        const obj = JSON.parse(tx.slice(a, b+1));
+        if(!obj || obj.format !== AI_FORMAT || !Array.isArray(obj.questions)){ fail("الملف ليس بصيغة «الإنشاء بـ Ai» المطلوبة."); return; }
+        const warn = [], data = aiConvert(obj.questions, warn);
+        if(!data.length){ fail("لم يُستخرج أي سؤال صالح." + (warn.length ? " " + warn.slice(0,3).join(" | ") : "")); return; }
+        const isBank = S.kind === "bank", key = isBank ? "banks" : "models";
+        if(!Array.isArray(DB[key])) DB[key] = [];
+        const kind = S.kind === "test" ? "test" : "model";
+        const same = DB[key].filter(m=>m.term===S.term && m.grade===S.grade && m.subject===S.subject && (m.kind||"model")===kind && !m.lesson).length;
+        const title = String(obj.title || (isBank ? "بنك " : (kind==="test" ? "اختبار " : "نموذج ")) + (same+1)).trim();
+        const m = { id:"m"+Date.now()+Math.random().toString(36).slice(2,7), term:S.term, grade:S.grade, subject:S.subject, number:same+1, title, customTitle:true, kind,
+          createdAt:Date.now(), updatedAt:Date.now(), scheduledAt:null, testDuration:null, blocks:[], data,
+          aiDraft:true, source:"ai", aiMeta:{ format:AI_FORMAT, at:Date.now(), role } };   /* مسودة: لا تظهر للطلاب حتى يراجعها المعلم ويحفظها/ينشرها */
+        if(kind === "test"){
+          m.testMode = true; m.testDuration = Math.max(1, Number(S.duration)||30);
+          const ts = S.pubAt ? new Date(S.pubAt).getTime() : 0; if(ts && ts > Date.now()) m.scheduledAt = ts;
+        }
+        DB[key].push(m); saveDB();
+        msg.className = "msg show ok";
+        msg.textContent = "تم إنشاء «" + title + "» بـ " + data.length + " سؤالًا" + (warn.length ? " — وتُجوهل/عُدّل " + warn.length + " عنصر: " + warn.slice(0,3).join(" | ") : "") + ". هو الآن «مسودة» لا تظهر للطلاب؛ افتحه من نافذة " + (isBank ? "بنوك الأسئلة" : "النماذج التعليمية") + " وراجعه ثم اضغط حفظ لاعتماده ونشره.";
+      }catch(err){ fail("تعذّر الاستيراد: " + (err && err.message || err)); }
+    });
+  }
+  draw();
+}
+
+/* ===== إتقان المهارات (مرحلة 4 — بلا تغيير في شكل البيانات): يُحسب من نتائج الطلاب الحالية (details) ===== */
+function skillName(d){
+  const q = String(d.question || "").replace(/<[^>]*>/g, "").trim();
+  let isGram = false; try{ isGram = d.qtype === toolLabelFor("grammarreq"); }catch(e){}
+  return isGram && q ? (d.qtype + " — " + q.slice(0, 60)) : String(d.qtype || "أخرى");
+}
+function skillLevel(n, pct){
+  if(n < 3) return { t:"بيانات قليلة", c:"#757575" };
+  if(pct >= 80) return { t:"متقن", c:"#1e8e4e" };
+  if(pct >= 50) return { t:"قيد التطوير", c:"#e0a800" };
+  return { t:"يحتاج دعمًا", c:"#c62828" };
+}
+function renderSkillsWindow(view, role){
+  const isStudent = role === "student";
+  const all = (isStudent ? (DB.results||[]).filter(r=>r.studentUsername === session.user.username) : (visibleResultsFor(role) || [])).filter(r=>r && Array.isArray(r.details) && r.details.length);
+  const uniq = f=>[...new Set(all.map(f).filter(Boolean))].sort();
+  view.innerHTML = `<h2>${isStudent ? "مهاراتي" : "إتقان المهارات"} 🧩</h2>
+  <p class="sub">يُحسب مستوى الإتقان من نتائج الاختبارات والنماذج المحلولة فعليًا (نسبة الإجابات الصحيحة لكل مهارة). الأسئلة المقالية غير المصحَّحة لا تُحتسب.</p>
+  <div class="toolbar" style="gap:8px;flex-wrap:wrap;">
+    <select id="skTerm"><option value="">كل الفصول</option>${uniq(r=>r.term).map(x=>`<option>${regEsc(x)}</option>`).join("")}</select>
+    <select id="skGrade"><option value="">كل الصفوف</option>${uniq(r=>r.grade).map(x=>`<option>${regEsc(x)}</option>`).join("")}</select>
+    <select id="skSubject"><option value="">كل المواد</option>${uniq(r=>r.subject).map(x=>`<option>${regEsc(x)}</option>`).join("")}</select>
+    ${isStudent ? "" : `<select id="skStudent"><option value="">كل الطلاب</option>${uniq(r=>r.studentUsername).map(x=>`<option value="${regEsc(x)}">${regEsc(x)}</option>`).join("")}</select>`}
+  </div><div id="skOut" style="margin-top:12px;"></div>`;
+  const val = id=>{ const e = view.querySelector("#"+id); return e ? e.value : ""; };
+  function draw(){
+    const fT = val("skTerm"), fG = val("skGrade"), fS = val("skSubject"), fU = val("skStudent");
+    const rs = all.filter(r=>(!fT || r.term===fT) && (!fG || r.grade===fG) && (!fS || r.subject===fS) && (!fU || r.studentUsername===fU));
+    const agg = new Map();
+    rs.forEach(r=>r.details.forEach(d=>{
+      if(d.correct === null || d.correct === undefined) return;
+      const k = skillName(d); const a = agg.get(k) || { n:0, ok:0, st:new Set() };
+      a.n++; if(d.correct) a.ok++; a.st.add(r.studentUsername); agg.set(k, a);
+    }));
+    const rows = [...agg.entries()].map(([k,a])=>({ k, n:a.n, pct:Math.round(a.ok/a.n*100), st:a.st.size })).sort((x,y)=>x.pct - y.pct);
+    const out = view.querySelector("#skOut");
+    if(!rows.length){ out.innerHTML = '<div class="msg show">لا توجد نتائج كافية بعد.</div>'; return; }
+    const weak = rows.filter(r=>r.n >= 3 && r.pct < 50).slice(0, 5);
+    out.innerHTML = (weak.length ? `<div style="border:2px solid #c62828;border-radius:10px;padding:10px;margin-bottom:12px;"><b>توصيات للمراجعة والتقوية:</b><ul style="margin:6px 0 0;">${weak.map(w=>`<li>${isStudent ? "راجع" : "أعد شرح/تدريب على"}: <b>${regEsc(w.k)}</b> (نسبة الإجابات الصحيحة ${w.pct}% في ${w.n} إجابة)</li>`).join("")}</ul></div>` : "") +
+    `<div class="table-wrap"><table class="data"><thead><tr><th>المهارة</th><th>عدد الإجابات</th>${isStudent ? "" : "<th>عدد الطلاب</th>"}<th>نسبة الصواب</th><th>المستوى</th></tr></thead><tbody>${rows.map(r=>{ const lv = skillLevel(r.n, r.pct); return `<tr><td>${regEsc(r.k)}</td><td>${r.n}</td>${isStudent ? "" : `<td>${r.st}</td>`}<td><div style="background:#eee;border-radius:6px;min-width:90px;"><div style="width:${r.pct}%;background:${lv.c};color:#fff;border-radius:6px;padding:0 6px;font-size:12px;white-space:nowrap;">${r.pct}%</div></div></td><td style="color:${lv.c};font-weight:800;">${lv.t}</td></tr>`; }).join("")}</tbody></table></div>`;
+  }
+  view.querySelectorAll("select").forEach(s=>s.addEventListener("change", draw)); draw();
+}
+
 function renderEssayGradingWindow(view, role){
   const visible = visibleResultsFor(role);
   const allPending = visible.filter(r=>r.pendingEssays && r.pendingEssays.some(e=>e.points===null));
@@ -13502,11 +14257,14 @@ function renderEssayGradingWindow(view, role){
         <select id="esFilModel"><option value="">الكل</option>${modelOptions.map(o=>`<option value="${o.id}">${o.label}</option>`).join("")}</select>
       </label>
       <button class="chip-btn" id="esClearFilters">مسح الترشيح</button>
+<button class="chip-btn accent" id="esExport" title="تصدير الإجابات المقالية بصيغة جاهزة لنماذج الذكاء الاصطناعي مع سكريبت التصحيح">📤 تصدير للتصحيح بالذكاء الاصطناعي</button>
+<button class="chip-btn accent" id="esImport" title="استيراد ملف التصحيح الذي أعاده الذكاء الاصطناعي ورصد الدرجات">📥 استيراد نتائج التصحيح</button>
     </div>
     <div id="essayList"></div>
   `;
   const list = document.getElementById("essayList");
 
+let __esLimit = 20, __esSig = "";   /* تحميل تدريجي: 20 بطاقة ثم «عرض المزيد» */
   function redrawList(){
     const fTerm = document.getElementById("esFilTerm").value;
     const fGrade = document.getElementById("esFilGrade").value;
@@ -13514,6 +14272,7 @@ function renderEssayGradingWindow(view, role){
     const fClass = document.getElementById("esFilClass").value;
     const fStudent = document.getElementById("esFilStudent").value;
     const fModelId = document.getElementById("esFilModel").value;
+{ const __sig = [fTerm,fGrade,fSubject,fClass,fStudent,fModelId].join("|"); if(__sig !== __esSig){ __esSig = __sig; __esLimit = 20; } }
     const pending = allPending.filter(r=>{
       if(fTerm && r.term!==fTerm) return false;
       if(fGrade && r.grade!==fGrade) return false;
@@ -13525,17 +14284,17 @@ function renderEssayGradingWindow(view, role){
     });
     list.innerHTML = "";
     if(!pending.length){ list.innerHTML = '<div class="empty-note">لا توجد أسئلة مقالية بانتظار التصحيح حاليًا.</div>'; return; }
-    pending.forEach(r=>{
+pending.slice(0, __esLimit).forEach(r=>{
       const card = document.createElement("div");
       card.className="qblock";
-      card.innerHTML = `<div class="qblock-head"><span class="htitle" style="border:none;">${r.studentUsername} — ${r.term} — ${r.grade}${r.subject ? " — "+r.subject : ""} — نموذج ${r.modelNumber}</span></div>
+      card.innerHTML = `<div class="qblock-head"><span class="htitle" style="border:none;">${regEsc(r.studentUsername)} — ${regEsc(r.term)} — ${regEsc(r.grade)}${r.subject ? " — "+regEsc(r.subject) : ""} — ${esIsTest(r) ? "اختبار" : "نموذج"} ${regEsc(r.modelNumber)}</span></div>
         <div class="qblock-body"></div>`;
       const body = card.querySelector(".qblock-body");
       r.pendingEssays.filter(e=>e.points===null).forEach(e=>{
         const box = document.createElement("div");
         box.className="qitem";
-        box.innerHTML = `<div style="font-weight:700; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;"><span>${e.question}</span><div class="tf-choice" style="display:flex; flex-direction:row; gap:6px;"><div class="tf-mark" data-v="1">✓</div><div class="tf-mark" data-v="0">✗</div></div></div>
-          <div style="background:#fbfbfb; border:1px solid #eee; border-radius:6px; padding:8px; margin-bottom:8px; white-space:pre-wrap;">${e.answer || "<em>لم يُجب الطالب</em>"}</div>`;
+        box.innerHTML = `<div style="font-weight:700; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;"><span>${regEsc(e.question)}</span><div class="tf-choice" style="display:flex; flex-direction:row; gap:6px;"><div class="tf-mark" data-v="1">✓</div><div class="tf-mark" data-v="0">✗</div></div></div>
+          <div style="background:#fbfbfb; border:1px solid #eee; border-radius:6px; padding:8px; margin-bottom:8px; white-space:pre-wrap;">${e.answer ? regEsc(e.answer) : "<em>لم يُجب الطالب</em>"}</div>`;
         box.querySelectorAll(".tf-mark").forEach(m=>{
           m.addEventListener("click", ()=>{
             box.querySelectorAll(".tf-mark").forEach(x=>x.classList.remove("selT","selF"));
@@ -13562,13 +14321,145 @@ function renderEssayGradingWindow(view, role){
       });
       card.appendChild(saveBtn);
       list.appendChild(card);
-    });
+});
+if(pending.length > __esLimit){ const more = document.createElement("div"); more.style.cssText = "text-align:center;margin:12px 0;"; more.innerHTML = `<button type="button" class="chip-btn accent">عرض المزيد (${pending.length - __esLimit} متبقٍ)</button>`; more.querySelector("button").addEventListener("click", ()=>{ __esLimit += 20; redrawList(); }); list.appendChild(more); }
   }
   ["esFilTerm","esFilGrade","esFilSubject","esFilClass","esFilStudent","esFilModel"].forEach(id=>{
     document.getElementById(id).addEventListener("change", redrawList);
   });
   document.getElementById("esClearFilters").addEventListener("click", ()=>{
     ["esFilTerm","esFilGrade","esFilSubject","esFilClass","esFilStudent","esFilModel"].forEach(id=>{ document.getElementById(id).value=""; });
+
+/* ===== بند: تصدير الأسئلة المقالية للتصحيح بالذكاء الاصطناعي واستيراد الدرجات (من 5 لكل سؤال) ===== */
+const ES_FORMAT = "anta-wa-nahnu/essay-grading-result";
+const esOv = (html)=>{
+  const old = document.getElementById("esAiOverlay"); if(old) old.remove();
+  const ov = document.createElement("div"); ov.id = "esAiOverlay"; ov.className = "overlay show";
+  ov.innerHTML = html; document.body.appendChild(ov);
+  const x = ov.querySelector(".modal-close"); if(x) x.addEventListener("click", ()=>ov.remove());
+  ov.addEventListener("click", e=>{ if(e.target === ov) ov.remove(); });
+  return ov;
+};
+const esKey = (r, e)=> r.studentUsername + "|" + r.modelId + "|" + e.detailIdx;
+const esIsTest = r=>{ const m = (DB.models||[]).find(x=>x.id === r.modelId); return !!(m && (m.kind === "test" || m.testMode)); };
+function esBuildScript(items){
+  const grades = [...new Set(items.map(i=>i.grade))].join("، "), terms = [...new Set(items.map(i=>i.term))].join("، "), subjects = [...new Set(items.map(i=>i.subject).filter(Boolean))].join("، ");
+  const L = [];
+  L.push("أنت معلّم خبير ومصحّح موضوعي في اللغة العربية وبقية المواد الدراسية، وتصحّح إجابات الطلاب عن أسئلة مقالية.");
+  L.push("");
+  L.push("السياق: الصفوف: " + (grades || "—") + " — الفصول الدراسية: " + (terms || "—") + (subjects ? " — المواد: " + subjects : "") + ".");
+  L.push("صحّح كل إجابة وفق منهج المادة والصف والفصل الدراسي المذكورين في بيانات كل عنصر، وبما يناسب مستوى الطالب في ذلك الصف.");
+  L.push("");
+  L.push("قواعد التصحيح والتقييم:");
+  L.push("1) الدرجة الكلية لكل سؤال هي 5 درجات (maxGrade = 5). يجوز استعمال أنصاف الدرجات (مثل 3.5).");
+  L.push("2) وزّع الدرجة بعدل على عناصر الإجابة المطلوبة: صحة المعلومة، واكتمال الفكرة، وسلامة اللغة والإملاء والترقيم، وحسن العرض والترتيب، ومناسبتها للمنهج.");
+  L.push("3) الإجابة الصحيحة الكاملة = 5، والصحيحة مع نقص أو خطأ بسيط = 3.5 إلى 4.5، والجزئية = 1 إلى 3، والخاطئة أو الخارجة عن السؤال أو الفارغة = 0.");
+  L.push("4) لا تُجامل ولا تتشدّد؛ ولا تُعطِ درجة لمعلومة غير مذكورة في إجابة الطالب. وإن كانت الإجابة نصًّا غير مفهوم فأعطه 0.");
+  L.push("5) اكتب لكل إجابة ملاحظة تربوية موجزة (جملة أو جملتان) تُبيّن سبب الدرجة وكيف يُحسّن الطالب إجابته.");
+  L.push("6) التزم بالقيم الإسلامية والأخلاق الطيبة في ملاحظاتك.");
+  L.push("");
+  L.push("المطلوب منك: أعد كائن JSON واحدًا فقط، دون أي نص قبله أو بعده ودون علامات ``` ودون شرح، وبالصيغة التالية تمامًا (ليتمكن المعلم من استيراده في المنصة مباشرة):");
+  L.push("{");
+  L.push('  "format": "' + ES_FORMAT + '",');
+  L.push('  "version": 1,');
+  L.push('  "grades": [');
+  L.push('    { "id": "المعرّف كما ورد في البيانات حرفيًّا", "grade": 4, "feedback": "ملاحظة موجزة" }');
+  L.push("  ]");
+  L.push("}");
+  L.push("");
+  L.push("قواعد الصيغة:");
+  L.push("- عدد عناصر grades يساوي عدد العناصر في «items» (" + items.length + ") بالضبط وبالترتيب نفسه، ولكل عنصر id نفسه دون أي تعديل.");
+  L.push("- grade رقم بين 0 و5 (يجوز كسر .5) وليس نصًّا.");
+  L.push("- استعمل علامات اقتباس مزدوجة عادية ولا تضع فواصل أسطر داخل النصوص، حتى يكون JSON صالحًا للتحليل.");
+  L.push("- لا تُضف حقولًا أخرى ولا تُغيّر أسماء الحقول.");
+  L.push("");
+  L.push("===== البيانات المطلوب تصحيحها (JSON) =====");
+  L.push(JSON.stringify({ format:"anta-wa-nahnu/essay-grading-input", version:1, maxGrade:5, items }, null, 1));
+  return L.join("\n");
+}
+document.getElementById("esExport").addEventListener("click", ()=>{
+  const fTerm = document.getElementById("esFilTerm").value, fGrade = document.getElementById("esFilGrade").value, fSubject = document.getElementById("esFilSubject").value,
+        fClass = document.getElementById("esFilClass").value, fStudent = document.getElementById("esFilStudent").value, fModelId = document.getElementById("esFilModel").value;
+  const base = allPending.filter(r=>{
+    if(fTerm && r.term !== fTerm) return false; if(fSubject && r.subject !== fSubject) return false;
+    if(fStudent && r.studentUsername !== fStudent) return false; if(fModelId && r.modelId !== fModelId) return false; return true; });
+  if(!base.length){ alert("لا توجد إجابات مقالية بانتظار التصحيح ضمن الترشيح الحالي."); return; }
+  const gradesAvail = [...new Set(base.map(r=>r.grade).filter(Boolean))], classesAvail = [...new Set(base.map(r=>String(r.cls==null?"":r.cls)).filter(Boolean))].sort();
+  const ov = esOv(`<div class="modal wide"><button class="modal-close">إغلاق ✕</button><h2>📤 تصدير للتصحيح بالذكاء الاصطناعي</h2>
+    <p class="sub">اختر الصفوف والفصول المراد تصديرها (طالب واحد أو فصل أو صف أو عدة صفوف). يُنتَج ملف نصي يحوي سكريبت التصحيح والبيانات معًا؛ ضعه في أي نموذج ذكاء اصطناعي (كلود أو جيميناي أو شات جي بي تي) ثم احفظ رده بصيغة JSON واستورده بزر «استيراد نتائج التصحيح».</p>
+    <b>الصفوف</b><div id="esxG" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 10px;">${gradesAvail.map(g=>`<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" class="esxg" value="${regEsc(g)}" ${(!fGrade || fGrade===g)?"checked":""}> ${regEsc(g)}</label>`).join("")}</div>
+    <b>الفصول</b><div id="esxC" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 10px;">${classesAvail.map(c=>`<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" class="esxc" value="${regEsc(c)}" ${(!fClass || fClass===c)?"checked":""}> ${regEsc(c)}</label>`).join("")}</div>
+    <div class="modal-actions"><button class="primary-btn" id="esxGo" style="flex:1;">⬇ تنزيل ملف التصدير</button><button class="chip-btn" id="esxCopy">📋 نسخ السكريبت والبيانات</button></div></div>`);
+  const build = ()=>{
+    const gs = new Set([...ov.querySelectorAll(".esxg:checked")].map(x=>x.value)), cs = new Set([...ov.querySelectorAll(".esxc:checked")].map(x=>x.value));
+    const items = [];
+    base.forEach(r=>{
+      if(!gs.has(r.grade) || !cs.has(String(r.cls==null?"":r.cls))) return;
+      const m = (DB.models||[]).find(x=>x.id === r.modelId);
+      (r.pendingEssays||[]).filter(e=>e.points === null).forEach(e=>{
+        items.push({ id: esKey(r, e), student: r.studentUsername, term: r.term, grade: r.grade, subject: r.subject || "", class: String(r.cls==null?"":r.cls),
+          kind: esIsTest(r) ? "اختبار" : "نموذج", title: (m && m.title) || ("رقم " + r.modelNumber), question: e.question, studentAnswer: e.answer || "", maxGrade: 5 });
+      });
+    });
+    return items;
+  };
+  ov.querySelector("#esxGo").addEventListener("click", ()=>{
+    const items = build(); if(!items.length){ alert("لا توجد إجابات ضمن اختيارك."); return; }
+    const blob = new Blob([esBuildScript(items)], { type:"text/plain;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "تصحيح-المقالي-للذكاء-الاصطناعي.txt"; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  });
+  ov.querySelector("#esxCopy").addEventListener("click", async ()=>{
+    const items = build(); if(!items.length){ alert("لا توجد إجابات ضمن اختيارك."); return; }
+    const txt = esBuildScript(items);
+    try{ await navigator.clipboard.writeText(txt); alert("تم النسخ. ضعه الآن في الذكاء الاصطناعي."); }catch(e){ alert("تعذّر النسخ تلقائيًا؛ استعمل زر التنزيل."); }
+  });
+});
+function esApplyGrades(text){
+  let tx = String(text||"").trim().replace(/^```[a-zA-Z]*\s*/,"").replace(/```\s*$/,"").trim();
+  const a = tx.indexOf("{"), b = tx.lastIndexOf("}"); if(a < 0 || b <= a) throw new Error("لم أجد JSON صالحًا في النص.");
+  const obj = JSON.parse(tx.slice(a, b+1));
+  if(!obj || obj.format !== ES_FORMAT || !Array.isArray(obj.grades)) throw new Error("الملف ليس بصيغة نتائج تصحيح المقالي المطلوبة.");
+  const byKey = new Map(); (DB.results||[]).forEach(r=>{ (r.pendingEssays||[]).forEach(e=>byKey.set(esKey(r, e), { r, e })); });
+  let applied = 0, toScore = 0, onlyModels = 0, skipped = [];
+  obj.grades.forEach(g=>{
+    const hit = g && byKey.get(String(g.id));
+    if(!hit){ skipped.push(String(g && g.id)); return; }
+    const { r, e } = hit; if(e.points !== null){ skipped.push(String(g.id)); return; }
+    let gr = Number(g.grade); if(!isFinite(gr)){ skipped.push(String(g.id)); return; }
+    gr = Math.max(0, Math.min(5, Math.round(gr*2)/2));
+    e.grade5 = gr; e.aiFeedback = String(g.feedback||"").slice(0, 600);
+    e.points = Math.round(gr/5*100)/100;
+    if(esIsTest(r)){
+      /* اختبار: تُضاف الدرجة لنتيجة الطالب وتدخل في تحليل النتائج وتحليل التحديات */
+      r.score = Math.round(((Number(r.score)||0) + e.points) * 100) / 100;
+      const d = (r.details||[]).find(d=>d.question === e.question && d.correct === null);
+      if(d){ d.correct = gr >= 3; d.grade5 = gr; }
+      toScore++;
+    } else { onlyModels++; }   /* نموذج: تُحفظ الدرجة مع الإجابة فقط ولا تدخل نتائج الطلاب ولا تحليل التحديات */
+    applied++;
+  });
+if(applied){ saveDB(); try{ Audit.log("essay_grades_import", String(applied)); }catch(e){} }
+  return { applied, toScore, onlyModels, skipped };
+}
+document.getElementById("esImport").addEventListener("click", ()=>{
+  const ov = esOv(`<div class="modal wide"><button class="modal-close">إغلاق ✕</button><h2>📥 استيراد نتائج التصحيح</h2>
+    <p class="sub">الصق رد الذكاء الاصطناعي (JSON) أو اختر الملف المحفوظ. الإجابات في الاختبارات تُضاف درجاتها مباشرة لنتائج الطلاب وتحليل النتائج وتحليل التحديات؛ أما في النماذج فتُحفظ الدرجة دون إضافتها لتلك النوافذ.</p>
+    <textarea id="esiText" rows="9" style="width:100%;direction:ltr;" placeholder='{"format":"${ES_FORMAT}", ...}'></textarea>
+    <div class="toolbar" style="gap:8px;margin-top:8px;"><input type="file" id="esiFile" accept=".json,.txt,application/json,text/plain"><button class="primary-btn" id="esiGo" style="flex:1;">استيراد ورصد الدرجات</button></div>
+    <div class="msg" id="esiMsg"></div></div>`);
+  ov.querySelector("#esiFile").addEventListener("change", e=>{ const f = e.target.files[0]; if(!f) return; const rd = new FileReader(); rd.onload = ()=>{ ov.querySelector("#esiText").value = String(rd.result||""); }; rd.readAsText(f, "utf-8"); });
+  ov.querySelector("#esiGo").addEventListener("click", ()=>{
+    const msg = ov.querySelector("#esiMsg");
+    try{
+      const res = esApplyGrades(ov.querySelector("#esiText").value);
+      msg.className = "msg show " + (res.applied ? "ok" : "err");
+      msg.textContent = "رُصدت درجات " + res.applied + " إجابة (في الاختبارات: " + res.toScore + "، في النماذج: " + res.onlyModels + ")" + (res.skipped.length ? " — تُجوهل " + res.skipped.length + " عنصرًا (غير موجود أو مصحَّح سابقًا)." : ".");
+      if(res.applied) setTimeout(()=>{ ov.remove(); renderEssayGradingWindow(view, role); }, 1600);
+    }catch(err){ msg.className = "msg show err"; msg.textContent = "تعذّر الاستيراد: " + (err && err.message || err); }
+  });
+});
+
     redrawList();
   });
   redrawList();
@@ -13588,7 +14479,7 @@ function readFileAsDataURL(file){
     const reader = new FileReader();
     reader.onload = ()=>resolve(reader.result);
     reader.onerror = reject;
-    reader.readAsDataURL(file);
+    SafeUpload.read(reader, file, "attach", reject);
   });
 }
 function drawAttachSendTable(wrap, role){
@@ -14139,7 +15030,7 @@ function renderMindBankWindow(view){
       DB.mindmapBank.push({id:"mb"+Date.now(), owner, name:f.name, src:reader.result});
       saveDB(); draw();
     };
-    reader.readAsDataURL(f);
+    SafeUpload.read(reader, f, "image");
     e.target.value = "";
   });
   draw();
@@ -14282,7 +15173,7 @@ function renderMyStudentsWindow(view, role){
   document.getElementById("myStSearch").addEventListener("input", (e)=>{ searchTerm = e.target.value; draw(); });
   window.__refreshMyStudents = draw;
   document.getElementById("myStAddBtn").addEventListener("click", ()=>{
-    DB.students.push({username:nextDefaultName("طالب_جديد", DB.students), password:"1234", grade:fGradeV, cls:fClsV, active:false, addedByTeacher:teacherUsername, __isNew:true});
+    DB.students.push({username:nextDefaultName("طالب_جديد", DB.students), password:genTempPassword(), grade:fGradeV, cls:fClsV, active:false, addedByTeacher:teacherUsername, __isNew:true});
     saveDB(); draw();
   });
   // بند 12/7: زر "تفعيل الجميع" — يُفعّل دفعة واحدة كل الطلاب الظاهرين حاليًا في الجدول
@@ -17049,6 +17940,26 @@ function attachInput(){
     const d = { p, fx:(e.clientX-r.left)/r.width, fy:(e.clientY-r.top)/r.height, n:ST.name, t:TS() };
     ST.ref.child("c/"+ST.key).set(d);
   });
+/* بند 4 (طالب): سحب المؤشر باللمس كبطاقة — يلمس الطالب المؤشر (يُقبل ضمن 56 بكسل) ويسحبه إلى أي مكان؛ يعمل فقط عند إذن المعلم */
+let __dragHand = false;
+const __moveHandTo = (x, y)=>{
+  if(!ST || !ST.myHand) return;
+  placeAt(ST.myHand, x, y, true);
+  const nowT = Date.now(); if(nowT - ST.lastSend < 70) return; ST.lastSend = nowT;
+  const el = document.elementFromPoint(x, y); if(!el || !inView(el)) return;
+  const r = el.getBoundingClientRect(), p = pathOf(el, ST.viewEl); if(p==null || !r.width || !r.height) return;
+  try{ ST.ref.child("c/"+ST.key).set({ p, fx:(x-r.left)/r.width, fy:(y-r.top)/r.height, n:ST.name, t:TS() }); }catch(e){}
+};
+ST.ov.addEventListener("touchstart", e=>{
+  if(!ST || !ST.allowed || ST.teacher || !ST.myHand || !e.touches || !e.touches[0]) return;
+  const pt = e.touches[0], hr = ST.myHand.getBoundingClientRect();
+  if(Math.hypot(pt.clientX - hr.left, pt.clientY - (hr.top + 18)) <= 56){ __dragHand = true; e.preventDefault(); __moveHandTo(pt.clientX, pt.clientY); }
+}, { capture:true, passive:false });
+ST.ov.addEventListener("touchmove", e=>{
+  if(!__dragHand || !e.touches || !e.touches[0]) return;
+  e.preventDefault(); e.stopPropagation(); __moveHandTo(e.touches[0].clientX, e.touches[0].clientY);
+}, { capture:true, passive:false });
+["touchend","touchcancel"].forEach(ev=>ST.ov.addEventListener(ev, ()=>{ __dragHand = false; }, true));
   const onScroll = ()=>{
     placeAll();
     if(!ST || !ST.allowed || scrollLockedForMe() || Date.now() < (ST.noScrollUntil||0)) return;
@@ -17584,7 +18495,7 @@ function dictIdxOf(w){ const d = (ST.model && ST.model.data) || []; return d.ind
 function dictTeacher(q0, noCheck, list, startIdx){
   const old = document.getElementById("saBoardOverlay"); if(old){ if(old.__sabClose) old.__sabClose(); else old.remove(); }
   const D = dictWords(q0, list, startIdx); let { words, wi } = D;
-  let cur = words[wi], manual = null, audio = null, tTimer = null, locked = false, checked = false, seq = (ST.dseq = (ST.dseq||0)+1), results = {};
+  let showAns = false, cur = words[wi], manual = null, audio = null, tTimer = null, locked = false, checked = false, seq = (ST.dseq = (ST.dseq||0)+1), results = {};
   const ov = document.createElement("div"); ov.id = "saBoardOverlay"; ov.__lvDict = true;
   ov.innerHTML = `<div class="sab-top">
       <button type="button" class="chip-btn" id="ldPrev">◀ السابق</button><h3>الإملاء الجماعي — يكتب كل طالب في نافذته</h3><span class="sab-badge" id="ldNo"></span>
@@ -17595,20 +18506,21 @@ function dictTeacher(q0, noCheck, list, startIdx){
       <label style="margin:0;display:flex;align-items:center;gap:6px;">عدد الطلاب <input type="number" id="ldCount" min="1" max="80" style="width:70px;"><button type="button" class="chip-btn" id="ldAll">الجميع</button></label>
       <button type="button" class="chip-btn" id="ldClear" title="يمسح كتابة جميع الطلاب ويعيد فتح الكتابة لهم">🗑 مسح الكل</button>
       <button type="button" class="chip-btn accent" id="ldCheck">✔ تحقق للجميع</button>
+<button type="button" class="chip-btn" id="ldShow" title="يُظهر للجميع كلمة الإملاء الصحيحة">👁 إظهار الكلمة الصحيحة</button>
       <button type="button" class="chip-btn" id="ldOk">✅ المشاركات الصحيحة</button>
       <button type="button" class="chip-btn" id="ldBad">❌ المشاركات الخاطئة</button>
       <button type="button" class="chip-btn danger" id="ldClose">✕ إغلاق</button></div>
-    <div class="sab-grid" id="ldGrid" style="overflow:auto;"></div><div id="ldList" class="lvr-dictlist" style="display:none;"></div>`;
+    <div id="ldAns" class="lvr-dictlist" style="display:none;font-size:34px;font-weight:800;text-align:center;color:#1e8e4e;" dir="rtl"></div><div class="sab-grid" id="ldGrid" style="overflow:auto;"></div><div id="ldList" class="lvr-dictlist" style="display:none;"></div>`;
   document.body.appendChild(ov);
   const $ = id=>q("#"+id, ov);
   const fmt = n=>String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
   const students = ()=>partList().filter(p=>p.on).sort((a,b)=>String(a.n).localeCompare(String(b.n),"ar"));
   const countVal = ()=>{ const n = manual==null ? students().length : manual; return Math.max(1, Math.min(80, n)); };
   function publish(extra){
-    ST.ref.child("dc").set(Object.assign({ on:true, seq, idx:dictIdxOf(cur), wi, n:words.length, endsAt:0, locked, checked, ts:TS() }, extra||{}));
+    ST.ref.child("dc").set(Object.assign({ on:true, seq, idx:dictIdxOf(cur), wi, n:words.length, endsAt:0, locked, checked, show:(showAns ? String(cur.answer||"") : ""), ts:TS() }, extra||{}));
   }
   function mount(){
-    cur = words[wi]; locked = false; checked = false; results = {}; seq = (ST.dseq = (ST.dseq||0)+1);
+    cur = words[wi]; locked = false; checked = false; results = {}; showAns = false; { const __a = $("ldAns"); if(__a){ __a.style.display = "none"; __a.textContent = ""; } } seq = (ST.dseq = (ST.dseq||0)+1);
     if(audio){ try{ audio.pause(); }catch(e){} audio = null; }
     $("ldNo").textContent = words.length>1 ? ("الكلمة "+(wi+1)+" من "+words.length) : "كلمة واحدة";
     $("ldPrev").style.display = $("ldNext").style.display = words.length>1 ? "" : "none"; $("ldPrev").disabled = wi<=0; $("ldNext").disabled = wi>=words.length-1;
@@ -17656,6 +18568,7 @@ function dictTeacher(q0, noCheck, list, startIdx){
   $("ldStart").addEventListener("click", startTimer);
   $("ldReset").addEventListener("click", ()=>{ clearInterval(tTimer); tTimer = null; $("ldStart").textContent = "▶ ابدأ"; $("ldLeft").textContent = fmt(Math.round(Number($("ldSec").value)||60)); ov.classList.remove("sab-timeup"); locked = false; checked = false; results = {}; publish({ endsAt:0 }); draw(); });
   $("ldCheck").addEventListener("click", doCheck);
+$("ldShow").addEventListener("click", ()=>{ showAns = true; const a = $("ldAns"); a.textContent = "الكلمة الصحيحة: " + String(cur.answer||""); a.style.display = ""; publish(); });
   $("ldClear").addEventListener("click", ()=>{
     if(!confirm("مسح كتابة جميع الطلاب وإعادة فتح الكتابة لهم؟")) return;
     clearInterval(tTimer); tTimer = null; $("ldStart").textContent = "▶ ابدأ"; $("ldLeft").textContent = fmt(Math.round(Number($("ldSec").value)||60));
@@ -17711,7 +18624,7 @@ function dictStudent(dc){
   mrow.appendChild(mk("⌫","del",back,null,"حذف حرف")); kb.appendChild(mrow);
   const last = document.createElement("div"); last.className = "sab-row";
   last.appendChild(mk("لا","",()=>add("لا"))); last.appendChild(mk("،","",()=>add("،"))); last.appendChild(mk("مسافة","rect space",()=>add(" ")));
-  last.appendChild(mk("✔ تحقق","rect act",check)); last.appendChild(mk("مسح","rect del",()=>{ if(locked) return; text = ""; paint(); push(); }));
+  { const __cb = mk("✔ تحقق","rect act",check); __cb.disabled = true; __cb.style.opacity = ".45"; __cb.style.cursor = "not-allowed"; __cb.title = "التحقق يتم بأمر المعلم"; last.appendChild(__cb); }  /* بند 7: زر التحقق متوقف عند الطالب */ last.appendChild(mk("مسح","rect del",()=>{ if(locked) return; text = ""; paint(); push(); }));
   kb.appendChild(last);
   function fit(){ const wd = panel.clientWidth - 18, h = panel.clientHeight, fixedH = $("lsStatus").offsetHeight + 28; const kW = (wd - 11*3)/12.1, kH = (((h - fixedH - 90)*0.74) - 4*3)/5; const k = Math.max(26, Math.min(96, Math.floor(Math.min(kW, kH)))); panel.style.setProperty("--k", k+"px"); panel.style.setProperty("--kv", Math.floor(k*1.3)+"px"); }
   try{ new ResizeObserver(fit).observe(panel); }catch(e){ window.addEventListener("resize", fit); } requestAnimationFrame(fit);
@@ -17721,9 +18634,10 @@ function dictStudent(dc){
     if(!d.endsAt && tick){ clearInterval(tick); tick = null; }
     if(d.locked){ locked = true; ov.classList.add("sab-timeup"); }
     if(d.checked && !ov.__checked){ ov.__checked = true; check(); }
+if(d.show){ const __s = $("lsStatus"); __s.textContent = "الكلمة الصحيحة: " + d.show; __s.style.color = "#1e8e4e"; }
   };
   ov.__sabClose = ()=>{ clearInterval(tick); clearTimeout(sendT); if(audio){ try{ audio.pause(); }catch(e){} } ov.remove(); };
-  panel.addEventListener("keydown", e=>{ if(e.key==="Backspace"){ e.preventDefault(); back(); } else if(e.key==="Enter"){ e.preventDefault(); check(); } else if(e.key.length===1 && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); add(e.key); } });
+  panel.addEventListener("keydown", e=>{ if(e.key==="Backspace"){ e.preventDefault(); back(); } else if(e.key==="Enter"){ e.preventDefault(); } else if(e.key.length===1 && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); add(e.key); } });
   paint(); ov.__update(dc); panel.focus();
 }
 LV.dictTeacher = dictTeacher; LV.inTeacherStage = isTeacherStage; LV.inStudentStage = isStudentStage;
@@ -17818,16 +18732,17 @@ LV.boot = async function(role){
     if(role!=="student") return;
     if(LV.__booted) return; LV.__booted = true;
     root().child("active").on("value", s=>{ ACTIVE = s.val() || {}; renderPill(); if(LV.__refreshPage) try{ LV.__refreshPage(); }catch(e){} });
-    setInterval(renderPill, 20000);
+    setInterval(renderPill, 5000);
+["visibilitychange","focus","online"].forEach(ev=>{ try{ (ev==="visibilitychange"?document:window).addEventListener(ev, ()=>{ try{ renderPill(); }catch(e){} }); }catch(e){} });
   }catch(e){ console.warn("live boot", e); }
 };
-function myLiveSessions(){
+function myLiveSessions(forWindow){
   if(!session || session.role!=="student") return [];
   const u = Object.assign({ username: me() }, session.user || {});
   return Object.keys(ACTIVE).map(k=>Object.assign({ id:k }, ACTIVE[k])).filter(s=>{
     // قبل معرفة فرق ساعة الخادم لا نحكم على «القِدم» حتى لا نُخفي حصة حديثة بسبب ساعة الجهاز
-    const fresh = !offLoaded || ((!s.ts || (now() - s.ts) < 120000) && !(s.off && (now() - s.off) > GRACE_MS));
-    return fresh && !LEFT.has(s.id) && targetMatches(s.target, u);
+    const fresh = !offLoaded || ((!s.ts || (now() - s.ts) < (forWindow ? 6*3600000 : 120000)) && !(s.off && (now() - s.off) > GRACE_MS));
+    return fresh && (forWindow || !LEFT.has(s.id)) && targetMatches(s.target, u);
   });
 }
 function notifyNew(){
@@ -17853,8 +18768,8 @@ function renderPill(){
    ===================================================================== */
 LV.renderStudent = function(view){
   const draw = ()=>{
-    if(!view.isConnected) return;
-    const list = myLiveSessions();
+    if(!view.isConnected || ST) return;   /* بند 1: لا إعادة رسم خلف شاشة الحصة */
+    const list = myLiveSessions(true);
     view.innerHTML = `<h2>الحصة المباشرة</h2>
       <p class="sub">عندما يبدأ معلمك حصة مباشرة موجّهة لك تظهر هنا (وتظهر أيضًا شارة حمراء أعلى الشاشة). افتح الحصة وتابع مع المعلم؛ وحين يمنحك المعلم مؤشر اليد ✋ تستطيع الاختيار والسحب والإفلات.</p>
       ${list.length ? list.map(s=>`<div class="lvs-sess"><b>🔴 ${esc(s.title||"")}</b><span>${esc(s.tname||"المعلم")}</span><button class="primary-btn" style="width:auto;padding:8px 20px;" data-sid="${esc(s.id)}">انضم</button></div>`).join("")
