@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%A3%D9%86%D8%AA%20%D9%88%D9%86%D8%AD%D9%86%20%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%D9%85%D9%8A%D8%A9%20%7C%20Abozikry%20Skills%22%2C%20%22short_name%22%3A%20%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%A3%D9%86%D8%AA%20%D9%88%D9%86%D8%AD%D9%86%20%D8%A7%D9%84%D8%AA%D8%B9%D9%84%D9%8A%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22dir%22%3A%20%22rtl%22%2C%20%22lang%22%3A%20%22ar%22%2C%20%22background_color%22%3A%20%22%23ffffff%22%2C%20%22theme_color%22%3A%20%22%231a73e8%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520192%2520192%2522%253E%253Crect%2520width%253D%2522192%2522%2520height%253D%2522192%2522%2520rx%253D%252236%2522%2520fill%253D%2522%25231a73e8%2522/%253E%253Ctext%2520x%253D%252296%2522%2520y%253D%2522128%2522%2520font-size%253D%2522110%2522%2520text-anchor%253D%2522middle%2522%2520fill%253D%2522%2523fff%2522%2520font-family%253D%2522sans-serif%2522%253E%25D8%25A3%253C/text%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22any%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%2C%20%22purpose%22%3A%20%22any%22%7D%5D%7D">
 <meta name="theme-color" content="#1a73e8">
-<meta name="app-version" content="20261123.2311">
+<meta name="app-version" content="20261124.1019">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <title>منصة أنت ونحن التعليمية | Abozikry Skills</title>
 <meta name="description" content="منصة أنت ونحن التعليمية (Abozikry Skills): منصة عربية للمعلمين والطلاب وأولياء الأمور، فيها نماذج واختبارات إلكترونية وشروح تفاعلية وحصص مباشرة وتدريب على المهارات اللغوية ومتابعة تقدّم الطلاب.">
@@ -1803,9 +1803,9 @@ const Guard = (function(){
    ===================================================================== */
 const SUPER_ADMIN = {
   username: "المشرف العام",
-  passSalt: "8NhQC1RLMxT8jGCYKbHKhw==",
-  passHash: "+7w/Am5lCbA63ifXu213bjyxgQXoacX4tFp3fXE4mIQ=",
-  passIter: 120000,
+passSalt: "mydXR2hZqldX/egPFbNmzA==",
+passHash: "URfEI+51Ui1Z5vTGsej20PYnPx1QTY5rZkuksJ2RBhI=",
+passIter: 310000,
   builtin: true
 };
 
@@ -5222,6 +5222,7 @@ document.getElementById("logoutBtn").addEventListener("click", async ()=>{
 const NAV = {
   admin: [
 ["home","الصفحة الرئيسة"],
+    ["adminpw","كلمة مرور المشرف"],
     ["orgs","المؤسسات والاشتراكات"],
     ["backup","النسخ الاحتياطي والاستعادة"],
     ["aboutedit","تعديل نافذة (من نحن)"],
@@ -5350,6 +5351,7 @@ function renderView(role,key){
 if(key==="home"){ renderHomeWindow(view, role); return; }
 if(key==="ai"){ renderAICreateWindow(view, role); return; }
 if(key==="skills"){ renderSkillsWindow(view, role); return; }
+if(key==="adminpw"){ renderAdminPasswordWindow(view, role); return; }
   if(key==="orgs"){ renderOrgsWindow(view); return; }
   if(key==="backup"){ renderBackupWindow(view); return; }
   if(key==="orghome"){ renderOrgHomeWindow(view); return; }
@@ -14207,6 +14209,50 @@ function renderAICreateWindow(view, role){
 }
 
 /* ===== إتقان المهارات (مرحلة 4 — بلا تغيير في شكل البيانات): يُحسب من نتائج الطلاب الحالية (details) ===== */
+/* ===== كلمة مرور المشرف العام: تغيير آمن من داخل المنصة (لأن الحساب المدمج لا يملك نافذة ملف شخصي) ===== */
+function renderAdminPasswordWindow(view, role){
+  const ok = role === "admin" && session && session.user && session.user.builtin;
+  view.innerHTML = `<h2>كلمة مرور المشرف العام 🔐</h2>
+  <p class="sub">يغيّر كلمة المرور في Firebase نفسه، ثم يولّد ثلاثة أسطر تضعها مكان القيم القديمة في <b>SUPER_ADMIN</b> داخل index.html (وإلا لن يعمل التحقق عند فتح الجداول المقفلة). ابدأ بكلمة جديدة من 14 حرفًا فأكثر.</p>
+  ${ok ? "" : '<div class="msg show err">هذه النافذة للمشرف العام فقط.</div>'}
+  <div style="max-width:480px;display:${ok ? "block" : "none"};">
+    <label>كلمة المرور الحالية <input type="password" id="apOld" autocomplete="current-password" style="width:100%;"></label>
+    <label>كلمة المرور الجديدة (14 حرفًا فأكثر) <input type="password" id="apNew" autocomplete="new-password" style="width:100%;"></label>
+    <label>أعد كتابة الجديدة <input type="password" id="apNew2" autocomplete="new-password" style="width:100%;"></label>
+    <button class="primary-btn" id="apGo" style="width:auto;padding:10px 24px;margin-top:8px;">تغيير كلمة المرور</button>
+    <div class="msg" id="apMsg"></div>
+    <div id="apOutBox" style="display:none;margin-top:12px;"><b>انسخ هذه الأسطر وضعها مكان القيم القديمة داخل SUPER_ADMIN في index.html:</b>
+      <textarea id="apOut" rows="4" readonly style="width:100%;direction:ltr;font-family:Consolas,monospace;"></textarea>
+      <p class="sub">بعد لصقها: غيّر رقم app-version ثم ارفع الملف. لا تُغلق هذه الصفحة قبل نسخها.</p></div>
+  </div>`;
+  if(!ok) return;
+  const $q = id => view.querySelector("#" + id), msg = $q("apMsg");
+  const say = (t, good) => { msg.className = "msg show " + (good ? "ok" : "err"); msg.textContent = t; };
+  const pad = p => { p = String(p); return p.length >= 6 ? p : p + "#".repeat(6 - p.length); };
+  $q("apGo").addEventListener("click", async ()=>{
+    const old = $q("apOld").value, np = $q("apNew").value, np2 = $q("apNew2").value, btn = $q("apGo");
+    if(!old) return say("اكتب كلمة المرور الحالية.");
+    if(np.length < 14) return say("الكلمة الجديدة أقصر من 14 حرفًا.");
+    if(np !== np2) return say("الكلمتان الجديدتان غير متطابقتين.");
+    if(np === old) return say("الكلمة الجديدة مطابقة للقديمة.");
+    if(!STRICT) return say("الوضع الصارم غير مفعّل على هذه النسخة؛ لا أستطيع تغيير كلمة المرور في Firebase. لم يتغيّر شيء.");
+    btn.disabled = true;
+    try{
+      const cu = firebase.auth().currentUser; if(!cu || cu.isAnonymous || !cu.email) throw new Error("no-user");
+      await cu.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(cu.email, pad(old)));   // يتأكد أن الكلمة الحالية صحيحة
+      await cu.updatePassword(pad(np));
+      const h = await Sec.hashPassword(np);
+      $q("apOut").value = 'passSalt: "' + h.passSalt + '",\npassHash: "' + h.passHash + '",\npassIter: ' + (h.passIter || 120000) + ',';
+      $q("apOutBox").style.display = "block";
+      say("تم تغيير كلمة المرور في Firebase. الخطوة الأخيرة: ضع الأسطر الثلاثة في index.html وارفعه.", true);
+      try{ Audit.log("admin_password_changed", "ok"); }catch(e){}
+      $q("apOld").value = $q("apNew").value = $q("apNew2").value = "";
+    }catch(e){
+      console.error(e);
+      say((e && (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential" || e.code === "auth/invalid-login-credentials")) ? "كلمة المرور الحالية غير صحيحة." : "تعذّر التغيير (قد تحتاج لتسجيل الخروج ثم الدخول من جديد). لم يتغيّر شيء.");
+    }finally{ btn.disabled = false; }
+  });
+}
 function skillName(d){
   const q = String(d.question || "").replace(/<[^>]*>/g, "").trim();
   let isGram = false; try{ isGram = d.qtype === toolLabelFor("grammarreq"); }catch(e){}
